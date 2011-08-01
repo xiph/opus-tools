@@ -302,9 +302,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    if (!*rate)
       *rate = header.sample_rate;
 
-   *rate = 48000;
-   fprintf(stderr, "%d %d\n", *rate, header.channels);
-   st = opus_decoder_create(*rate, header.channels);
+   st = opus_decoder_create(48000, header.channels);
    if (!st)
    {
       fprintf (stderr, "Decoder initialization failed.\n");
@@ -365,7 +363,6 @@ int main(int argc, char **argv)
    float loss_percent=-1;
    int channels=-1;
    int rate=0;
-   int extra_headers=0;
    int wav_format=0;
    int lookahead=0;
    int opus_serialno = -1;
@@ -496,8 +493,8 @@ int main(int argc, char **argv)
          page_nb_packets = ogg_page_packets(&og);
          if (page_granule>0 && frame_size)
          {
-            /* FIXME: shift the granule values if --force-* is specified */
-            skip_samples = frame_size*(page_nb_packets*granule_frame_size*nframes - (page_granule-last_granule))/granule_frame_size;
+            /* FIXME: Compute this properly */
+            skip_samples = 0;
             if (ogg_page_eos(&og))
                skip_samples = -skip_samples;
             /*else if (!ogg_page_bos(&og))
@@ -530,9 +527,6 @@ int main(int argc, char **argv)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
-            } else if (packet_count<=1+extra_headers)
-            {
-               /* Ignore extra headers */
             } else {
                int lost=0;
                if (loss_percent>0 && 100*((float)rand())/RAND_MAX<loss_percent)

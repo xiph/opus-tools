@@ -39,6 +39,7 @@
 #include <time.h>
 
 #include "opus_header.h"
+#include "speex_resampler.h"
 
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -259,7 +260,7 @@ int main(int argc, char **argv)
    int bytes_per_packet=-1;
    int complexity=-127;
    const char *opus_version = "none";
-
+   SpeexResamplerState *resampler=NULL;
 
    /*Process command-line options*/
    while(1)
@@ -405,6 +406,14 @@ int main(int argc, char **argv)
       }
    }
 
+   if (rate != 48000)
+   {
+      int err;
+      fprintf(stderr, "Resampling from %d Hz to %d Hz before encoding\n", rate, 48000);
+      resampler = speex_resampler_init(chan, rate, 48000, 5, &err);
+      if (err!=0)
+         fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
+   }
    if (bitrate<=0.005)
      if (chan==1)
        bitrate=64.0;
@@ -428,10 +437,10 @@ int main(int argc, char **argv)
       if (!quiet)
          if (with_cbr)
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet, CBR)\n",
-               header.sample_rate/1000., st_string, frame_size/(float)header.sample_rate*1000., bitrate, bytes_per_packet);
-         else      
+               header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
+         else
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet maximum)\n",
-               header.sample_rate/1000., st_string, frame_size/(float)header.sample_rate*1000., bitrate, bytes_per_packet);
+               header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
    }
 
    /*Initialize OPUS encoder*/
