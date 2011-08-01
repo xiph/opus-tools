@@ -69,8 +69,8 @@ int oe_write_page(ogg_page *page, FILE *fp)
    return written;
 }
 
-#define MAX_FRAME_SIZE 2048
-#define MAX_FRAME_BYTES 1275
+#define MAX_FRAME_SIZE (960*2*3)
+#define MAX_FRAME_BYTES 1276
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
@@ -174,7 +174,6 @@ void usage(void)
    printf (" --framesize n      Frame size (Default: 960)\n");
    printf (" --nopf             Do not use the prefilter/postfilter\n");
    printf (" --independent      Encode frames independently (implies nopf)\n");
-   printf (" --skeleton         Outputs ogg skeleton metadata (may cause incompatibilities)\n");
    printf (" --comment          Add the given string as an extra comment. This may be\n");
    printf ("                     used multiple times\n");
    printf (" --author           Author of this track\n");
@@ -209,7 +208,6 @@ int main(int argc, char **argv)
    unsigned char bits[MAX_FRAME_BYTES];
    int with_cbr = 0;
    int with_cvbr = 0;
-   int with_skeleton = 0;
    int total_bytes = 0;
    int peak_bytes = 0;
    struct option long_options[] =
@@ -221,7 +219,6 @@ int main(int argc, char **argv)
       {"nopf", no_argument, NULL, 0},
       {"independent", no_argument, NULL, 0},
       {"framesize", required_argument, NULL, 0},
-      {"skeleton",no_argument,NULL, 0},
       {"help", no_argument, NULL, 0},
       {"quiet", no_argument, NULL, 0},
       {"le", no_argument, NULL, 0},
@@ -245,7 +242,6 @@ int main(int argc, char **argv)
    int fmt=16;
    int lsb=1;
    ogg_stream_state os;
-   ogg_stream_state so; /* ogg stream for skeleton bitstream */
    ogg_page 		 og;
    ogg_packet 		 op;
    int bytes_written=0, ret, result;
@@ -285,9 +281,6 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"cvbr")==0)
          {
             with_cvbr=1;
-         } else if (strcmp(long_options[option_index].name,"skeleton")==0)
-         {
-            with_skeleton=1;
          } else if (strcmp(long_options[option_index].name,"help")==0)
          {
             usage();
@@ -376,11 +369,6 @@ int main(int argc, char **argv)
    /*Initialize Ogg stream struct*/
    srand(time(NULL));
    if (ogg_stream_init(&os, rand())==-1)
-   {
-      fprintf(stderr,"Error: stream init failed\n");
-      exit(1);
-   }
-   if (with_skeleton && ogg_stream_init(&so, rand())==-1)
    {
       fprintf(stderr,"Error: stream init failed\n");
       exit(1);
@@ -500,10 +488,6 @@ int main(int argc, char **argv)
       close_out=1;
    }
 
-   if (with_skeleton) {
-      fprintf (stderr, "Warning: Enabling skeleton output may cause some decoders to fail.\n");
-   }
-
    /*Write header*/
    {
       unsigned char header_data[100];
@@ -607,8 +591,8 @@ int main(int argc, char **argv)
       op.granulepos = (id+1)*frame_size-lookahead;
       if (op.granulepos>total_samples)
          op.granulepos = total_samples;
-      /*printf ("granulepos: %d %d %d %d %d %d\n", (int)op.granulepos, id, nframes, lookahead, 5, 6);*/
       op.packetno = 2+id;
+      /*printf ("granulepos: %d %d %d\n", (int)op.granulepos, op.packetno, op.bytes);*/
       ogg_stream_packetin(&os, &op);
 
       /*Write all new pages (most likely 0 or 1)*/

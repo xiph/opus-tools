@@ -45,6 +45,7 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
    opus_int16 balign;
    int skip_bytes;
    int i;
+   int ret;
 
    ch[4]=0;
 #if 0
@@ -65,17 +66,17 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
       return -1;
    }
 #endif
-   fread(ch, 1, 4, file);
+   ret = fread(ch, 1, 4, file);
    while (strcmp(ch, "fmt ")!=0)
    {
-      fread(&itmp, 4, 1, file);
+      ret = fread(&itmp, 4, 1, file);
       itmp = le_int(itmp);
       /*fprintf (stderr, "skip=%d\n", itmp);*/
       /*strange way of seeking, but it works even for pipes*/
       for (i=0;i<itmp;i++)
          fgetc(file);
       /*fseek(file, itmp, SEEK_CUR);*/
-      fread(ch, 1, 4, file);
+      ret = fread(ch, 1, 4, file);
       if (feof(file))
       {
          fprintf (stderr, "Corrupted WAVE file: no \"fmt \"\n");
@@ -88,12 +89,12 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
       return -1;
       }*/
    
-   fread(&itmp, 4, 1, file);
+   ret = fread(&itmp, 4, 1, file);
    itmp = le_int(itmp);
    skip_bytes=itmp-16;
    /*fprintf (stderr, "skip=%d\n", skip_bytes);*/
    
-   fread(&stmp, 2, 1, file);
+   ret = fread(&stmp, 2, 1, file);
    stmp = le_short(stmp);
    if (stmp!=1)
    {
@@ -101,7 +102,7 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
       return -1;
    }
 
-   fread(&stmp, 2, 1, file);
+   ret = fread(&stmp, 2, 1, file);
    stmp = le_short(stmp);
    *channels = stmp;
    
@@ -111,17 +112,17 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
       return -1;
    }
 
-   fread(&itmp, 4, 1, file);
+   ret = fread(&itmp, 4, 1, file);
    itmp = le_int(itmp);
    *rate = itmp;
 
-   fread(&itmp, 4, 1, file);
+   ret = fread(&itmp, 4, 1, file);
    bpersec = le_int(itmp);
 
-   fread(&stmp, 2, 1, file);
+   ret = fread(&stmp, 2, 1, file);
    balign = le_short(stmp);
 
-   fread(&stmp, 2, 1, file);
+   ret = fread(&stmp, 2, 1, file);
    stmp = le_short(stmp);
    if (stmp!=16 && stmp!=8)
    {
@@ -150,16 +151,16 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
 
    /*fseek(file, skip_bytes, SEEK_CUR);*/
 
-   fread(ch, 1, 4, file);
+   ret = fread(ch, 1, 4, file);
    while (strcmp(ch, "data")!=0)
    {
-      fread(&itmp, 4, 1, file);
+      ret = fread(&itmp, 4, 1, file);
       itmp = le_int(itmp);
       /*strange way of seeking, but it works even for pipes*/
       for (i=0;i<itmp;i++)
          fgetc(file);
       /*fseek(file, itmp, SEEK_CUR);*/
-      fread(ch, 1, 4, file);
+      ret = fread(ch, 1, 4, file);
       if (feof(file))
       {
          fprintf (stderr, "Corrupted WAVE file: no \"data\"\n");
@@ -168,7 +169,7 @@ int read_wav_header(FILE *file, int *rate, int *channels, int *format, opus_int3
    }
 
    /*Ignore this for now*/
-   fread(&itmp, 4, 1, file);
+   ret = fread(&itmp, 4, 1, file);
    itmp = le_int(itmp);
 
    *size=itmp;
