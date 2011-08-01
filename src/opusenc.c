@@ -76,7 +76,7 @@ int oe_write_page(ogg_page *page, FILE *fp)
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
 /* Convert input audio bits, endians and channels */
-static int read_samples(FILE *fin,int frame_size, int bits, int channels, int lsb, short * input, char *buff, opus_int32 *size)
+static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, int lsb, short * input, char *buff, opus_int32 *size)
 {   
    short s[MAX_FRAME_SIZE];
    unsigned char *in = (unsigned char*)s;
@@ -139,6 +139,41 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels, int ls
 
 
    return nb_read;
+}
+
+static int read_samples(FILE *fin,int frame_size, int bits, int channels, 
+                        int lsb, short * input, char *buff, opus_int32 *size,
+                        SpeexResamplerState *resampler)
+{
+   if (resampler)
+   {
+      /* FIXME: This is a hack, get rid of these static variables */
+      static opus_int16 pcmbuf[2048];
+      static int inbuf=0;
+      int out_samples=0;
+      while (out_samples<frame_size)
+      {
+         int i;
+         int reading, ret;
+         unsigned in_len, out_len;
+         reading = 1024-channels*inbuf;
+         ret = read_samples_pcm(fin, reading, bits, channels, lsb, pcmbuf+inbuf*channels, buff, size);
+         /* FIXME: We should drain the buffer before stopping */
+         if (ret==0)
+            return 0;
+         inbuf += ret;
+         in_len = inbuf;
+         out_len = frame_size-out_samples;
+         speex_resampler_process_interleaved_int(resampler, pcmbuf, &in_len, input+out_samples*channels, &out_len);
+         out_samples += out_len;
+         for (i=0;i<channels*(inbuf-in_len);i++)
+            pcmbuf[i] = pcmbuf[i+channels*in_len];
+         inbuf -= in_len;
+      }
+      return out_samples;
+   } else {
+      return read_samples_pcm(fin, frame_size, bits, channels, lsb, input, buff, size);
+   }
 }
 
 void version(const char *version)
@@ -549,9 +584,9 @@ int main(int argc, char **argv)
 
    if (!wave_input)
    {
-      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, first_bytes, NULL);
+      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, first_bytes, NULL, resampler);
    } else {
-      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size);
+      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler);
    }
    if (nb_samples==0)
       eos=1;
@@ -575,9 +610,9 @@ int main(int argc, char **argv)
 
       if (wave_input)
       {
-         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size);
+         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler);
       } else {
-         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, NULL);
+         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, NULL, resampler);
       }
       if (nb_samples==0)
       {
