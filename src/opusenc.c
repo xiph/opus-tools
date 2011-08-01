@@ -142,13 +142,13 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels, int ls
 
 void version(const char *version)
 {
-   printf ("opusenc (OPUS %s encoder)\n",version);
+   printf ("opusenc (Opus %s encoder)\n",version);
    printf ("Copyright (C) 2008-2011 Xiph.Org Foundation (written by Jean-Marc Valin)\n");
 }
 
 void version_short(const char *version)
 {
-   printf ("opusenc (OPUS %s encoder)\n",version);
+   printf ("opusenc (Opus %s encoder)\n",version);
    printf ("Copyright (C) 2008-2011 Xiph.Org Foundation (written by Jean-Marc Valin)\n");
 }
 
@@ -156,7 +156,7 @@ void usage(void)
 {
    printf ("Usage: opusenc [options] input_file output_file.oga\n");
    printf ("\n");
-   printf ("Encodes input_file using OPUS. It can read the WAV or raw files.\n");
+   printf ("Encodes input_file using Opus. It can read the WAV or raw files.\n");
    printf ("\n");
    printf ("input_file can be:\n");
    printf ("  filename.wav      wav file\n");
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
      
    bytes_per_packet = MAX_FRAME_BYTES;
    
-   /*snprintf(vendor_string, sizeof(vendor_string), "Encoded with OPUS %s\n",OPUS_VERSION);*/
+   snprintf(vendor_string, sizeof(vendor_string), "Encoded with Opus %s\n",opus_get_version_string());
    comment_init(&comments, &comments_length, vendor_string);
 
    header.channels = chan;

@@ -38,9 +38,9 @@
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
-#ifndef HAVE_GETOPT_LONG
+/*#ifndef HAVE_GETOPT_LONG
 #include "getopt_win.h"
-#endif
+#endif*/
 #include <stdlib.h>
 #include <string.h>
 
@@ -79,9 +79,9 @@
 
 #include <string.h>
 #include "wav_io.h"
-#include <opus_header.h>
+#include "opus_header.h"
 
-#define MAX_FRAME_SIZE 2048
+#define MAX_FRAME_SIZE (2*960*3)
 
 #define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
                            ((buf[base+2]<<16)&0xff0000)| \
@@ -249,10 +249,10 @@ void usage(void)
 {
    printf ("Usage: opusdec [options] input_file.oga [output_file]\n");
    printf ("\n");
-   printf ("Decodes a OPUS file and produce a WAV file or raw file\n");
+   printf ("Decodes a Opus file and produce a WAV file or raw file\n");
    printf ("\n");
    printf ("input_file can be:\n");
-   printf ("  filename.oga         regular OPUS file\n");
+   printf ("  filename.oga         regular Opus file\n");
    printf ("  -                    stdin\n");
    printf ("\n");  
    printf ("output_file can be:\n");
@@ -274,58 +274,42 @@ void usage(void)
 
 void version(void)
 {
-   printf ("opusenc (OPUS %s encoder)\n",OPUS_VERSION);
-   printf ("Copyright (C) 2008 Jean-Marc Valin\n");
+   printf ("opusenc (Opus %s encoder)\n",opus_get_version_string());
+   printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
 void version_short(void)
 {
-   printf ("opusenc (OPUS %s encoder)\n",OPUS_VERSION);
-   printf ("Copyright (C) 2008 Jean-Marc Valin\n");
+   printf ("opusenc (Opus %s encoder)\n",opus_get_version_string());
+   printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
-static OPUSDecoder *process_header(ogg_packet *op, opus_int32 enh_enabled, opus_int32 *frame_size, int *granule_frame_size, opus_int32 *rate, int *nframes, int forceMode, int *channels, int *overlap, int *extra_headers, int quiet, OPUSMode **mode)
+static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int quiet)
 {
-   OPUSDecoder *st;
-   OPUSHeader header;
-   int bitstream;
-      
-   opus_header_from_packet(op->packet, op->bytes, &header);
+   OpusDecoder *st;
+   OpusHeader header;
 
-   if (header.nb_channels>2 || header.nb_channels<1)
+   opus_header_parse(op->packet, op->bytes, &header);
+
+   if (header.channels>2 || header.channels<1)
    {
-      fprintf (stderr, "Unsupported number of channels: %d\n", header.nb_channels);
-      return NULL;
-   }
-   *mode = opus_mode_create(header.sample_rate, header.frame_size, NULL);
-   if (*mode == NULL)
-   {
-      fprintf (stderr, "Mode initialization failed.\n");
+      fprintf (stderr, "Unsupported number of channels: %d\n", header.channels);
       return NULL;
    }
 
-   /* FIXME: Set that to zero when we freeze */
-   bitstream = 0x80001000;
-   if (bitstream!=header.version_id)
-     fprintf(stderr, "WARNING: Input was encoded with a OPUS bitstream version %d. This decoder uses %d. Output will probably be corrupted.\n",header.version_id,bitstream);
-   
-   *channels = header.nb_channels;
-   *overlap=header.overlap;
-   st = opus_decoder_create_custom(*mode, header.nb_channels, NULL);
+   *channels = header.channels;
+
+   if (!*rate)
+      *rate = header.sample_rate;
+
+   *rate = 48000;
+   fprintf(stderr, "%d %d\n", *rate, header.channels);
+   st = opus_decoder_create(*rate, header.channels);
    if (!st)
    {
       fprintf (stderr, "Decoder initialization failed.\n");
       return NULL;
    }
-   
-   /*opus_mode_info(*mode, OPUS_GET_FRAME_SIZE, frame_size);*/
-   *frame_size = header.frame_size;
-   *granule_frame_size = *frame_size;
-
-   if (!*rate)
-      *rate = header.sample_rate;
-
-   *nframes = 1;
 
    if (!quiet)
    {
@@ -338,8 +322,6 @@ static OPUSDecoder *process_header(ogg_packet *op, opus_int32 enh_enabled, opus_
       fprintf(stderr, ")\n");
    }
 
-   *extra_headers = header.extra_headers;
-
    return st;
 }
 
@@ -349,11 +331,10 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout=NULL;
-   short out[MAX_FRAME_SIZE];
-   short output[MAX_FRAME_SIZE];
+   opus_int16 out[MAX_FRAME_SIZE];
+   opus_int16 output[MAX_FRAME_SIZE];
    int frame_size=0, granule_frame_size=0;
    void *st=NULL;
-   OPUSMode *mode=NULL;
    int packet_count=0;
    int stream_init = 0;
    int quiet = 0;
@@ -380,7 +361,6 @@ int main(int argc, char **argv)
    int print_bitrate=0;
    int close_in=0;
    int eos=0;
-   int forceMode=-1;
    int audio_size=0;
    float loss_percent=-1;
    int channels=-1;
@@ -531,7 +511,7 @@ int main(int argc, char **argv)
          /*Extract all available packets*/
          while (!eos && ogg_stream_packetout(&os, &op) == 1)
          {
-	    if (op.bytes>=8 && !memcmp(op.packet, "OPUS    ", 8)) {
+	    if (op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
 	       opus_serialno = os.serialno;
 	    }
 	    if (opus_serialno == -1 || os.serialno != opus_serialno)
@@ -539,7 +519,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, enh_enabled, &frame_size, &granule_frame_size, &rate, &nframes, forceMode, &channels, &lookahead, &extra_headers, quiet, &mode);
+               st = process_header(&op, &rate, &channels, quiet);
                if (!st)
                   exit(1);
                if (!nframes)
@@ -566,9 +546,9 @@ int main(int argc, char **argv)
                   int ret;
                   /*Decode frame*/
                   if (!lost)
-                     ret = opus_decode(st, (unsigned char*)op.packet, op.bytes, output, frame_size);
+                     ret = opus_decode(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
                   else
-                     ret = opus_decode(st, NULL, 0, output, frame_size);
+                     ret = opus_decode(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
 
                   /*for (i=0;i<frame_size*channels;i++)
                     printf ("%d\n", (int)output[i]);*/
@@ -651,9 +631,8 @@ int main(int argc, char **argv)
    if (st)
    {
       opus_decoder_destroy(st);
-      opus_mode_destroy(mode);
    } else {
-      fprintf (stderr, "This doesn't look like a OPUS file\n");
+      fprintf (stderr, "This doesn't look like a Opus file\n");
    }
    if (stream_init)
       ogg_stream_clear(&os);
