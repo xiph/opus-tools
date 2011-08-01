@@ -558,7 +558,7 @@ int main(int argc, char **argv)
                      fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
                      break;
                   }
-
+                  frame_size = ret;
                   if (print_bitrate) {
                      opus_int32 tmp=op.bytes;
                      char ch=13;
