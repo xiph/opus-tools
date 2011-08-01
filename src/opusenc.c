@@ -429,7 +429,10 @@ int main(int argc, char **argv)
    comment_init(&comments, &comments_length, vendor_string);
 
    header.channels = chan;
-
+   header.pregap = 0;
+   header.multi_stream = 0;
+   header.sample_rate = rate;
+   
    {
       char *st_string="mono";
       if (chan==2)
