@@ -80,6 +80,7 @@
 #include <string.h>
 #include "wav_io.h"
 #include "opus_header.h"
+#include "speex_resampler.h"
 
 #define MAX_FRAME_SIZE (2*960*3)
 
@@ -323,6 +324,25 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    return st;
 }
 
+void audio_write(opus_int16 *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler)
+{
+   if (resampler)
+   {
+      opus_int16 buf[2048];
+      do {
+         unsigned in_len, out_len;
+         in_len = frame_size;
+         out_len = 1024;
+         speex_resampler_process_interleaved_int(resampler, pcm, &in_len, buf, &out_len);
+         fwrite(buf, 2, out_len*channels, fout);
+         pcm += channels*in_len;
+         frame_size -= in_len;
+      } while (frame_size != 0);
+   } else {
+      fwrite(pcm, 2, frame_size*channels, fout);
+   }
+}
+
 int main(int argc, char **argv)
 {
    int c;
@@ -367,6 +387,7 @@ int main(int argc, char **argv)
    int lookahead=0;
    int opus_serialno = -1;
    int firstpacket = 1;
+   SpeexResamplerState *resampler=NULL;
 
    enh_enabled = 1;
 
@@ -521,6 +542,14 @@ int main(int argc, char **argv)
                   exit(1);
                if (!nframes)
                   nframes=1;
+               if (rate != 48000)
+               {
+                  int err;
+                  resampler = speex_resampler_init(channels, 48000, rate, 5, &err);
+                  if (err!=0)
+                     fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
+                  speex_resampler_skip_zeros(resampler);
+               }
                fout = out_file_open(outFile, rate, &channels);
 
             } else if (packet_count==1)
@@ -581,14 +610,8 @@ int main(int argc, char **argv)
                         firstpacket = 0;
                      }
                      if (new_frame_size>0)
-                     {  
-#if defined WIN32 || defined _WIN32
-                        if (strlen(outFile)==0)
-                           WIN_Play_Samples (out+frame_offset*channels, sizeof(short) * new_frame_size*channels);
-                        else
-#endif
-                           fwrite(out+frame_offset*channels, sizeof(short), new_frame_size*channels, fout);
-                  
+                     {
+                        audio_write(out+frame_offset*channels, channels, new_frame_size, fout, resampler);
                         audio_size+=sizeof(short)*new_frame_size*channels;
                      }
                   }

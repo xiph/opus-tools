@@ -448,6 +448,7 @@ int main(int argc, char **argv)
       resampler = speex_resampler_init(chan, rate, 48000, 5, &err);
       if (err!=0)
          fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
+      speex_resampler_skip_zeros(resampler);
    }
    if (bitrate<=0.005)
      if (chan==1)
