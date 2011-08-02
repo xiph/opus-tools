@@ -26,10 +26,10 @@ static int write_uint32(Packet *p, opus_uint32 val)
 {
    if (p->pos>p->maxlen-4)
       return 0;
-   p->data[p->pos  ] = (val>>24) & 0xFF;
-   p->data[p->pos+1] = (val>>16) & 0xFF;
-   p->data[p->pos+2] = (val>> 8) & 0xFF;
-   p->data[p->pos+3] = (val    ) & 0xFF;
+   p->data[p->pos  ] = (val    ) & 0xFF;
+   p->data[p->pos+1] = (val>> 8) & 0xFF;
+   p->data[p->pos+2] = (val>>16) & 0xFF;
+   p->data[p->pos+3] = (val>>24) & 0xFF;
    p->pos += 4;
    return 1;
 }
@@ -38,8 +38,8 @@ static int write_uint16(Packet *p, opus_uint16 val)
 {
    if (p->pos>p->maxlen-2)
       return 0;
-   p->data[p->pos  ] = (val>> 8) & 0xFF;
-   p->data[p->pos+1] = (val    ) & 0xFF;
+   p->data[p->pos  ] = (val    ) & 0xFF;
+   p->data[p->pos+1] = (val>> 8) & 0xFF;
    p->pos += 2;
    return 1;
 }
@@ -58,10 +58,10 @@ static int read_uint32(ROPacket *p, opus_uint32 *val)
 {
    if (p->pos>p->maxlen-4)
       return 0;
-   *val =  (opus_uint32)p->data[p->pos  ]<<24;
-   *val |= (opus_uint32)p->data[p->pos+1]<<16;
-   *val |= (opus_uint32)p->data[p->pos+2]<< 8;
-   *val |= (opus_uint32)p->data[p->pos+3];
+   *val =  (opus_uint32)p->data[p->pos  ];
+   *val |= (opus_uint32)p->data[p->pos+1]<< 8;
+   *val |= (opus_uint32)p->data[p->pos+2]<<16;
+   *val |= (opus_uint32)p->data[p->pos+3]<<24;
    p->pos += 4;
    return 1;
 }
@@ -70,8 +70,8 @@ static int read_uint16(ROPacket *p, opus_uint16 *val)
 {
    if (p->pos>p->maxlen-2)
       return 0;
-   *val =  (opus_uint16)p->data[p->pos  ]<<8;
-   *val |= (opus_uint16)p->data[p->pos+1];
+   *val =  (opus_uint16)p->data[p->pos  ];
+   *val |= (opus_uint16)p->data[p->pos+1]<<8;
    p->pos += 2;
    return 1;
 }
