@@ -88,6 +88,7 @@ static int read_chars(ROPacket *p, unsigned char *str, int nb_chars)
 
 int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
 {
+   int i;
    char str[9];
    ROPacket p;
    unsigned char ch;
@@ -114,6 +115,31 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    if (!read_uint16(&p, &shortval))
       return 0;
    h->pregap = shortval;
+   
+   /* Multi-stream support */
+   if (h->multi_stream!=0)
+   {
+      if (!read_chars(&p, &ch, 1))
+         return 0;
+      h->nb_streams = ch;
+      for (i=0;i<h->nb_streams;i++)
+      {
+         if (!read_chars(&p, &h->mapping[i][0], 1))
+            return 0;
+         /* 0 = mono, 1 = stereo, rest is undefined for version 0 */
+         if (h->version == 0 && h->mapping[i][0]>1)
+            return 0;
+
+         if (!read_chars(&p, &h->mapping[i][1], 1))
+            return 0;
+         if (h->mapping[i][0]==1)
+         {
+            if (!read_chars(&p, &h->mapping[i][2], 1))
+               return 0;
+         }
+      }
+   }
+
    if (h->version==0 && p.pos != len)
       return 0;
    return 1;
@@ -121,6 +147,7 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
 
 int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
 {
+   int i;
    Packet p;
    unsigned char ch;
    
@@ -143,6 +170,27 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
       return 0;
    if (!write_uint16(&p, h->pregap))
       return 0;
+   
+   /* Multi-stream support */
+   if (h->multi_stream!=0)
+   {
+      ch = h->nb_streams;
+      if (!write_chars(&p, &ch, 1))
+         return 0;
+      for (i=0;i<h->nb_streams;i++)
+      {
+         if (!write_chars(&p, &h->mapping[i][0], 1))
+            return 0;
+         if (!write_chars(&p, &h->mapping[i][1], 1))
+            return 0;
+         if (h->mapping[i][0]==1)
+         {
+            if (!write_chars(&p, &h->mapping[i][2], 1))
+               return 0;
+         }
+      }
+   }
+
    return p.pos;
 }
 

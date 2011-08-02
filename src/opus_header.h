@@ -9,6 +9,7 @@ typedef struct {
    int multi_stream;
    int channels;
    int pregap;
+   int nb_streams;
    unsigned char mapping[256][3];
 } OpusHeader;
 
