@@ -159,12 +159,16 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels,
          reading = 1024-channels*inbuf;
          ret = read_samples_pcm(fin, reading, bits, channels, lsb, pcmbuf+inbuf*channels, buff, size);
          /* FIXME: We should drain the buffer before stopping */
-         if (ret==0)
-            return 0;
          inbuf += ret;
          in_len = inbuf;
          out_len = frame_size-out_samples;
          speex_resampler_process_interleaved_int(resampler, pcmbuf, &in_len, input+out_samples*channels, &out_len);
+         if (ret==0 && in_len==0)
+         {
+            for (i=out_samples*channels;i<frame_size*channels;i++)
+               input[i] = 0;
+            return out_samples;
+         }
          out_samples += out_len;
          for (i=0;i<channels*(inbuf-in_len);i++)
             pcmbuf[i] = pcmbuf[i+channels*in_len];
