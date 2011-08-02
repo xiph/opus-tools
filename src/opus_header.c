@@ -114,6 +114,8 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    if (!read_uint16(&p, &shortval))
       return 0;
    h->pregap = shortval;
+   if (h->version==0 && p.pos != len)
+      return 0;
    return 1;
 }
 
