@@ -1,5 +1,6 @@
 #include "opus_header.h"
 #include <string.h>
+#include <stdio.h>
 
 /* Header contents:
   - "OpusHead" (64 bits)
@@ -35,7 +36,7 @@ static int write_uint32(Packet *p, opus_uint32 val)
 
 static int write_uint16(Packet *p, opus_uint16 val)
 {
-   if (p->pos>p->maxlen-4)
+   if (p->pos>p->maxlen-2)
       return 0;
    p->data[p->pos  ] = (val>> 8) & 0xFF;
    p->data[p->pos+1] = (val    ) & 0xFF;
@@ -67,11 +68,11 @@ static int read_uint32(ROPacket *p, opus_uint32 *val)
 
 static int read_uint16(ROPacket *p, opus_uint16 *val)
 {
-   if (p->pos>p->maxlen-4)
+   if (p->pos>p->maxlen-2)
       return 0;
    *val =  (opus_uint16)p->data[p->pos  ]<<8;
    *val |= (opus_uint16)p->data[p->pos+1];
-   p->pos += 4;
+   p->pos += 2;
    return 1;
 }
 
@@ -99,6 +100,9 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    read_chars(&p, (unsigned char*)str, 8);
    if (strcmp(str, "OpusHead")!=0)
       return 0;
+   if (!read_chars(&p, &ch, 1))
+      return 0;
+   h->version = ch;
    if (!read_uint32(&p, &h->sample_rate))
       return 0;
    if (!read_chars(&p, &ch, 1))
@@ -110,7 +114,6 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    if (!read_uint16(&p, &shortval))
       return 0;
    h->pregap = shortval;
-   
    return 1;
 }
 
@@ -123,6 +126,10 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    p.maxlen = len;
    p.pos = 0;
    if (!write_chars(&p, (const unsigned char*)"OpusHead", 8))
+      return 0;
+   /* Version is 0 */
+   ch = 0;
+   if (!write_chars(&p, &ch, 1))
       return 0;
    if (!write_uint32(&p, h->sample_rate))
       return 0;

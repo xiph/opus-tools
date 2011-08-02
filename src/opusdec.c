@@ -290,8 +290,12 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    OpusDecoder *st;
    OpusHeader header;
 
-   opus_header_parse(op->packet, op->bytes, &header);
-
+   if (opus_header_parse(op->packet, op->bytes, &header)==0)
+   {
+      fprintf(stderr, "Cannot parse header\n");
+      return NULL;
+   }
+   
    if (header.channels>2 || header.channels<1)
    {
       fprintf (stderr, "Unsupported number of channels: %d\n", header.channels);
@@ -303,7 +307,6 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    if (!*rate)
       *rate = header.sample_rate;
    *pregap = header.pregap;
-
    st = opus_decoder_create(48000, header.channels);
    if (!st)
    {
@@ -595,12 +598,11 @@ int main(int argc, char **argv)
                         out[i]=output[i];
                   }
                   {
-                     int frame_offset = 0;
-                     int new_frame_size = frame_size;
+                     int frame_offset, new_frame_size;
                      /*printf ("packet %d %d\n", packet_no, skip_samples);*/
                      /*fprintf (stderr, "packet %d %d %d\n", packet_no, skip_samples, lookahead);*/
 
-                     new_frame_size -= pregap;
+                     new_frame_size = frame_size - pregap;
                      frame_offset = pregap;
                      if (new_frame_size>0)
                      {

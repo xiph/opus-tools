@@ -4,6 +4,7 @@
 #include "opus_types.h"
 
 typedef struct {
+   int version;
    opus_uint32 sample_rate;
    int multi_stream;
    int channels;
