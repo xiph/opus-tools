@@ -318,6 +318,9 @@ int main(int argc, char **argv)
    int extra_samples;
 
    opus_version = opus_get_version_string();
+   snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
+   comment_init(&comments, &comments_length, vendor_string);
+
    /*Process command-line options*/
    while(1)
    {
@@ -482,9 +485,6 @@ int main(int argc, char **argv)
    }
    bytes_per_packet = MAX_FRAME_BYTES;
    
-   snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_get_version_string());
-   comment_init(&comments, &comments_length, vendor_string);
-
    /*Initialize OPUS encoder*/
    st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
 
