@@ -95,6 +95,7 @@ static void print_comments(char *comments, int length)
    int len, i, nb_fields;
    char *end;
    
+   fprintf(stderr, "Encoded with ");
    if (length<8)
    {
       fprintf (stderr, "Invalid/corrupted comments\n");
@@ -275,13 +276,13 @@ void usage(void)
 
 void version(void)
 {
-   printf ("opusenc (Opus %s encoder)\n",opus_get_version_string());
+   printf ("opusenc (based on %s)\n",opus_get_version_string());
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
 void version_short(void)
 {
-   printf ("opusenc (Opus %s encoder)\n",opus_get_version_string());
+   printf ("opusenc (based on %s)\n",opus_get_version_string());
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 

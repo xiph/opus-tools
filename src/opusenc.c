@@ -182,13 +182,13 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels,
 
 void version(const char *version)
 {
-   printf ("opusenc (Opus %s encoder)\n",version);
+   printf ("opusenc (based on %s)\n",version);
    printf ("Copyright (C) 2008-2011 Xiph.Org Foundation (written by Jean-Marc Valin)\n");
 }
 
 void version_short(const char *version)
 {
-   printf ("opusenc (Opus %s encoder)\n",version);
+   printf ("opusenc (based on %s)\n",version);
    printf ("Copyright (C) 2008-2011 Xiph.Org Foundation (written by Jean-Marc Valin)\n");
 }
 
@@ -298,9 +298,10 @@ int main(int argc, char **argv)
    opus_int32 lookahead = 0;
    int bytes_per_packet=-1;
    int complexity=-127;
-   const char *opus_version = "none";
+   const char *opus_version;
    SpeexResamplerState *resampler=NULL;
 
+   opus_version = opus_get_version_string();
    /*Process command-line options*/
    while(1)
    {
@@ -452,7 +453,8 @@ int main(int argc, char **argv)
       resampler = speex_resampler_init(chan, rate, 48000, 5, &err);
       if (err!=0)
          fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
-      speex_resampler_skip_zeros(resampler);
+      /* Using pre-skip to skip the zeros */
+      /*speex_resampler_skip_zeros(resampler);*/
    }
    if (bitrate<=0.005)
      if (chan==1)
@@ -462,11 +464,16 @@ int main(int argc, char **argv)
      
    bytes_per_packet = MAX_FRAME_BYTES;
    
-   snprintf(vendor_string, sizeof(vendor_string), "Encoded with Opus %s\n",opus_get_version_string());
+   snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_get_version_string());
    comment_init(&comments, &comments_length, vendor_string);
 
+   /*Initialize OPUS encoder*/
+   st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
+
    header.channels = chan;
-   header.preskip = 0;
+   opus_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&header.preskip));
+   if (resampler)
+      header.preskip += speex_resampler_get_output_latency(resampler);
    header.multi_stream = 0;
    header.sample_rate = rate;
    
@@ -482,9 +489,6 @@ int main(int argc, char **argv)
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet maximum)\n",
                header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
    }
-
-   /*Initialize OPUS encoder*/
-   st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
 
    {
       int tmp = (bitrate*1000);
