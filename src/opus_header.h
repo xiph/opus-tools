@@ -8,7 +8,7 @@ typedef struct {
    opus_uint32 sample_rate;
    int multi_stream;
    int channels;
-   int pregap;
+   int preskip;
    int nb_streams;
    unsigned char mapping[256][3];
 } OpusHeader;

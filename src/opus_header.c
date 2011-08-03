@@ -4,10 +4,19 @@
 
 /* Header contents:
   - "OpusHead" (64 bits)
-  - Sampling rate (32 bits, max 192)
-  - Channel mapping (bool in byte)
+  - version number (8 bits)
+  - Sampling rate (32 bits)
+  - multistream (8bits, 0=single stream (mono/stereo) 1=multistream, 2..255: multistream with mapping)
   - Channels (8 bits)
-  - Pre-gap (16 bits)
+  - Pre-skip (16 bits)
+  
+  if (multistream)
+     - N = number of streams (8 bits)
+     - N times:
+          - stereo flag (8 bits, 0=mono, 1=stereo)
+          - channel for left (8 bits)
+          - if stereo:
+             - channel for right (8 bits)
 */
 
 typedef struct {
@@ -114,7 +123,7 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    h->channels = ch;
    if (!read_uint16(&p, &shortval))
       return 0;
-   h->pregap = shortval;
+   h->preskip = shortval;
    
    /* Multi-stream support */
    if (h->multi_stream!=0)
@@ -168,7 +177,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    ch = h->channels;
    if (!write_chars(&p, &ch, 1))
       return 0;
-   if (!write_uint16(&p, h->pregap))
+   if (!write_uint16(&p, h->preskip))
       return 0;
    
    /* Multi-stream support */

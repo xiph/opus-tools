@@ -285,7 +285,7 @@ void version_short(void)
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
-static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *pregap, int quiet)
+static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, int quiet)
 {
    OpusDecoder *st;
    OpusHeader header;
@@ -306,7 +306,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
 
    if (!*rate)
       *rate = header.sample_rate;
-   *pregap = header.pregap;
+   *preskip = header.preskip;
    st = opus_decoder_create(48000, header.channels);
    if (!st)
    {
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
    int channels=-1;
    int rate=0;
    int wav_format=0;
-   int pregap=0;
+   int preskip=0;
    int opus_serialno = -1;
    SpeexResamplerState *resampler=NULL;
 
@@ -539,7 +539,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, &rate, &channels, &pregap, quiet);
+               st = process_header(&op, &rate, &channels, &preskip, quiet);
                if (!st)
                   exit(1);
                if (rate != 48000)
@@ -602,15 +602,15 @@ int main(int argc, char **argv)
                      /*printf ("packet %d %d\n", packet_no, skip_samples);*/
                      /*fprintf (stderr, "packet %d %d %d\n", packet_no, skip_samples, lookahead);*/
 
-                     new_frame_size = frame_size - pregap;
-                     frame_offset = pregap;
+                     new_frame_size = frame_size - preskip;
+                     frame_offset = preskip;
                      if (new_frame_size>0)
                      {
                         audio_write(out+frame_offset*channels, channels, new_frame_size, fout, resampler);
                         audio_size+=sizeof(short)*new_frame_size*channels;
-                        pregap = 0;
+                        preskip = 0;
                      } else {
-                        pregap -= frame_size;
+                        preskip -= frame_size;
                      }
                   }
                }
