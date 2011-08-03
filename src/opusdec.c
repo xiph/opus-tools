@@ -329,22 +329,38 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    return st;
 }
 
-void audio_write(opus_int16 *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler)
+void audio_write(opus_int16 *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip)
 {
    if (resampler)
    {
       opus_int16 buf[2048];
       do {
+         int tmp_skip;
          unsigned in_len, out_len;
          in_len = frame_size;
          out_len = 1024;
          speex_resampler_process_interleaved_int(resampler, pcm, &in_len, buf, &out_len);
-         fwrite(buf, 2, out_len*channels, fout);
+         if (skip)
+         {
+            tmp_skip = (*skip>out_len) ? out_len : *skip;
+            *skip -= tmp_skip;
+         } else {
+            tmp_skip = 0;
+         }
+         fwrite(buf+tmp_skip*channels, 2, (out_len-tmp_skip)*channels, fout);
          pcm += channels*in_len;
          frame_size -= in_len;
       } while (frame_size != 0);
    } else {
-      fwrite(pcm, 2, frame_size*channels, fout);
+      int tmp_skip;
+      if (skip)
+      {
+         tmp_skip = (*skip>frame_size) ? frame_size : *skip;
+         *skip -= tmp_skip;
+      } else {
+         tmp_skip = 0;
+      }
+      fwrite(pcm+tmp_skip*channels, 2, (frame_size-tmp_skip)*channels, fout);
    }
 }
 
@@ -356,14 +372,13 @@ int main(int argc, char **argv)
    FILE *fin, *fout=NULL;
    opus_int16 out[MAX_FRAME_SIZE];
    opus_int16 output[MAX_FRAME_SIZE];
-   int frame_size=0, granule_frame_size=0;
+   int frame_size=0;
    void *st=NULL;
    int packet_count=0;
    int stream_init = 0;
    int quiet = 0;
-   ogg_int64_t page_granule=0, last_granule=0;
+   ogg_int64_t page_granule=0;
    ogg_int64_t decoded=0;
-   int skip_samples=0, page_nb_packets;
    struct option long_options[] =
    {
       {"help", no_argument, NULL, 0},
@@ -515,21 +530,6 @@ int main(int argc, char **argv)
          /*Add page to the bitstream*/
          ogg_stream_pagein(&os, &og);
          page_granule = ogg_page_granulepos(&og);
-         page_nb_packets = ogg_page_packets(&og);
-         if (page_granule>0 && frame_size)
-         {
-            /* FIXME: Compute this properly */
-            skip_samples = 0;
-            if (ogg_page_eos(&og))
-               skip_samples = -skip_samples;
-            /*else if (!ogg_page_bos(&og))
-               skip_samples = 0;*/
-         } else
-         {
-            skip_samples = 0;
-         }
-         /*printf ("page granulepos: %d %d %d\n", skip_samples, page_nb_packets, (int)page_granule);*/
-         last_granule = page_granule;
          /*Extract all available packets*/
          while (!eos && ogg_stream_packetout(&os, &op) == 1)
          {
@@ -542,6 +542,8 @@ int main(int argc, char **argv)
             if (packet_count==0)
             {
                st = process_header(&op, &rate, &channels, &preskip, quiet);
+               /* Converting preskip to output sampling rate */
+               preskip = preskip*(rate/48000.);
                if (!st)
                   exit(1);
                if (rate != 48000)
@@ -606,22 +608,12 @@ int main(int argc, char **argv)
                         out[i]=output[i];
                   }
                   {
-                     int frame_offset, new_frame_size;
-                     /*printf ("packet %d %d\n", packet_no, skip_samples);*/
-                     /*fprintf (stderr, "packet %d %d %d\n", packet_no, skip_samples, lookahead);*/
-
-                     new_frame_size = frame_size - preskip - truncate;
-                     frame_offset = preskip;
-                     /* FIXME: This is not the ideal way to do gapless. It would be best to do the skip
-                        *after* resampling */
-                     if (new_frame_size>0)
-                     {
-                        audio_write(out+frame_offset*channels, channels, new_frame_size, fout, resampler);
-                        audio_size+=sizeof(short)*new_frame_size*channels;
-                        preskip = 0;
-                     } else {
-                        preskip -= frame_size;
-                     }
+                     int new_frame_size;
+                     if (truncate > frame_size)
+                        truncate = frame_size;
+                     new_frame_size = frame_size - truncate;
+                     audio_write(out, channels, new_frame_size, fout, resampler, &preskip);
+                     audio_size+=sizeof(short)*new_frame_size*channels;
                   }
                }
             }
@@ -647,7 +639,7 @@ int main(int argc, char **argv)
          int tmp = drain;
          if (tmp > 100)
             tmp = 100;
-         audio_write(zeros, channels, tmp, fout, resampler);
+         audio_write(zeros, channels, tmp, fout, resampler, NULL);
          drain -= tmp;
       } while (drain>0);
    }
