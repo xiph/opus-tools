@@ -1,5 +1,5 @@
-/* Copyright (c) 2002-2010 Jean-Marc Valin
-   Copyright (c) 2007-2010 Xiph.Org Foundation
+/* Copyright (c) 2002-2011 Jean-Marc Valin
+   Copyright (c) 2007-2011 Xiph.Org Foundation
    Copyright (c) 2008-2010 Gregory Maxwell
    File: opusenc.c
 
@@ -76,34 +76,42 @@ int oe_write_page(ogg_page *page, FILE *fp)
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
 /* Convert input audio bits, endians and channels */
-static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, int lsb, short * input, char *buff, opus_int32 *size)
-{   
+static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, 
+                            int lsb, short * input, char *buff, opus_int32 *size,
+                            int *extra_samples)
+{
    short s[MAX_FRAME_SIZE];
    unsigned char *in = (unsigned char*)s;
    int i;
    int nb_read;
+   int extra=0;
 
-   if (size && *size<=0)
-   {
-      return 0;
-   }
    /*Read input audio*/
-   if (size)
-      *size -= bits/8*channels*frame_size;
    if (buff)
    {
       for (i=0;i<12;i++)
          in[i]=buff[i];
-      nb_read = fread(in+12,1,bits/8*channels*frame_size-12, fin) + 12;
+      nb_read = fread(in+12, 1, bits/8*channels*frame_size-12, fin) + 12;
       if (size)
          *size += 12;
    } else {
-      nb_read = fread(in,1,bits/8*channels* frame_size, fin);
+      int tmp = frame_size;
+      if (size && tmp > *size)
+         tmp = *size;
+      nb_read = fread(in, 1, bits/8*channels* tmp, fin);
    }
    nb_read /= bits/8*channels;
 
+   /* Make sure to return *extra_samples zeros at the end */
+   if (nb_read<frame_size)
+   {
+      extra = frame_size-nb_read;
+      if (extra > *extra_samples)
+         extra = *extra_samples;
+      *extra_samples -= extra;
+   }
    /*fprintf (stderr, "%d\n", nb_read);*/
-   if (nb_read==0)
+   if (nb_read==0 && extra==0)
       return 0;
 
    if(bits==8)
@@ -137,13 +145,21 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, in
       input[i]=0;
    }
 
-
+   nb_read += extra;
+   if (size)
+   {
+      int tmp = bits/8*channels*nb_read;
+      if (tmp > *size)
+         *size = 0;
+      else
+         *size -= tmp;
+   }
    return nb_read;
 }
 
 static int read_samples(FILE *fin,int frame_size, int bits, int channels, 
                         int lsb, short * input, char *buff, opus_int32 *size,
-                        SpeexResamplerState *resampler)
+                        SpeexResamplerState *resampler, int *extra_samples)
 {
    if (resampler)
    {
@@ -156,9 +172,8 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels,
          int i;
          int reading, ret;
          unsigned in_len, out_len;
-         reading = 1024-channels*inbuf;
-         ret = read_samples_pcm(fin, reading, bits, channels, lsb, pcmbuf+inbuf*channels, buff, size);
-         /* FIXME: We should drain the buffer before stopping */
+         reading = 1024-inbuf;
+         ret = read_samples_pcm(fin, reading, bits, channels, lsb, pcmbuf+inbuf*channels, buff, size, extra_samples);
          inbuf += ret;
          in_len = inbuf;
          out_len = frame_size-out_samples;
@@ -176,7 +191,7 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels,
       }
       return out_samples;
    } else {
-      return read_samples_pcm(fin, frame_size, bits, channels, lsb, input, buff, size);
+      return read_samples_pcm(fin, frame_size, bits, channels, lsb, input, buff, size, extra_samples);
    }
 }
 
@@ -300,6 +315,7 @@ int main(int argc, char **argv)
    int complexity=-127;
    const char *opus_version;
    SpeexResamplerState *resampler=NULL;
+   int extra_samples;
 
    opus_version = opus_get_version_string();
    /*Process command-line options*/
@@ -436,7 +452,8 @@ int main(int argc, char **argv)
    }
 
    {
-      fread(first_bytes, 1, 12, fin);
+      int ret;
+      ret = fread(first_bytes, 1, 12, fin);
       if (strncmp(first_bytes,"RIFF",4)==0 && strncmp(first_bytes,"RIFF",4)==0)
       {
          if (read_wav_header(fin, &rate, &chan, &fmt, &size)==-1)
@@ -457,11 +474,12 @@ int main(int argc, char **argv)
       /*speex_resampler_skip_zeros(resampler);*/
    }
    if (bitrate<=0.005)
+   {
      if (chan==1)
        bitrate=64.0;
      else
        bitrate=128.0;
-     
+   }
    bytes_per_packet = MAX_FRAME_BYTES;
    
    snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_get_version_string());
@@ -471,23 +489,28 @@ int main(int argc, char **argv)
    st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
 
    header.channels = chan;
-   opus_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&header.preskip));
+   opus_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
+   header.preskip = lookahead;
    if (resampler)
       header.preskip += speex_resampler_get_output_latency(resampler);
    header.multi_stream = 0;
    header.sample_rate = rate;
    
+   /* Extra samples that need to be read to compensate for the pre-skip */
+   extra_samples = (int)header.preskip * (rate/48000.);
    {
       char *st_string="mono";
       if (chan==2)
          st_string="stereo";
       if (!quiet)
+      {
          if (with_cbr)
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet, CBR)\n",
                header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
          else
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet maximum)\n",
                header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
+      }
    }
 
    {
@@ -593,16 +616,16 @@ int main(int argc, char **argv)
 
    if (!wave_input)
    {
-      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, first_bytes, NULL, resampler);
+      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, first_bytes, NULL, resampler, &extra_samples);
    } else {
-      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler);
+      nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler, &extra_samples);
    }
    if (nb_samples==0)
       eos=1;
    total_samples += nb_samples;
-   nb_encoded = -lookahead;
+   nb_encoded = -header.preskip;
    /*Main encoding loop (one frame per iteration)*/
-   while (!eos || total_samples>nb_encoded)
+   while (!eos)
    {
       id++;
       /*Encode current frame*/
@@ -619,9 +642,9 @@ int main(int argc, char **argv)
 
       if (wave_input)
       {
-         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler);
+         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler, &extra_samples);
       } else {
-         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, NULL, resampler);
+         nb_samples = read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, NULL, resampler, &extra_samples);
       }
       if (nb_samples==0)
       {
@@ -641,7 +664,7 @@ int main(int argc, char **argv)
          op.e_o_s = 1;
       else
          op.e_o_s = 0;
-      op.granulepos = (id+1)*frame_size-lookahead;
+      op.granulepos = (id+1)*frame_size;
       if (op.granulepos>total_samples)
          op.granulepos = total_samples;
       op.packetno = 2+id;

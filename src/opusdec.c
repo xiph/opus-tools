@@ -605,6 +605,8 @@ int main(int argc, char **argv)
 
                      new_frame_size = frame_size - preskip;
                      frame_offset = preskip;
+                     /* FIXME: This is not the ideal way to do gapless. It would be best to do the skip
+                        *after* resampling */
                      if (new_frame_size>0)
                      {
                         audio_write(out+frame_offset*channels, channels, new_frame_size, fout, resampler);
