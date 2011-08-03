@@ -632,7 +632,26 @@ int main(int argc, char **argv)
          break;
 
    }
-
+   
+   /* Drain the resampler */
+   if (resampler)
+   {
+      int i;
+      opus_int16 zeros[200];
+      int drain;
+      
+      for (i=0;i<200;i++)
+         zeros[i] = 200;
+      drain = speex_resampler_get_input_latency(resampler);
+      do {
+         int tmp = drain;
+         if (tmp > 100)
+            tmp = 100;
+         audio_write(zeros, channels, tmp, fout, resampler);
+         drain -= tmp;
+      } while (drain>0);
+   }
+   
    if (fout && wav_format)
    {
       if (fseek(fout,4,SEEK_SET)==0)
