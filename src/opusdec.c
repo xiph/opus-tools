@@ -362,6 +362,7 @@ int main(int argc, char **argv)
    int stream_init = 0;
    int quiet = 0;
    ogg_int64_t page_granule=0, last_granule=0;
+   ogg_int64_t decoded=0;
    int skip_samples=0, page_nb_packets;
    struct option long_options[] =
    {
@@ -565,8 +566,9 @@ int main(int argc, char **argv)
                /*End of stream condition*/
                if (op.e_o_s && os.serialno == opus_serialno) /* don't care for anything except opus eos */
                   eos=1;
-	       
+
                {
+                  int truncate;
                   int ret;
                   /*Decode frame*/
                   if (!lost)
@@ -589,6 +591,11 @@ int main(int argc, char **argv)
                      fputc (ch, stderr);
                      fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
                   }
+                  decoded += frame_size;
+                  if (decoded > page_granule)
+                     truncate = decoded-page_granule;
+                  else
+                     truncate = 0;
                   /*Convert to short and save to output file*/
                   if (strlen(outFile)!=0)
                   {
@@ -603,7 +610,7 @@ int main(int argc, char **argv)
                      /*printf ("packet %d %d\n", packet_no, skip_samples);*/
                      /*fprintf (stderr, "packet %d %d %d\n", packet_no, skip_samples, lookahead);*/
 
-                     new_frame_size = frame_size - preskip;
+                     new_frame_size = frame_size - preskip - truncate;
                      frame_offset = preskip;
                      /* FIXME: This is not the ideal way to do gapless. It would be best to do the skip
                         *after* resampling */
