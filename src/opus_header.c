@@ -113,7 +113,7 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->version = ch;
-   if (!read_uint32(&p, &h->sample_rate))
+   if (!read_uint32(&p, &h->input_sample_rate))
       return 0;
    if (!read_chars(&p, &ch, 1))
       return 0;
@@ -169,7 +169,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    ch = 0;
    if (!write_chars(&p, &ch, 1))
       return 0;
-   if (!write_uint32(&p, h->sample_rate))
+   if (!write_uint32(&p, h->input_sample_rate))
       return 0;
    ch = h->multi_stream;
    if (!write_chars(&p, &ch, 1))

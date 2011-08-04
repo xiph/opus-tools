@@ -5,7 +5,7 @@
 
 typedef struct {
    int version;
-   opus_uint32 sample_rate;
+   opus_uint32 input_sample_rate;
    int multi_stream;
    int channels;
    int preskip;

@@ -202,7 +202,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
 #endif
       info.play.encoding = AUDIO_ENCODING_SLINEAR;
       info.play.precision = 16;
-      info.play.sample_rate = rate;
+      info.play.input_sample_rate = rate;
       info.play.channels = *channels;
       
       if (ioctl(audio_fd, AUDIO_SETINFO, &info) < 0)
@@ -306,7 +306,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    *channels = header.channels;
 
    if (!*rate)
-      *rate = header.sample_rate;
+      *rate = header.input_sample_rate;
    *preskip = header.preskip;
    st = opus_decoder_create(48000, header.channels);
    if (!st)

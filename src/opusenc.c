@@ -506,7 +506,7 @@ int main(int argc, char **argv)
    if (resampler)
       header.preskip += speex_resampler_get_output_latency(resampler);
    header.multi_stream = 0;
-   header.sample_rate = rate;
+   header.input_sample_rate = rate;
    
    /* Extra samples that need to be read to compensate for the pre-skip */
    extra_samples = (int)header.preskip * (rate/48000.);
@@ -518,10 +518,10 @@ int main(int argc, char **argv)
       {
          if (with_cbr)
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet, CBR)\n",
-               header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
+               header.input_sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
          else
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet maximum)\n",
-               header.sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
+               header.input_sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
       }
    }
 
@@ -710,7 +710,7 @@ int main(int argc, char **argv)
    }
 
    if (!with_cbr && !quiet)
-     fprintf (stderr, "Average rate %0.3fkbit/sec, %d peak bytes per packet\n", (total_bytes*8.0/((float)nb_encoded/header.sample_rate))/1000.0, peak_bytes);
+     fprintf (stderr, "Average rate %0.3fkbit/sec, %d peak bytes per packet\n", (total_bytes*8.0/((float)nb_encoded/header.input_sample_rate))/1000.0, peak_bytes);
 
    opus_encoder_destroy(st);
    ogg_stream_clear(&os);
