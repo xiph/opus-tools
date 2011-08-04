@@ -95,6 +95,12 @@ static void print_comments(char *comments, int length)
    int len, i, nb_fields;
    char *end;
    
+   if (strncmp(c, "OpusTags", 8) != 0)
+   {
+      fprintf (stderr, "Invalid/corrupted comments\n");
+      return;
+   }
+   c += 8;
    fprintf(stderr, "Encoded with ");
    if (length<8)
    {
@@ -556,7 +562,7 @@ int main(int argc, char **argv)
                }
                fout = out_file_open(outFile, rate, &channels);
 
-            } else if (packet_count==1)
+            } else if (strncmp((char*)op.packet, "OpusTags", 8)==0)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);

@@ -771,15 +771,16 @@ void comment_init(char **comments, int* length, char *vendor_string)
 {
   int vendor_length=strlen(vendor_string);
   int user_comment_list_length=0;
-  int len=4+vendor_length+4;
+  int len=8+4+vendor_length+4;
   char *p=(char*)malloc(len);
   if(p==NULL){
      fprintf (stderr, "malloc failed in comment_init()\n");
      exit(1);
   }
-  writeint(p, 0, vendor_length);
-  memcpy(p+4, vendor_string, vendor_length);
-  writeint(p, 4+vendor_length, user_comment_list_length);
+  memcpy(p, "OpusTags", 8);
+  writeint(p, 8, vendor_length);
+  memcpy(p+12, vendor_string, vendor_length);
+  writeint(p, 12+vendor_length, user_comment_list_length);
   *length=len;
   *comments=p;
 }
