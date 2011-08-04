@@ -303,6 +303,7 @@ int main(int argc, char **argv)
    ogg_stream_state os;
    ogg_page 		 og;
    ogg_packet 		 op;
+   ogg_int64_t last_granulepos = 0;
    int bytes_written=0, ret, result;
    int id=-1;
    OpusHeader header;
@@ -683,9 +684,23 @@ int main(int argc, char **argv)
       /*printf ("granulepos: %d %d %d\n", (int)op.granulepos, op.packetno, op.bytes);*/
       ogg_stream_packetin(&os, &op);
 
-      /*Write all new pages (most likely 0 or 1)*/
-      while (ogg_stream_pageout(&os,&og))
+      /*Write all new pages (most likely 0 or 1)
+        Flush if we've buffered 1 second to avoid excessive framing delay. */
+      while (eos||(op.granulepos-last_granulepos+MAX_FRAME_SIZE>48000)?
+#if 0
+      /*Libogg > 1.2.2 allows us to achieve lower overhead by
+        producing larger pages. For 20ms frames this is only relevant
+        above ~32kbit/sec. We still target somewhat smaller than the
+        maximum size in order to avoid continued pages.*/
+             ogg_stream_flush_fill(&os, &og,255*255-7*MAX_FRAME_BYTES):
+             ogg_stream_pageout_fill(&os, &og,255*255-7*MAX_FRAME_BYTES))
+#else
+             ogg_stream_flush(&os, &og):
+             ogg_stream_pageout(&os, &og))
+#endif
       {
+         if (ogg_page_packets(&og)!=0)
+             last_granulepos = ogg_page_granulepos(&og);
          ret = oe_write_page(&og, fout);
          if(ret != og.header_len + og.body_len)
          {
