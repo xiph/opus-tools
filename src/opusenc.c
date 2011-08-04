@@ -223,6 +223,8 @@ void usage(void)
    printf ("  -                 stdout\n");
    printf ("\n");  
    printf ("Options:\n");
+   printf (" --speech           Optimize for speech\n"); 
+   printf (" --music            Optimize for music\n"); 
    printf (" --bitrate n        Encoding bit-rate in kbit/sec\n"); 
    printf (" --cbr              Use constant bitrate encoding\n");
    printf (" --comp n           Encoding complexity (0-10)\n");
@@ -283,6 +285,8 @@ int main(int argc, char **argv)
       {"mono", no_argument, NULL, 0},
       {"stereo", no_argument, NULL, 0},
       {"rate", required_argument, NULL, 0},
+      {"music", no_argument, NULL, 0},
+      {"speech", no_argument, NULL, 0},
       {"version", no_argument, NULL, 0},
       {"version-short", no_argument, NULL, 0},
       {"comment", required_argument, NULL, 0},
@@ -316,6 +320,7 @@ int main(int argc, char **argv)
    const char *opus_version;
    SpeexResamplerState *resampler=NULL;
    int extra_samples;
+   int signal = OPUS_SIGNAL_AUTO;
 
    opus_version = opus_get_version_string();
    snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
@@ -377,6 +382,12 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
             rate=atoi (optarg);
+         } else if (strcmp(long_options[option_index].name,"music")==0)
+         {
+            signal = OPUS_SIGNAL_MUSIC;
+         } else if (strcmp(long_options[option_index].name,"speech")==0)
+         {
+            signal = OPUS_SIGNAL_VOICE;
          } else if (strcmp(long_options[option_index].name,"comp")==0)
          {
             complexity=atoi (optarg);
@@ -488,6 +499,7 @@ int main(int argc, char **argv)
    /*Initialize OPUS encoder*/
    st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
 
+   opus_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
    header.channels = chan;
    opus_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
    header.preskip = lookahead;
