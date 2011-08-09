@@ -5,18 +5,24 @@
 /* Header contents:
   - "OpusHead" (64 bits)
   - version number (8 bits)
-  - Sampling rate (32 bits)
-  - multistream (8bits, 0=single stream (mono/stereo) 1=multistream, 2..255: multistream with mapping)
-  - Channels (8 bits)
+  - Channels C (8 bits)
   - Pre-skip (16 bits)
+  - Sampling rate (32 bits)
+  - mapping (8bits, 0=single stream (mono/stereo) 1=Vorbis mapping, 
+             2..254: reserved, 255: multistream with no mapping)
   
-  if (multistream)
-     - N = number of streams (8 bits)
-     - N times:
-          - stereo flag (8 bits, 0=mono, 1=stereo)
-          - channel for left (8 bits)
-          - if stereo:
-             - channel for right (8 bits)
+  - if (mapping != 0)
+     - N = totel number of streams (8 bits)
+     - M = number of paired streams (8 bits)
+     - C times channel origin
+          - if (C<2*M)
+             - stream = byte/2
+             - if (byte&0x1)
+                 - left
+               else
+                 - right
+          - else
+             - stream = byte-2*M
 */
 
 typedef struct {
