@@ -509,6 +509,8 @@ int main(int argc, char **argv)
    header.channel_mapping = 0;
    header.nb_streams = 1;
    header.nb_coupled = 1;
+   /* 0 dB gain is the recommended unless you know what you're doing */
+   header.gain = 0;
    header.input_sample_rate = rate;
    
    /* Extra samples that need to be read to compensate for the pre-skip */

@@ -292,7 +292,7 @@ void version_short(void)
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
-static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, int quiet)
+static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
 {
    OpusDecoder *st;
    OpusHeader header;
@@ -321,6 +321,10 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
       return NULL;
    }
 
+   *gain = pow(20., header.gain/2560.);
+
+   if (header.gain!=0)
+      printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
    if (!quiet)
    {
       fprintf (stderr, "Decoding %d Hz audio in", *rate);
@@ -413,7 +417,8 @@ int main(int argc, char **argv)
    int preskip=0;
    int opus_serialno = -1;
    SpeexResamplerState *resampler=NULL;
-
+   float gain=1;
+   
    enh_enabled = 1;
 
    /*Process options*/
@@ -547,7 +552,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, &rate, &channels, &preskip, quiet);
+               st = process_header(&op, &rate, &channels, &preskip, &gain, quiet);
                /* Converting preskip to output sampling rate */
                preskip = preskip*(rate/48000.);
                if (!st)
@@ -593,6 +598,13 @@ int main(int argc, char **argv)
                      break;
                   }
                   frame_size = ret;
+                  /* Apply header gain */
+                  for (i=0;i<frame_size*channels;i++)
+                  {
+                     float tmp = gain*output[i];
+                     tmp = (tmp < -32767) ? -32767 : ((tmp > 32767) ? 32767 : tmp);
+                     output[i] = floor(.5+tmp);
+                  }
                   if (print_bitrate) {
                      opus_int32 tmp=op.bytes;
                      char ch=13;

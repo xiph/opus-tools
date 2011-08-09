@@ -8,7 +8,8 @@
   - Channels C (8 bits)
   - Pre-skip (16 bits)
   - Sampling rate (32 bits)
-  - mapping (8bits, 0=single stream (mono/stereo) 1=Vorbis mapping, 
+  - Gain in dB (16 bits, S7.8)
+  - Mapping (8 bits, 0=single stream (mono/stereo) 1=Vorbis mapping, 
              2..254: reserved, 255: multistream with no mapping)
   
   - if (mapping != 0)
@@ -133,7 +134,11 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
 
    if (!read_uint32(&p, &h->input_sample_rate))
       return 0;
-   
+
+   if (!read_uint16(&p, &shortval))
+      return 0;
+   h->gain = (short)shortval;
+
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->channel_mapping = ch;
@@ -184,6 +189,9 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
       return 0;
 
    if (!write_uint32(&p, h->input_sample_rate))
+      return 0;
+
+   if (!write_uint16(&p, h->gain))
       return 0;
 
    ch = h->channel_mapping;
