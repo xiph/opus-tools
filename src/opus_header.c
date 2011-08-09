@@ -17,7 +17,7 @@
      - C times channel origin
           - if (C<2*M)
              - stream = byte/2
-             - if (byte&0x1)
+             - if (byte&0x1 == 0)
                  - left
                else
                  - right
@@ -149,7 +149,7 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
       h->nb_coupled = ch;
       
       /* Multi-stream support */
-      for (i=0;i<h->nb_streams;i++)
+      for (i=0;i<h->channels;i++)
       {
          if (!read_chars(&p, &h->stream_map[i], 1))
             return 0;
@@ -201,7 +201,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
          return 0;
 
       /* Multi-stream support */
-      for (i=0;i<h->nb_streams;i++)
+      for (i=0;i<h->channels;i++)
       {
          if (!write_chars(&p, &h->stream_map[i], 1))
             return 0;
