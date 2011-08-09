@@ -506,7 +506,9 @@ int main(int argc, char **argv)
    header.preskip = lookahead;
    if (resampler)
       header.preskip += speex_resampler_get_output_latency(resampler);
-   header.multi_stream = 0;
+   header.channel_mapping = 0;
+   header.nb_streams = 1;
+   header.nb_coupled = 1;
    header.input_sample_rate = rate;
    
    /* Extra samples that need to be read to compensate for the pre-skip */

@@ -5,12 +5,14 @@
 
 typedef struct {
    int version;
-   opus_uint32 input_sample_rate;
-   int multi_stream;
-   int channels;
+   int channels; /* Number of channels: 1..255 */
    int preskip;
+   opus_uint32 input_sample_rate;
+   int channel_mapping;
+   /* The rest is only used if channel_mapping != 0 */
    int nb_streams;
-   unsigned char mapping[256][3];
+   int nb_coupled;
+   unsigned char stream_map[255];
 } OpusHeader;
 
 int opus_header_parse(const unsigned char *header, int len, OpusHeader *h);

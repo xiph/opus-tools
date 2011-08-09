@@ -110,45 +110,45 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    read_chars(&p, (unsigned char*)str, 8);
    if (strcmp(str, "OpusHead")!=0)
       return 0;
+   
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->version = ch;
-   if (!read_uint32(&p, &h->input_sample_rate))
-      return 0;
-   if (!read_chars(&p, &ch, 1))
-      return 0;
-   h->multi_stream = ch;
+   
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->channels = ch;
+   if (h->channels == 0)
+      return 0;
+
    if (!read_uint16(&p, &shortval))
       return 0;
    h->preskip = shortval;
+
+   if (!read_uint32(&p, &h->input_sample_rate))
+      return 0;
    
-   /* Multi-stream support */
-   if (h->multi_stream!=0)
+   if (!read_chars(&p, &ch, 1))
+      return 0;
+   h->channel_mapping = ch;
+   
+   if (h->channel_mapping != 0)
    {
       if (!read_chars(&p, &ch, 1))
          return 0;
       h->nb_streams = ch;
+      
+      if (!read_chars(&p, &ch, 1))
+         return 0;
+      h->nb_coupled = ch;
+      
+      /* Multi-stream support */
       for (i=0;i<h->nb_streams;i++)
       {
-         if (!read_chars(&p, &h->mapping[i][0], 1))
+         if (!read_chars(&p, &h->stream_map[i], 1))
             return 0;
-         /* 0 = mono, 1 = stereo, rest is undefined for version 0 */
-         if (h->version == 0 && h->mapping[i][0]>1)
-            return 0;
-
-         if (!read_chars(&p, &h->mapping[i][1], 1))
-            return 0;
-         if (h->mapping[i][0]==1)
-         {
-            if (!read_chars(&p, &h->mapping[i][2], 1))
-               return 0;
-         }
       }
    }
-
    if (h->version==0 && p.pos != len)
       return 0;
    return 1;
@@ -169,34 +169,36 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    ch = 0;
    if (!write_chars(&p, &ch, 1))
       return 0;
-   if (!write_uint32(&p, h->input_sample_rate))
-      return 0;
-   ch = h->multi_stream;
-   if (!write_chars(&p, &ch, 1))
-      return 0;
+   
    ch = h->channels;
    if (!write_chars(&p, &ch, 1))
       return 0;
+   
    if (!write_uint16(&p, h->preskip))
       return 0;
-   
-   /* Multi-stream support */
-   if (h->multi_stream!=0)
+
+   if (!write_uint32(&p, h->input_sample_rate))
+      return 0;
+
+   ch = h->channel_mapping;
+   if (!write_chars(&p, &ch, 1))
+      return 0;
+
+   if (h->channel_mapping != 0)
    {
       ch = h->nb_streams;
       if (!write_chars(&p, &ch, 1))
          return 0;
+      
+      ch = h->nb_coupled;
+      if (!write_chars(&p, &ch, 1))
+         return 0;
+
+      /* Multi-stream support */
       for (i=0;i<h->nb_streams;i++)
       {
-         if (!write_chars(&p, &h->mapping[i][0], 1))
+         if (!write_chars(&p, &h->stream_map[i], 1))
             return 0;
-         if (!write_chars(&p, &h->mapping[i][1], 1))
-            return 0;
-         if (h->mapping[i][0]==1)
-         {
-            if (!write_chars(&p, &h->mapping[i][2], 1))
-               return 0;
-         }
       }
    }
 
