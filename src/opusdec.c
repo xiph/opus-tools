@@ -321,7 +321,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
       return NULL;
    }
 
-   *gain = pow(20., header.gain/2560.);
+   *gain = pow(10., header.gain/5120.);
 
    if (header.gain!=0)
       printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
