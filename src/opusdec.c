@@ -339,39 +339,47 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    return st;
 }
 
-void audio_write(opus_int16 *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip)
+void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip, int file)
 {
-   if (resampler)
-   {
-      opus_int16 buf[2048];
-      do {
-         int tmp_skip;
-         unsigned in_len, out_len;
-         in_len = frame_size;
-         out_len = 1024;
-         speex_resampler_process_interleaved_int(resampler, pcm, &in_len, buf, &out_len);
-         if (skip)
-         {
-            tmp_skip = (*skip>out_len) ? out_len : *skip;
-            *skip -= tmp_skip;
-         } else {
-            tmp_skip = 0;
-         }
-         fwrite(buf+tmp_skip*channels, 2, (out_len-tmp_skip)*channels, fout);
-         pcm += channels*in_len;
-         frame_size -= in_len;
-      } while (frame_size != 0);
-   } else {
-      int tmp_skip;
-      if (skip)
-      {
-         tmp_skip = (*skip>frame_size) ? frame_size : *skip;
-         *skip -= tmp_skip;
-      } else {
-         tmp_skip = 0;
-      }
-      fwrite(pcm+tmp_skip*channels, 2, (frame_size-tmp_skip)*channels, fout);
-   }
+   int i,tmp_skip;
+   unsigned out_len;
+   short out[2048];
+   float buf[2048];
+   float *output;
+
+   do {
+     if (resampler){
+       output=buf;
+       unsigned in_len;
+       in_len = frame_size;
+       out_len = 1024;
+       speex_resampler_process_interleaved_float(resampler, pcm, &in_len, buf, &out_len);
+       pcm += channels*in_len;
+       frame_size -= in_len;
+     } else {
+       output=pcm;
+       out_len=frame_size;
+       frame_size=0;
+     }
+
+     if (skip){
+       tmp_skip = (*skip>out_len) ? out_len : *skip;
+       *skip -= tmp_skip;
+     } else {
+       tmp_skip = 0;
+     }
+
+     /*Convert to short and save to output file*/
+     /*FIXME: This should dither for integer output*/
+     if (file){
+       for (i=0;i<out_len*channels;i++)
+         out[i]=le_short((short)lrintf(fmax(fmin(output[i]*32768.f+0.5f,32767),-32768)));
+     } else {
+       for (i=0;i<out_len*channels;i++)
+         out[i]=(short)lrintf(fmax(fmin(output[i]*32768.f+0.5f,32767),-32768));
+     }
+     fwrite(out+tmp_skip*channels, 2, (out_len-tmp_skip)*channels, fout);
+   } while (frame_size != 0);
 }
 
 int main(int argc, char **argv)
@@ -380,8 +388,7 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout=NULL;
-   opus_int16 out[MAX_FRAME_SIZE];
-   opus_int16 output[MAX_FRAME_SIZE];
+   float output[MAX_FRAME_SIZE];
    int frame_size=0;
    void *st=NULL;
    int packet_count=0;
@@ -585,9 +592,9 @@ int main(int argc, char **argv)
                   int ret;
                   /*Decode frame*/
                   if (!lost)
-                     ret = opus_decode(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
+                     ret = opus_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
                   else
-                     ret = opus_decode(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
+                     ret = opus_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
 
                   /*for (i=0;i<frame_size*channels;i++)
                     printf ("%d\n", (int)output[i]);*/
@@ -598,13 +605,11 @@ int main(int argc, char **argv)
                      break;
                   }
                   frame_size = ret;
+
                   /* Apply header gain */
                   for (i=0;i<frame_size*channels;i++)
-                  {
-                     float tmp = gain*output[i];
-                     tmp = (tmp < -32767) ? -32767 : ((tmp > 32767) ? 32767 : tmp);
-                     output[i] = floor(.5+tmp);
-                  }
+                     output[i] *= gain;
+
                   if (print_bitrate) {
                      opus_int32 tmp=op.bytes;
                      char ch=13;
@@ -616,21 +621,12 @@ int main(int argc, char **argv)
                      truncate = decoded-page_granule;
                   else
                      truncate = 0;
-                  /*Convert to short and save to output file*/
-                  if (strlen(outFile)!=0)
-                  {
-                     for (i=0;i<frame_size*channels;i++)
-                        out[i]=le_short(output[i]);
-                  } else {
-                     for (i=0;i<frame_size*channels;i++)
-                        out[i]=output[i];
-                  }
                   {
                      int new_frame_size;
                      if (truncate > frame_size)
                         truncate = frame_size;
                      new_frame_size = frame_size - truncate;
-                     audio_write(out, channels, new_frame_size, fout, resampler, &preskip);
+                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, strlen(outFile)==0);
                      audio_size+=sizeof(short)*new_frame_size*channels;
                   }
                }
@@ -647,7 +643,7 @@ int main(int argc, char **argv)
    if (resampler)
    {
       int i;
-      opus_int16 zeros[200];
+      float zeros[200];
       int drain;
       
       for (i=0;i<200;i++)
@@ -657,7 +653,7 @@ int main(int argc, char **argv)
          int tmp = drain;
          if (tmp > 100)
             tmp = 100;
-         audio_write(zeros, channels, tmp, fout, resampler, NULL);
+         audio_write(zeros, channels, tmp, fout, resampler, NULL, strlen(outFile)==0);
          drain -= tmp;
       } while (drain>0);
    }

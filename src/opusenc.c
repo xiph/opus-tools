@@ -77,7 +77,7 @@ int oe_write_page(ogg_page *page, FILE *fp)
 
 /* Convert input audio bits, endians and channels */
 static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, 
-                            int lsb, short * input, char *buff, opus_int32 *size,
+                            int lsb, float * input, char *buff, opus_int32 *size,
                             int *extra_samples)
 {
    short s[MAX_FRAME_SIZE];
@@ -133,11 +133,10 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
       }
    }
 
-   /* FIXME: This is probably redundent now */
    /* copy to float input buffer */
    for (i=0;i<frame_size*channels;i++)
    {
-      input[i]=s[i];
+      input[i]=s[i]*(1/32768.f);
    }
 
    for (i=nb_read*channels;i<frame_size*channels;i++)
@@ -158,13 +157,13 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
 }
 
 static int read_samples(FILE *fin,int frame_size, int bits, int channels, 
-                        int lsb, short * input, char *buff, opus_int32 *size,
+                        int lsb, float * input, char *buff, opus_int32 *size,
                         SpeexResamplerState *resampler, int *extra_samples)
 {
    if (resampler)
    {
       /* FIXME: This is a hack, get rid of these static variables */
-      static opus_int16 pcmbuf[2048];
+      static float pcmbuf[2048];
       static int inbuf=0;
       int out_samples=0;
       while (out_samples<frame_size)
@@ -177,7 +176,7 @@ static int read_samples(FILE *fin,int frame_size, int bits, int channels,
          inbuf += ret;
          in_len = inbuf;
          out_len = frame_size-out_samples;
-         speex_resampler_process_interleaved_int(resampler, pcmbuf, &in_len, input+out_samples*channels, &out_len);
+         speex_resampler_process_interleaved_float(resampler, pcmbuf, &in_len, input+out_samples*channels, &out_len);
          if (ret==0 && in_len==0)
          {
             for (i=out_samples*channels;i<frame_size*channels;i++)
@@ -257,7 +256,7 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout;
-   short input[MAX_FRAME_SIZE];
+   float input[MAX_FRAME_SIZE];
    opus_int32 frame_size = 960;
    int quiet=0;
    int nbBytes;
@@ -540,7 +539,7 @@ int main(int argc, char **argv)
    }
    if (!with_cbr)
    {
-     if (opus_encoder_ctl(st, OPUS_SET_VBR_FLAG(1)) != OPUS_OK)
+     if (opus_encoder_ctl(st, OPUS_SET_VBR(1)) != OPUS_OK)
      {
         fprintf (stderr, "VBR request failed\n");
         return 1;
@@ -647,7 +646,7 @@ int main(int argc, char **argv)
       id++;
       /*Encode current frame*/
 
-      nbBytes = opus_encode(st, input, frame_size, bits, bytes_per_packet);
+      nbBytes = opus_encode_float(st, input, frame_size, bits, bytes_per_packet);
       if (nbBytes<0)
       {
          fprintf(stderr, "Got error %d while encoding. Aborting.\n", nbBytes);
