@@ -42,6 +42,7 @@
 #include "getopt_win.h"
 #endif*/
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 
 #include <opus.h>
@@ -82,12 +83,103 @@
 #include "opus_header.h"
 #include "speex_resampler.h"
 
+#define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
+#define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
+#define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
+
 #define MAX_FRAME_SIZE (2*960*3)
 
 #define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
                            ((buf[base+2]<<16)&0xff0000)| \
                            ((buf[base+1]<<8)&0xff00)| \
   	           	    (buf[base]&0xff))
+
+typedef struct shapestate shapestate;
+struct shapestate {
+  float * b_buf;
+  float * a_buf;
+  int fs;
+  int mute;
+};
+
+static unsigned int rngseed = 22222;
+static inline unsigned int fast_rand() {
+  rngseed = (rngseed * 96314165) + 907633515;
+  return rngseed;
+}
+
+/* This implements a 16 bit quantization with full triangular dither
+   and IIR noise shaping. The noise shaping filters were designed by
+   Sebastian Gesemann based on the LAME ATH curves with flattening
+   to limit their peak gain to 20dB.
+   (Everyone elses' noise shaping filters are mildly crazy)
+   The 48kHz version of this filter is just a warped version of the
+   44.1kHz filter and probably could be improved by shifting the
+   HF shelf up in frequency a little bit since 48k has a bit more
+   room and being more conservative against bat-ears is probably
+   more important than more noise suppression.
+   This process can increase the peak level of the signal (in theory
+   by the peak error of 1.5 +20dB though this much is unobservable rare)
+   so to avoid clipping the signal is attenuated by a couple thousandths
+   of a dB. Initially the approach taken here was to only attenuate by
+   the 99.9th percentile, making clipping rare but not impossible (like
+   SoX) but the limited gain of the filter means that the worst case was
+   only two thousandths of a dB more, so this just uses the worst case.
+   The attenuation is probably also helpful to prevent clipping in the DAC
+   reconstruction filters or downstream resampling in any case.*/
+static inline void shape_dither_toshort(shapestate *_ss, short *_o, float *_i, int _n, int _CC)
+{
+  const float gains[3]={32768.f-15.f,32768.f-15.f,32768.f-3.f};
+  const float fcoef[3][8] =
+  {
+    {2.2374f, -.7339f, -.1251f, -.6033f, 0.9030f, .0116f, -.5853f, -.2571f}, /* 48.0kHz noise shaping filter sd=2.34*/
+    {2.2061f, -.4706f, -.2534f, -.6214f, 1.0587f, .0676f, -.6054f, -.2738f}, /* 44.1kHz noise shaping filter sd=2.51*/
+    {1.0000f, 0.0000f, 0.0000f, 0.0000f, 0.0000f,0.0000f, 0.0000f, 0.0000f}, /* lowpass noise shaping filter sd=0.65*/
+  };
+  int i;
+  int rate=_ss->fs==44100?1:(_ss->fs==48000?0:2);
+  float gain=gains[rate];
+  float *b_buf;
+  float *a_buf;
+  int mute=_ss->mute;
+  b_buf=_ss->b_buf;
+  a_buf=_ss->a_buf;
+  if(mute>64)
+    memset(a_buf,0,sizeof(float)*_CC*4);
+  for(i=0;i<_n;i++)
+  {
+    int c;
+    int pos = i*_CC;
+    int silent=1;
+    for(c=0;c<_CC;c++)
+    {
+      int j, si;
+      float r,s,err=0;
+      silent&=_i[pos+c]==0;
+      s=_i[pos+c]*gain;
+      for(j=0;j<4;j++)
+        err += fcoef[rate][j]*b_buf[c*4+j] - fcoef[rate][j+4]*a_buf[c*4+j];
+      memmove(&a_buf[c*4+1],&a_buf[c*4],sizeof(float)*3);
+      memmove(&b_buf[c*4+1],&b_buf[c*4],sizeof(float)*3);
+      a_buf[c*4]=err;
+      s = s - err;
+      r=(float)fast_rand()*(1/(float)UINT_MAX) - (float)fast_rand()*(1/(float)UINT_MAX);
+      if (mute>16)r=0;
+      /*Clamp in float out of paranoia that the input will be >96dBFS and wrap if the
+        integer is clamped.*/
+      _o[pos+c] = si = lrintf(fmaxf(-32768,fminf(s + r,32767)));
+      /*Including clipping in the noise shaping is generally disastrous:
+        the futile effort to restore the clipped energy results in more clipping.
+        However, small amounts-- at the level which could normally be created by
+        dither and rounding-- are harmless and can even reduce clipping somewhat
+        due to the clipping sometimes reducing the dither+rounding error.*/
+      b_buf[c*4] = (mute>16)?0:fmaxf(-1.5f,fminf(si - s,1.5f));
+    }
+    mute++;
+    if(!silent)mute=0;
+  }
+  _ss->mute=MINI(mute,960);
+}
 
 static void print_comments(char *comments, int length)
 {
@@ -273,6 +365,7 @@ void usage(void)
    printf (" --mono                Force decoding in mono\n");
    printf (" --stereo              Force decoding in stereo\n");
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
+   printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" -V                    Verbose mode (show bit-rate)\n"); 
    printf (" -h, --help            This help\n");
@@ -282,13 +375,13 @@ void usage(void)
 
 void version(void)
 {
-   printf ("opusenc (based on %s)\n",opus_get_version_string());
+   printf ("opusdec (based on %s)\n",opus_get_version_string());
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
 void version_short(void)
 {
-   printf ("opusenc (based on %s)\n",opus_get_version_string());
+   printf ("opusdec (based on %s)\n",opus_get_version_string());
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
@@ -327,7 +420,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
       printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
    if (!quiet)
    {
-      fprintf (stderr, "Decoding %d Hz audio in", *rate);
+      fprintf (stderr, "Decoding %d Hz audio", *rate);
 
       if (*channels==1)
          fprintf (stderr, " (mono");
@@ -339,7 +432,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    return st;
 }
 
-void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip, int file)
+void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip, shapestate *shapemem, int file)
 {
    int i,tmp_skip;
    unsigned out_len;
@@ -370,14 +463,17 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
      }
 
      /*Convert to short and save to output file*/
-     /*FIXME: This should dither for integer output*/
-     if (file){
+     if (shapemem){
+       shape_dither_toshort(shapemem,out,output,out_len,channels);
+     }else{
        for (i=0;i<out_len*channels;i++)
-         out[i]=le_short((short)lrintf(fmax(fmin(output[i]*32768.f+0.5f,32767),-32768)));
-     } else {
-       for (i=0;i<out_len*channels;i++)
-         out[i]=(short)lrintf(fmax(fmin(output[i]*32768.f+0.5f,32767),-32768));
+         out[i]=(short)lrintf(fmax(-32768,fmin(output[i]*32768.f,32767)));
      }
+     if ((le_short(1)!=1)&&file){
+       for (i=0;i<out_len*channels;i++)
+         out[i]=le_short(out[i]);
+     }
+
      fwrite(out+tmp_skip*channels, 2, (out_len-tmp_skip)*channels, fout);
    } while (frame_size != 0);
 }
@@ -405,6 +501,7 @@ int main(int argc, char **argv)
       {"rate", required_argument, NULL, 0},
       {"mono", no_argument, NULL, 0},
       {"stereo", no_argument, NULL, 0},
+      {"no-dither", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {0, 0, 0, 0}
    };
@@ -423,8 +520,15 @@ int main(int argc, char **argv)
    int wav_format=0;
    int preskip=0;
    int opus_serialno = -1;
+   int dither=1;
+   shapestate shapemem;
    SpeexResamplerState *resampler=NULL;
    float gain=1;
+
+   shapemem.a_buf=0;
+   shapemem.b_buf=0;
+   shapemem.mute=960;
+   shapemem.fs=0;
    
    enh_enabled = 1;
 
@@ -460,6 +564,9 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"stereo")==0)
          {
             channels=2;
+         } else if (strcmp(long_options[option_index].name,"no-dither")==0)
+         {
+            dither=0;
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
             rate=atoi (optarg);
@@ -560,6 +667,13 @@ int main(int argc, char **argv)
             if (packet_count==0)
             {
                st = process_header(&op, &rate, &channels, &preskip, &gain, quiet);
+               if(shapemem.a_buf)
+                 free(shapemem.a_buf);
+               if(shapemem.b_buf)
+                 free(shapemem.b_buf);
+               shapemem.a_buf=calloc(channels,sizeof(float)*4);
+               shapemem.b_buf=calloc(channels,sizeof(float)*4);
+               shapemem.fs=rate;
                /* Converting preskip to output sampling rate */
                preskip = preskip*(rate/48000.);
                if (!st)
@@ -626,7 +740,7 @@ int main(int argc, char **argv)
                      if (truncate > frame_size)
                         truncate = frame_size;
                      new_frame_size = frame_size - truncate;
-                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, strlen(outFile)==0);
+                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)==0);
                      audio_size+=sizeof(short)*new_frame_size*channels;
                   }
                }
@@ -653,7 +767,7 @@ int main(int argc, char **argv)
          int tmp = drain;
          if (tmp > 100)
             tmp = 100;
-         audio_write(zeros, channels, tmp, fout, resampler, NULL, strlen(outFile)==0);
+         audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)==0);
          drain -= tmp;
       } while (drain>0);
    }
