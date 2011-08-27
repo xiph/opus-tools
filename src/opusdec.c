@@ -46,6 +46,7 @@
 #include <string.h>
 
 #include <opus.h>
+#include <opus_multistream.h>
 #include <ogg/ogg.h>
 
 #if defined WIN32 || defined _WIN32
@@ -385,10 +386,11 @@ void version_short(void)
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
-static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
+static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
 {
-   OpusDecoder *st;
+   OpusMSDecoder *st;
    OpusHeader header;
+   unsigned char mapping[256] = {0,1};
 
    if (opus_header_parse(op->packet, op->bytes, &header)==0)
    {
@@ -407,7 +409,7 @@ static OpusDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channe
    if (!*rate)
       *rate = header.input_sample_rate;
    *preskip = header.preskip;
-   st = opus_decoder_create(48000, header.channels);
+   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping);
    if (!st)
    {
       fprintf (stderr, "Decoder initialization failed.\n");
@@ -486,7 +488,7 @@ int main(int argc, char **argv)
    FILE *fin, *fout=NULL;
    float output[MAX_FRAME_SIZE];
    int frame_size=0;
-   void *st=NULL;
+   OpusMSDecoder *st=NULL;
    int packet_count=0;
    int stream_init = 0;
    int quiet = 0;
@@ -509,7 +511,6 @@ int main(int argc, char **argv)
    ogg_page       og;
    ogg_packet     op;
    ogg_stream_state os;
-   int enh_enabled;
    int print_bitrate=0;
    int close_in=0;
    int eos=0;
@@ -530,8 +531,6 @@ int main(int argc, char **argv)
    shapemem.mute=960;
    shapemem.fs=0;
    
-   enh_enabled = 1;
-
    /*Process options*/
    while(1)
    {
@@ -688,7 +687,7 @@ int main(int argc, char **argv)
                }
                fout = out_file_open(outFile, rate, &channels);
 
-            } else if (strncmp((char*)op.packet, "OpusTags", 8)==0)
+            } else if (packet_count==1)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
@@ -706,9 +705,9 @@ int main(int argc, char **argv)
                   int ret;
                   /*Decode frame*/
                   if (!lost)
-                     ret = opus_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
+                     ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
                   else
-                     ret = opus_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
+                     ret = opus_multistream_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
 
                   /*for (i=0;i<frame_size*channels;i++)
                     printf ("%d\n", (int)output[i]);*/
@@ -794,7 +793,7 @@ int main(int argc, char **argv)
 
    if (st)
    {
-      opus_decoder_destroy(st);
+      opus_multistream_decoder_destroy(st);
    } else {
       fprintf (stderr, "This doesn't look like a Opus file\n");
    }

@@ -46,6 +46,7 @@
 #endif
 
 #include "opus.h"
+#include "opus_multistream.h"
 #include "opus_header.h"
 #include <ogg/ogg.h>
 #include "wav_io.h"
@@ -260,7 +261,7 @@ int main(int argc, char **argv)
    opus_int32 frame_size = 960;
    int quiet=0;
    int nbBytes;
-   void *st;
+   OpusMSEncoder *st;
    unsigned char bits[MAX_FRAME_BYTES];
    int with_cbr = 0;
    int with_cvbr = 0;
@@ -321,6 +322,7 @@ int main(int argc, char **argv)
    SpeexResamplerState *resampler=NULL;
    int extra_samples;
    int signal = OPUS_SIGNAL_AUTO;
+   unsigned char mapping[256] = {0, 1};
 
    opus_version = opus_get_version_string();
    snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
@@ -497,11 +499,10 @@ int main(int argc, char **argv)
    bytes_per_packet = MAX_FRAME_BYTES;
    
    /*Initialize OPUS encoder*/
-   st = opus_encoder_create(48000, chan, OPUS_APPLICATION_AUDIO);
-
-   opus_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
+   st = opus_multistream_encoder_create(48000, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO);
+   opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
    header.channels = chan;
-   opus_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
+   opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
    header.preskip = lookahead;
    if (resampler)
       header.preskip += speex_resampler_get_output_latency(resampler);
@@ -531,7 +532,7 @@ int main(int argc, char **argv)
 
    {
       int tmp = (bitrate*1000);
-      if (opus_encoder_ctl(st, OPUS_SET_BITRATE(tmp)) != OPUS_OK)
+      if (opus_multistream_encoder_ctl(st, OPUS_SET_BITRATE(tmp)) != OPUS_OK)
       {
          fprintf (stderr, "bitrate request failed\n");
          return 1;
@@ -539,14 +540,14 @@ int main(int argc, char **argv)
    }
    if (!with_cbr)
    {
-     if (opus_encoder_ctl(st, OPUS_SET_VBR(1)) != OPUS_OK)
+     if (opus_multistream_encoder_ctl(st, OPUS_SET_VBR(1)) != OPUS_OK)
      {
         fprintf (stderr, "VBR request failed\n");
         return 1;
      }
      if (!with_cvbr)
      {
-        if (opus_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(0)) != OPUS_OK)
+        if (opus_multistream_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(0)) != OPUS_OK)
         {
            fprintf (stderr, "VBR constraint failed\n");
            return 1;
@@ -555,7 +556,7 @@ int main(int argc, char **argv)
    }
 
    if (complexity!=-127) {
-     if (opus_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity)) != OPUS_OK)
+     if (opus_multistream_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity)) != OPUS_OK)
      {
         fprintf (stderr, "Only complexity 0 through 10 is supported\n");
         return 1;
@@ -646,10 +647,10 @@ int main(int argc, char **argv)
       id++;
       /*Encode current frame*/
 
-      nbBytes = opus_encode_float(st, input, frame_size, bits, bytes_per_packet);
+      nbBytes = opus_multistream_encode_float(st, input, frame_size, bits, bytes_per_packet);
       if (nbBytes<0)
       {
-         fprintf(stderr, "Got error %d while encoding. Aborting.\n", nbBytes);
+         fprintf(stderr, "Encoding failed: %s. Aborting.\n", opus_strerror(nbBytes));
          break;
       }
       nb_encoded += frame_size;
@@ -730,7 +731,7 @@ int main(int argc, char **argv)
    if (!with_cbr && !quiet)
      fprintf (stderr, "Average rate %0.3fkbit/sec, %d peak bytes per packet\n", (total_bytes*8.0/((float)nb_encoded/header.input_sample_rate))/1000.0, peak_bytes);
 
-   opus_encoder_destroy(st);
+   opus_multistream_encoder_destroy(st);
    ogg_stream_clear(&os);
 
    if (close_in)
