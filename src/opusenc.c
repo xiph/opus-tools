@@ -67,7 +67,7 @@ int oe_write_page(ogg_page *page, FILE *fp)
    int written;
    written = fwrite(page->header,1,page->header_len, fp);
    written += fwrite(page->body,1,page->body_len, fp);
-   
+
    return written;
 }
 
@@ -77,7 +77,7 @@ int oe_write_page(ogg_page *page, FILE *fp)
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
 /* Convert input audio bits, endians and channels */
-static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels, 
+static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
                             int lsb, float * input, char *buff, opus_int32 *size,
                             int *extra_samples)
 {
@@ -127,8 +127,8 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
       /* convert to our endian format */
       for(i=0;i<frame_size*channels;i++)
       {
-         if(lsb) 
-            s[i]=le_short(s[i]); 
+         if(lsb)
+            s[i]=le_short(s[i]);
          else
             s[i]=be_short(s[i]);
       }
@@ -157,7 +157,7 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
    return nb_read;
 }
 
-static int read_samples(FILE *fin,int frame_size, int bits, int channels, 
+static int read_samples(FILE *fin,int frame_size, int bits, int channels,
                         int lsb, float * input, char *buff, opus_int32 *size,
                         SpeexResamplerState *resampler, int *extra_samples)
 {
@@ -217,15 +217,15 @@ void usage(void)
    printf ("  filename.wav      wav file\n");
    printf ("  filename.*        Raw PCM file (any extension other than .wav)\n");
    printf ("  -                 stdin\n");
-   printf ("\n");  
+   printf ("\n");
    printf ("output_file can be:\n");
    printf ("  filename.oga      compressed file\n");
    printf ("  -                 stdout\n");
-   printf ("\n");  
+   printf ("\n");
    printf ("Options:\n");
-   printf (" --speech           Optimize for speech\n"); 
-   printf (" --music            Optimize for music\n"); 
-   printf (" --bitrate n        Encoding bit-rate in kbit/sec\n"); 
+   printf (" --speech           Optimize for speech\n");
+   printf (" --music            Optimize for music\n");
+   printf (" --bitrate n        Encoding bit-rate in kbit/sec\n");
    printf (" --cbr              Use constant bitrate encoding\n");
    printf (" --comp n           Encoding complexity (0-10)\n");
    printf (" --framesize n      Frame size (Default: 960)\n");
@@ -235,17 +235,17 @@ void usage(void)
    printf ("                     used multiple times\n");
    printf (" --author           Author of this track\n");
    printf (" --title            Title for this track\n");
-   printf (" -h, --help         This help\n"); 
-   printf (" -v, --version      Version information\n"); 
-   printf (" -V                 Verbose mode (show bit-rate)\n"); 
+   printf (" -h, --help         This help\n");
+   printf (" -v, --version      Version information\n");
+   printf (" -V                 Verbose mode (show bit-rate)\n");
    printf ("Raw input options:\n");
-   printf (" --rate n           Sampling rate for raw input\n"); 
-   printf (" --mono             Consider raw input as mono\n"); 
-   printf (" --stereo           Consider raw input as stereo\n"); 
-   printf (" --le               Raw input is little-endian\n"); 
-   printf (" --be               Raw input is big-endian\n"); 
-   printf (" --8bit             Raw input is 8-bit unsigned\n"); 
-   printf (" --16bit            Raw input is 16-bit signed\n"); 
+   printf (" --rate n           Sampling rate for raw input\n");
+   printf (" --mono             Consider raw input as mono\n");
+   printf (" --stereo           Consider raw input as stereo\n");
+   printf (" --le               Raw input is little-endian\n");
+   printf (" --be               Raw input is big-endian\n");
+   printf (" --8bit             Raw input is 8-bit unsigned\n");
+   printf (" --16bit            Raw input is 16-bit signed\n");
    printf ("Default raw PCM input is 48kHz, 16-bit, little-endian, stereo\n");
 }
 
@@ -335,7 +335,7 @@ int main(int argc, char **argv)
                        long_options, &option_index);
       if (c==-1)
          break;
-      
+
       switch(c)
       {
       case 0:
@@ -404,13 +404,13 @@ int main(int argc, char **argv)
 	     fprintf (stderr, "Comments must be of the form name=value\n");
 	     exit(1);
 	   }
-           comment_add(&comments, &comments_length, NULL, optarg); 
+           comment_add(&comments, &comments_length, NULL, optarg);
          } else if (strcmp(long_options[option_index].name,"author")==0)
          {
-           comment_add(&comments, &comments_length, "author=", optarg); 
+           comment_add(&comments, &comments_length, "author=", optarg);
          } else if (strcmp(long_options[option_index].name,"title")==0)
          {
-           comment_add(&comments, &comments_length, "title=", optarg); 
+           comment_add(&comments, &comments_length, "title=", optarg);
          }
 
          break;
@@ -456,7 +456,7 @@ int main(int argc, char **argv)
 #endif
       fin=stdin;
    }
-   else 
+   else
    {
       fin = fopen(inFile, "rb");
       if (!fin)
@@ -497,9 +497,14 @@ int main(int argc, char **argv)
        bitrate=128.0;
    }
    bytes_per_packet = MAX_FRAME_BYTES;
-   
+
    /*Initialize OPUS encoder*/
-   st = opus_multistream_encoder_create(48000, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO);
+   st = opus_multistream_encoder_create(48000, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO, &ret);
+   if (!st)
+   {
+      fprintf (stderr, "Failed to create the encoder: %s\n", opus_strerror(ret));
+      exit(1);
+   }
    opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
    header.channels = chan;
    opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
@@ -512,7 +517,7 @@ int main(int argc, char **argv)
    /* 0 dB gain is the recommended unless you know what you're doing */
    header.gain = 0;
    header.input_sample_rate = rate;
-   
+
    /* Extra samples that need to be read to compensate for the pre-skip */
    extra_samples = (int)header.preskip * (rate/48000.);
    {
@@ -570,7 +575,7 @@ int main(int argc, char **argv)
 #endif
       fout=stdout;
    }
-   else 
+   else
    {
       fout = fopen(outFile, "wb");
       if (!fout)
@@ -741,8 +746,8 @@ int main(int argc, char **argv)
    return 0;
 }
 
-/*                 
- Comments will be stored in the Vorbis style.            
+/*
+ Comments will be stored in the Vorbis style.
  It is describled in the "Structure" section of
     http://www.xiph.org/ogg/vorbis/doc/v-comment.html
 

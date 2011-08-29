@@ -187,7 +187,7 @@ static void print_comments(char *comments, int length)
    char *c=comments;
    int len, i, nb_fields;
    char *end;
-   
+
    if (strncmp(c, "OpusTags", 8) != 0)
    {
       fprintf (stderr, "Invalid/corrupted comments\n");
@@ -250,7 +250,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
       if (audio_fd<0)
       {
          perror("Cannot open /dev/dsp");
-         exit(1);         
+         exit(1);
       }
 
       format=AFMT_S16_NE;
@@ -287,7 +287,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
       int audio_fd;
-      
+
       audio_fd = open("/dev/audio", O_WRONLY);
       if (audio_fd<0)
       {
@@ -303,7 +303,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
       info.play.precision = 16;
       info.play.input_sample_rate = rate;
       info.play.channels = *channels;
-      
+
       if (ioctl(audio_fd, AUDIO_SETINFO, &info) < 0)
       {
          perror ("AUDIO_SETINFO");
@@ -331,7 +331,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
 #endif
          fout=stdout;
       }
-      else 
+      else
       {
          fout = fopen(outFile, "wb");
          if (!fout)
@@ -355,20 +355,20 @@ void usage(void)
    printf ("input_file can be:\n");
    printf ("  filename.oga         regular Opus file\n");
    printf ("  -                    stdin\n");
-   printf ("\n");  
+   printf ("\n");
    printf ("output_file can be:\n");
    printf ("  filename.wav         Wav file\n");
    printf ("  filename.*           Raw PCM file (any extension other that .wav)\n");
    printf ("  -                    stdout\n");
    printf ("  (nothing)            Will be played to soundcard\n");
-   printf ("\n");  
+   printf ("\n");
    printf ("Options:\n");
    printf (" --mono                Force decoding in mono\n");
    printf (" --stereo              Force decoding in stereo\n");
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
-   printf (" -V                    Verbose mode (show bit-rate)\n"); 
+   printf (" -V                    Verbose mode (show bit-rate)\n");
    printf (" -h, --help            This help\n");
    printf (" -v, --version         Version information\n");
    printf ("\n");
@@ -388,6 +388,7 @@ void version_short(void)
 
 static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
 {
+   int error;
    OpusMSDecoder *st;
    OpusHeader header;
    unsigned char mapping[256] = {0,1};
@@ -397,7 +398,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
       fprintf(stderr, "Cannot parse header\n");
       return NULL;
    }
-   
+
    if (header.channels>2 || header.channels<1)
    {
       fprintf (stderr, "Unsupported number of channels: %d\n", header.channels);
@@ -409,10 +410,10 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    if (!*rate)
       *rate = header.input_sample_rate;
    *preskip = header.preskip;
-   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping);
+   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping, &error);
    if (!st)
    {
-      fprintf (stderr, "Decoder initialization failed.\n");
+      fprintf (stderr, "Decoder initialization failed: %s\n", opus_strerror(error));
       return NULL;
    }
 
@@ -530,7 +531,7 @@ int main(int argc, char **argv)
    shapemem.b_buf=0;
    shapemem.mute=960;
    shapemem.fs=0;
-   
+
    /*Process options*/
    while(1)
    {
@@ -538,7 +539,7 @@ int main(int argc, char **argv)
                        long_options, &option_index);
       if (c==-1)
          break;
-      
+
       switch(c)
       {
       case 0:
@@ -613,7 +614,7 @@ int main(int argc, char **argv)
 #endif
       fin=stdin;
    }
-   else 
+   else
    {
       fin = fopen(inFile, "rb");
       if (!fin)
@@ -627,9 +628,9 @@ int main(int argc, char **argv)
 
    /*Init Ogg data struct*/
    ogg_sync_init(&oy);
-   
+
    /*Main decoding loop*/
-   
+
    while (1)
    {
       char *data;
@@ -637,7 +638,7 @@ int main(int argc, char **argv)
       /*Get the ogg buffer for writing*/
       data = ogg_sync_buffer(&oy, 200);
       /*Read bitstream from input file*/
-      nb_read = fread(data, sizeof(char), 200, fin);      
+      nb_read = fread(data, sizeof(char), 200, fin);
       ogg_sync_wrote(&oy, nb_read);
 
       /*Loop for all complete pages we got (most likely only one)*/
@@ -751,14 +752,14 @@ int main(int argc, char **argv)
          break;
 
    }
-   
+
    /* Drain the resampler */
    if (resampler)
    {
       int i;
       float zeros[200];
       int drain;
-      
+
       for (i=0;i<200;i++)
          zeros[i] = 200;
       drain = speex_resampler_get_input_latency(resampler);
@@ -770,7 +771,7 @@ int main(int argc, char **argv)
          drain -= tmp;
       } while (drain>0);
    }
-   
+
    if (fout && wav_format)
    {
       if (fseek(fout,4,SEEK_SET)==0)
@@ -809,7 +810,7 @@ int main(int argc, char **argv)
    if (close_in)
       fclose(fin);
    if (fout != NULL)
-      fclose(fout);   
+      fclose(fout);
 
    return 0;
 }
