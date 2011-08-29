@@ -388,6 +388,7 @@ void version_short(void)
 
 static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
 {
+   int err;
    OpusMSDecoder *st;
    OpusHeader header;
    unsigned char mapping[256] = {0,1};
@@ -409,7 +410,12 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    if (!*rate)
       *rate = header.input_sample_rate;
    *preskip = header.preskip;
-   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping);
+   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping, &err);
+   if (err != OPUS_OK)
+   {
+     fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
+     return NULL;
+   }
    if (!st)
    {
       fprintf (stderr, "Decoder initialization failed.\n");
