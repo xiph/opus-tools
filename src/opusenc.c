@@ -323,6 +323,7 @@ int main(int argc, char **argv)
    int extra_samples;
    int signal = OPUS_SIGNAL_AUTO;
    unsigned char mapping[256] = {0, 1};
+   int err;
 
    opus_version = opus_get_version_string();
    snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
@@ -481,7 +482,6 @@ int main(int argc, char **argv)
 
    if (rate != 48000)
    {
-      int err;
       fprintf(stderr, "Resampling from %d Hz to %d Hz before encoding\n", rate, 48000);
       resampler = speex_resampler_init(chan, rate, 48000, 5, &err);
       if (err!=0)
@@ -499,11 +499,11 @@ int main(int argc, char **argv)
    bytes_per_packet = MAX_FRAME_BYTES;
 
    /*Initialize OPUS encoder*/
-   st = opus_multistream_encoder_create(48000, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO, &ret);
-   if (!st)
+   st = opus_multistream_encoder_create(48000, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO, &err);
+   if (err != OPUS_OK)
    {
-      fprintf (stderr, "Failed to create the encoder: %s\n", opus_strerror(ret));
-      exit(1);
+     fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
+     return 1;
    }
    opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
    header.channels = chan;
