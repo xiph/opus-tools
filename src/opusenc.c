@@ -321,7 +321,7 @@ int main(int argc, char **argv)
    const char *opus_version;
    SpeexResamplerState *resampler=NULL;
    int extra_samples;
-   int signal = OPUS_SIGNAL_AUTO;
+   int signal = OPUS_AUTO;
    unsigned char mapping[256] = {0, 1};
    int err;
 

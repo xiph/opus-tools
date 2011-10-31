@@ -418,7 +418,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    }
    if (!st)
    {
-      fprintf (stderr, "Decoder initialization failed: %s\n", opus_strerror(error));
+      fprintf (stderr, "Decoder initialization failed: %s\n", opus_strerror(err));
       return NULL;
    }
 
