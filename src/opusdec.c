@@ -88,7 +88,8 @@
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
 #define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
 
-#define MAX_FRAME_SIZE (2*960*3)
+/* 120ms at 48000 */
+#define MAX_FRAME_SIZE (960*6)
 
 #define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
                            ((buf[base+2]<<16)&0xff0000)| \
@@ -444,8 +445,8 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
 {
    int i,tmp_skip;
    unsigned out_len;
-   short out[2048];
-   float buf[2048];
+   short out[MAX_FRAME_SIZE*2];
+   float buf[MAX_FRAME_SIZE*2];
    float *output;
 
    do {
@@ -492,7 +493,7 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout=NULL;
-   float output[MAX_FRAME_SIZE];
+   float output[MAX_FRAME_SIZE*2];
    int frame_size=0;
    OpusMSDecoder *st=NULL;
    int packet_count=0;
