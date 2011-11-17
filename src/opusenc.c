@@ -71,8 +71,8 @@ int oe_write_page(ogg_page *page, FILE *fp)
    return written;
 }
 
-#define MAX_FRAME_SIZE (960*2*3)
-#define MAX_FRAME_BYTES 1276
+#define MAX_FRAME_SIZE (960*6)
+#define MAX_FRAME_BYTES 61295
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
@@ -81,7 +81,7 @@ static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
                             int lsb, float * input, char *buff, opus_int32 *size,
                             int *extra_samples)
 {
-   short s[MAX_FRAME_SIZE];
+   short s[MAX_FRAME_SIZE*2];
    unsigned char *in = (unsigned char*)s;
    int i;
    int nb_read;
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout;
-   float input[MAX_FRAME_SIZE];
+   float input[MAX_FRAME_SIZE*2];
    opus_int32 frame_size = 960;
    int quiet=0;
    int nbBytes;
@@ -396,7 +396,7 @@ int main(int argc, char **argv)
             complexity=atoi (optarg);
          } else if (strcmp(long_options[option_index].name,"framesize")==0)
          {
-            frame_size=atoi (optarg);
+            frame_size=IMIN(atoi(optarg),MAX_FRAME_SIZE);
          } else if (strcmp(long_options[option_index].name,"comment")==0)
          {
 	   if (!strchr(optarg, '='))
@@ -530,8 +530,8 @@ int main(int argc, char **argv)
            fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet, CBR)\n",
                header.input_sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
          else
-           fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec (%d bytes per packet maximum)\n",
-               header.input_sample_rate/1000., st_string, frame_size/48., bitrate, bytes_per_packet);
+           fprintf (stderr, "Encoding %.0f kHz %s audio in %.0fms packets at %0.3fkbit/sec\n",
+               header.input_sample_rate/1000., st_string, frame_size/48., bitrate);
       }
    }
 
@@ -695,14 +695,14 @@ int main(int argc, char **argv)
 
       /*Write all new pages (most likely 0 or 1)
         Flush if we've buffered 1 second to avoid excessive framing delay. */
-      while (eos||(op.granulepos-last_granulepos+MAX_FRAME_SIZE>48000)?
+      while (eos||(op.granulepos-last_granulepos+frame_size>48000)?
 #if 0
       /*Libogg > 1.2.2 allows us to achieve lower overhead by
         producing larger pages. For 20ms frames this is only relevant
         above ~32kbit/sec. We still target somewhat smaller than the
         maximum size in order to avoid continued pages.*/
-             ogg_stream_flush_fill(&os, &og,255*255-7*MAX_FRAME_BYTES):
-             ogg_stream_pageout_fill(&os, &og,255*255-7*MAX_FRAME_BYTES))
+             ogg_stream_flush_fill(&os, &og,255*255-7*1276):
+             ogg_stream_pageout_fill(&os, &og,255*255-7*1276))
 #else
              ogg_stream_flush(&os, &og):
              ogg_stream_pageout(&os, &og))
