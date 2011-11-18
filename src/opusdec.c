@@ -187,8 +187,12 @@ static void print_comments(char *comments, int length)
 {
    char *c=comments;
    int len, i, nb_fields;
-   char *end;
 
+   if (length<(8+4+4))
+   {
+      fprintf (stderr, "Invalid/corrupted comments\n");
+      return;
+   }
    if (strncmp(c, "OpusTags", 8) != 0)
    {
       fprintf (stderr, "Invalid/corrupted comments\n");
@@ -196,15 +200,9 @@ static void print_comments(char *comments, int length)
    }
    c += 8;
    fprintf(stderr, "Encoded with ");
-   if (length<8)
-   {
-      fprintf (stderr, "Invalid/corrupted comments\n");
-      return;
-   }
-   end = c+length;
    len=readint(c, 0);
    c+=4;
-   if (len < 0 || c+len>end)
+   if (len < 0 || len>(length-16))
    {
       fprintf (stderr, "Invalid/corrupted comments\n");
       return;
@@ -212,29 +210,33 @@ static void print_comments(char *comments, int length)
    fwrite(c, 1, len, stderr);
    c+=len;
    fprintf (stderr, "\n");
-   if (c+4>end)
+   /*The -16 check above makes sure we can read this.*/
+   nb_fields=readint(c, 0);
+   c+=4;
+   length-=16+len;
+   if (nb_fields < 0 || nb_fields>(length>>2))
    {
       fprintf (stderr, "Invalid/corrupted comments\n");
       return;
    }
-   nb_fields=readint(c, 0);
-   c+=4;
    for (i=0;i<nb_fields;i++)
    {
-      if (c+4>end)
+      if (length<4)
       {
          fprintf (stderr, "Invalid/corrupted comments\n");
          return;
       }
       len=readint(c, 0);
       c+=4;
-      if (len < 0 || c+len>end)
+      length-=4;
+      if (len < 0 || len>length)
       {
          fprintf (stderr, "Invalid/corrupted comments\n");
          return;
       }
       fwrite(c, 1, len, stderr);
       c+=len;
+      length-=len;
       fprintf (stderr, "\n");
    }
 }
