@@ -410,12 +410,17 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
 
    *channels = header.channels;
 
-   if (!*rate)
-      *rate = header.input_sample_rate;
+   if(!*rate)*rate=header.input_sample_rate;
+   /*If the rate is unspecified we decode to 48000*/
+   if(*rate==0)*rate=48000;
+   if(*rate<8000||*rate>192000){
+     fprintf(stderr,"Warning: Crazy input_rate %d, decoding to 48000 instead.\n",*rate);
+     *rate=48000;
+   }
+
    *preskip = header.preskip;
    st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping, &err);
-   if (err != OPUS_OK)
-   {
+   if(err != OPUS_OK){
      fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
      return NULL;
    }
@@ -814,6 +819,9 @@ int main(int argc, char **argv)
    if (strlen(outFile)==0)
       WIN_Audio_close ();
 #endif
+
+   if(shapemem.a_buf)free(shapemem.a_buf);
+   if(shapemem.b_buf)free(shapemem.b_buf);
 
    if (close_in)
       fclose(fin);
