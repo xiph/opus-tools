@@ -94,7 +94,7 @@
 #define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
                            ((buf[base+2]<<16)&0xff0000)| \
                            ((buf[base+1]<<8)&0xff00)| \
-  	           	    (buf[base]&0xff))
+                           (buf[base]&0xff))
 
 typedef struct shapestate shapestate;
 struct shapestate {
@@ -394,17 +394,10 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    int err;
    OpusMSDecoder *st;
    OpusHeader header;
-   unsigned char mapping[256] = {0,1};
 
    if (opus_header_parse(op->packet, op->bytes, &header)==0)
    {
       fprintf(stderr, "Cannot parse header\n");
-      return NULL;
-   }
-
-   if (header.channels>2 || header.channels<1)
-   {
-      fprintf (stderr, "Unsupported number of channels: %d\n", header.channels);
       return NULL;
    }
 
@@ -419,7 +412,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    }
 
    *preskip = header.preskip;
-   st = opus_multistream_decoder_create(48000, header.channels, 1, header.channels==2 ? 1 : 0, mapping, &err);
+   st = opus_multistream_decoder_create(48000, header.channels, header.nb_streams, header.nb_coupled, header.stream_map, &err);
    if(err != OPUS_OK){
      fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
      return NULL;
@@ -438,11 +431,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    {
       fprintf (stderr, "Decoding %d Hz audio", *rate);
 
-      if (*channels==1)
-         fprintf (stderr, " (mono");
-      else
-         fprintf (stderr, " (stereo");
-      fprintf(stderr, ")\n");
+      fprintf(stderr, " (%d channel%s)\n",*channels,*channels>1?"s":"");
    }
 
    return st;
@@ -452,8 +441,8 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
 {
    int i,tmp_skip;
    unsigned out_len;
-   short out[MAX_FRAME_SIZE*2];
-   float buf[MAX_FRAME_SIZE*2];
+   short out[MAX_FRAME_SIZE*channels];
+   float buf[MAX_FRAME_SIZE*channels];
    float *output;
 
    do {
@@ -500,7 +489,7 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout=NULL;
-   float output[MAX_FRAME_SIZE*2];
+   float *output;
    int frame_size=0;
    OpusMSDecoder *st=NULL;
    int packet_count=0;
@@ -540,6 +529,7 @@ int main(int argc, char **argv)
    SpeexResamplerState *resampler=NULL;
    float gain=1;
 
+   output=0;
    shapemem.a_buf=0;
    shapemem.b_buf=0;
    shapemem.mute=960;
@@ -661,21 +651,21 @@ int main(int argc, char **argv)
             ogg_stream_init(&os, ogg_page_serialno(&og));
             stream_init = 1;
          }
-	 if (ogg_page_serialno(&og) != os.serialno) {
-	    /* so all streams are read. */
-	    ogg_stream_reset_serialno(&os, ogg_page_serialno(&og));
-	 }
+         if (ogg_page_serialno(&og) != os.serialno) {
+            /* so all streams are read. */
+            ogg_stream_reset_serialno(&os, ogg_page_serialno(&og));
+         }
          /*Add page to the bitstream*/
          ogg_stream_pagein(&os, &og);
          page_granule = ogg_page_granulepos(&og);
          /*Extract all available packets*/
          while (!eos && ogg_stream_packetout(&os, &op) == 1)
          {
-	    if (op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
-	       opus_serialno = os.serialno;
-	    }
-	    if (opus_serialno == -1 || os.serialno != opus_serialno)
-	       break;
+            if (op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
+               opus_serialno = os.serialno;
+            }
+            if (opus_serialno == -1 || os.serialno != opus_serialno)
+               break;
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
@@ -687,6 +677,9 @@ int main(int argc, char **argv)
                shapemem.a_buf=calloc(channels,sizeof(float)*4);
                shapemem.b_buf=calloc(channels,sizeof(float)*4);
                shapemem.fs=rate;
+               if(output)
+                 free(output);
+               output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
                /* Converting preskip to output sampling rate */
                preskip = preskip*(rate/48000.);
                if (!st)
@@ -822,6 +815,8 @@ int main(int argc, char **argv)
 
    if(shapemem.a_buf)free(shapemem.a_buf);
    if(shapemem.b_buf)free(shapemem.b_buf);
+
+   if(output)free(output);
 
    if (close_in)
       fclose(fin);

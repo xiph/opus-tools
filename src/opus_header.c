@@ -9,9 +9,9 @@
   - Pre-skip (16 bits)
   - Sampling rate (32 bits)
   - Gain in dB (16 bits, S7.8)
-  - Mapping (8 bits, 0=single stream (mono/stereo) 1=Vorbis mapping, 
+  - Mapping (8 bits, 0=single stream (mono/stereo) 1=Vorbis mapping,
              2..254: reserved, 255: multistream with no mapping)
-  
+
   - if (mapping != 0)
      - N = totel number of streams (8 bits)
      - M = number of paired streams (8 bits)
@@ -23,7 +23,7 @@
                else
                  - right
           - else
-             - stream = byte-2*M
+             - stream = byte-M
 */
 
 typedef struct {
@@ -109,7 +109,7 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    ROPacket p;
    unsigned char ch;
    opus_uint16 shortval;
-   
+
    p.data = packet;
    p.maxlen = len;
    p.pos = 0;
@@ -117,11 +117,11 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    read_chars(&p, (unsigned char*)str, 8);
    if (strcmp(str, "OpusHead")!=0)
       return 0;
-   
+
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->version = ch;
-   
+
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->channels = ch;
@@ -142,23 +142,28 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    if (!read_chars(&p, &ch, 1))
       return 0;
    h->channel_mapping = ch;
-   
+
    if (h->channel_mapping != 0)
    {
       if (!read_chars(&p, &ch, 1))
          return 0;
       h->nb_streams = ch;
-      
+
       if (!read_chars(&p, &ch, 1))
          return 0;
       h->nb_coupled = ch;
-      
+
       /* Multi-stream support */
       for (i=0;i<h->channels;i++)
       {
          if (!read_chars(&p, &h->stream_map[i], 1))
             return 0;
       }
+   } else {
+      h->nb_streams = 1;
+      h->nb_coupled = h->channels>1;
+      h->stream_map[0]=0;
+      h->stream_map[1]=1;
    }
    if (h->version==0 && p.pos != len)
       return 0;
@@ -170,7 +175,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    int i;
    Packet p;
    unsigned char ch;
-   
+
    p.data = packet;
    p.maxlen = len;
    p.pos = 0;
@@ -180,11 +185,11 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    ch = 0;
    if (!write_chars(&p, &ch, 1))
       return 0;
-   
+
    ch = h->channels;
    if (!write_chars(&p, &ch, 1))
       return 0;
-   
+
    if (!write_uint16(&p, h->preskip))
       return 0;
 
@@ -203,7 +208,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
       ch = h->nb_streams;
       if (!write_chars(&p, &ch, 1))
          return 0;
-      
+
       ch = h->nb_coupled;
       if (!write_chars(&p, &ch, 1))
          return 0;

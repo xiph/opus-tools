@@ -39,9 +39,6 @@
 #include <sys/time.h>
 #include <math.h>
 
-#include "opus_header.h"
-#include "speex_resampler.h"
-
 #ifdef _MSC_VER
 #define snprintf _snprintf
 #endif
@@ -52,10 +49,22 @@
 #include <ogg/ogg.h>
 #include "wav_io.h"
 
+#include "opus_header.h"
+#include "opusenc.h"
+
 #if defined WIN32 || defined _WIN32
 /* We need the following two to set stdout to binary */
 #include <io.h>
 #include <fcntl.h>
+#endif
+
+#ifdef VALGRIND
+#include <valgrind/memcheck.h>
+#define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
+#define VG_CHECK(x,y) VALGRIND_CHECK_MEM_IS_DEFINED((x),(y))
+#else
+#define VG_UNDEF(x,y)
+#define VG_CHECK(x,y)
 #endif
 
 void comment_init(char **comments, int* length, char *vendor_string);
@@ -70,102 +79,9 @@ int oe_write_page(ogg_page *page, FILE *fp)
    return written;
 }
 
-#define MAX_FRAME_SIZE (960*6)
 #define MAX_FRAME_BYTES 61295
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
-
-/* Convert input audio bits, endians and channels */
-static int read_samples_pcm(FILE *fin,int frame_size, int bits, int channels,
-                            int lsb, float * input, char *buff, opus_int32 *size,
-                            int *extra_samples)
-{
-  short s[MAX_FRAME_SIZE*2];
-  unsigned char *in=(unsigned char*)s;
-  int i;
-  int nb_read;
-  int extra=0;
-
-  /*Read input audio*/
-  if(buff){
-    for(i=0;i<12;i++)in[i]=buff[i];
-    nb_read=fread(in+12, 1, bits/8*channels*frame_size-12, fin) + 12;
-    if(size)*size+=12;
-  }else{
-    int tmp=frame_size;
-    if(size&&tmp>*size)tmp=*size;
-    nb_read=fread(in, 1, bits/8*channels* tmp, fin);
-  }
-  nb_read/=bits/8*channels;
-
-  /* Make sure to return *extra_samples zeros at the end */
-  if(nb_read<frame_size){
-    extra=frame_size-nb_read;
-    if(extra > *extra_samples)
-      extra=*extra_samples;
-    *extra_samples-=extra;
-  }
-  /*fprintf(stderr, "%d\n", nb_read);*/
-  if(nb_read==0 && extra==0)return 0;
-
-  if(bits==8){
-    /* Convert 8->16 bits */
-    for(i=frame_size*channels-1;i>=0;i--){
-      s[i]=(in[i]<<8)^0x8000;
-    }
-  }else{
-    /* convert to our endian format */
-    for(i=0;i<frame_size*channels;i++){
-      if(lsb)s[i]=le_short(s[i]);
-      else s[i]=be_short(s[i]);
-    }
-  }
-
-  /* copy to float input buffer */
-  for(i=0;i<frame_size*channels;i++)input[i]=s[i]*(1/32768.f);
-  for(i=nb_read*channels;i<frame_size*channels;i++)input[i]=0;
-
-  nb_read+=extra;
-  if(size){
-    int tmp=bits/8*channels*nb_read;
-    if(tmp>*size)*size=0;
-    else *size-=tmp;
-  }
-  return nb_read;
-}
-
-static int read_samples(FILE *fin,int frame_size, int bits, int channels,
-                        int lsb, float * input, char *buff, opus_int32 *size,
-                        SpeexResamplerState *resampler, int *extra_samples)
-{
-  if(resampler){
-    /* FIXME: This is a hack, get rid of these static variables */
-    static float pcmbuf[2048];
-    static int inbuf=0;
-    int out_samples=0;
-    while(out_samples<frame_size){
-      int i;
-      int reading, ret;
-      unsigned in_len, out_len;
-      reading=1024-inbuf;
-      ret=read_samples_pcm(fin, reading, bits, channels, lsb, pcmbuf+inbuf*channels, buff, size, extra_samples);
-      inbuf+=ret;
-      in_len=inbuf;
-      out_len=frame_size-out_samples;
-      speex_resampler_process_interleaved_float(resampler, pcmbuf, &in_len, input+out_samples*channels, &out_len);
-      if(ret==0&&in_len==0){
-        for(i=out_samples*channels;i<frame_size*channels;i++)input[i]=0;
-        return out_samples;
-      }
-      out_samples+=out_len;
-      for(i=0;i<channels*(inbuf-in_len);i++)pcmbuf[i]=pcmbuf[i+channels*in_len];
-      inbuf-=in_len;
-    }
-    return out_samples;
-  }else{
-    return read_samples_pcm(fin, frame_size, bits, channels, lsb, input, buff, size, extra_samples);
-  }
-}
 
 void version(const char *version)
 {
@@ -183,15 +99,14 @@ void usage(void)
 {
   printf("Usage: opusenc [options] input_file output_file.oga\n");
   printf("\n");
-  printf("Encodes input_file using Opus. It can read the WAV or raw files.\n");
+  printf("Encodes input_file using Opus. It can read the WAV, AIFF, or raw files.\n");
   printf("\nGeneral options:\n");
   printf(" -h, --help         This help\n");
   printf(" -v, --version      Version information\n");
   printf(" --quiet            Quiet mode\n");
   printf("\n");
   printf("input_file can be:\n");
-  printf("  filename.wav      wav file\n");
-  printf("  filename.*        Raw PCM file (any extension other than .wav)\n");
+  printf("  filename.wav      file\n");
   printf("  -                 stdin\n");
   printf("\n");
   printf("output_file can be:\n");
@@ -208,27 +123,26 @@ void usage(void)
   printf(" --framesize n      Maximum frame size in milliseconds\n");
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
   printf(" --expect-loss      Percentage packet loss to expect (default: 0)\n");
-  printf(" --force-mono       Force mono output\n");
+  printf(" --downmix-mono     Downmix to mono\n");
+  printf(" --downmix-stereo   Downmix to to stereo (if >2 channels)\n");
   printf(" --max-ogg-delay n  Maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf("\nDiagnostic options:\n");
   printf(" --save-range file  Saves check values for every frame to a file\n");
   printf(" --set-ctl-int x=y  Pass the encoder control x with value y (advanced)\n");
   printf("                      This may be used multiple times\n");
+  printf(" --uncoupled        Use one mono stream per channel\n");
   printf("\nMetadata options:\n");
   printf(" --comment          Add the given string as an extra comment\n");
   printf("                      This may be used multiple times\n");
   printf(" --author           Author of this track\n");
   printf(" --title            Title for this track\n");
-  printf("\nRaw input options:\n");
-  printf(" --rate n           Sampling rate for raw input\n");
-  printf(" --mono             Consider raw input as mono\n");
-  printf(" --stereo           Consider raw input as stereo\n");
-  printf(" --le               Raw input is little-endian\n");
-  printf(" --be               Raw input is big-endian\n");
-  printf(" --8bit             Raw input is 8-bit unsigned\n");
-  printf(" --16bit            Raw input is 16-bit signed\n");
-  printf("Default raw PCM input is 48kHz, 16-bit, little-endian, stereo\n");
+  printf("\nInput options:\n");
+  printf(" --raw              Raw input\n");
+  printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
+  printf(" --raw-rate n       Set sampling rate for raw input (default: 48000)\n");
+  printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
+  printf(" --raw-endianness n 1 for bigendian, 0 for little (defaults to 0)\n");
 }
 
 static inline void print_time(double seconds)
@@ -247,32 +161,10 @@ static inline void print_time(double seconds)
 
 int main(int argc, char **argv)
 {
-  int i, c, nb_samples;
   int option_index=0;
-  char *inFile, *outFile;
-  FILE *fin, *fout, *frange;
-  char *range_file;
-  float input[MAX_FRAME_SIZE*2];
-  opus_int32 frame_size=960;
-  opus_int64 nb_encoded, bytes_written=0, pages_out=0, total_bytes=0, total_samples=0;
-  struct timeval start_time, stop_time;
-  int last_spin_len=0;
-  time_t last_spin=0;
-  int quiet=0;
-  int nbBytes;
-  OpusMSEncoder *st;
-  unsigned char *packet;
-  int with_hard_cbr=0;
-  int with_cvbr=0;
-  opus_int32 peak_bytes=0;
-  opus_int32 min_bytes=MAX_FRAME_BYTES;
-  int expect_loss=0;
-  int force_mono=0;
-  int *opt_ctls_ctlval;
-  int opt_ctls=0;
-  int max_ogg_delay=48000;
   struct option long_options[] =
   {
+    {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
@@ -280,18 +172,18 @@ int main(int argc, char **argv)
     {"comp", required_argument, NULL, 0},
     {"framesize", required_argument, NULL, 0},
     {"expect-loss", required_argument, NULL, 0},
-    {"force-mono",no_argument,NULL, 0},
+    {"downmix-mono",no_argument,NULL, 0},
+    {"downmix-stereo",no_argument,NULL, 0},
     {"max-ogg-delay", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
     {"set-ctl-int", required_argument, NULL, 0},
+    {"uncoupled", no_argument, NULL, 0},
     {"help", no_argument, NULL, 0},
-    {"quiet", no_argument, NULL, 0},
-    {"le", no_argument, NULL, 0},
-    {"be", no_argument, NULL, 0},
-    {"8bit", no_argument, NULL, 0},
-    {"16bit", no_argument, NULL, 0},
-    {"mono", no_argument, NULL, 0},
-    {"stereo", no_argument, NULL, 0},
+    {"raw", no_argument, NULL, 0},
+    {"raw-bits", required_argument, NULL, 0},
+    {"raw-rate", required_argument, NULL, 0},
+    {"raw-chan", required_argument, NULL, 0},
+    {"raw-endianness", required_argument, NULL, 0},
     {"rate", required_argument, NULL, 0},
     {"music", no_argument, NULL, 0},
     {"speech", no_argument, NULL, 0},
@@ -302,40 +194,77 @@ int main(int argc, char **argv)
     {"title", required_argument, NULL, 0},
     {0, 0, 0, 0}
   };
-  opus_int32 rate=48000;
-  opus_int32 coding_rate=48000;
-  opus_int32 size;
-  int chan=1;
-  int fmt=16;
-  int lsb=1;
+  int i, ret;
+  OpusMSEncoder    *st;
+  const char       *opus_version;
+  unsigned char    *packet;
+  float            *input;
+  /*I/O*/
+  oe_enc_opt       inopt;
+  input_format     *in_format;
+  char             *inFile;
+  char             *outFile;
+  char             *range_file;
+  FILE             *fin;
+  FILE             *fout;
+  FILE             *frange;
   ogg_stream_state os;
-  ogg_page  og;
-  ogg_packet op;
-  ogg_int64_t last_granulepos=0;
-  int ret, result;
-  int id=-1;
-  OpusHeader header;
-  char vendor_string[64];
-  char *comments;
-  int comments_length;
-  int close_in=0, close_out=0;
-  int eos=0;
-  opus_int32 bitrate=-1;
-  char first_bytes[12];
-  int wave_input=0;
-  opus_int32 lookahead=0;
-  int bytes_per_packet=-1;
-  int complexity=10;
-  const char *opus_version;
-  SpeexResamplerState *resampler=NULL;
-  int extra_samples;
-  int signal=OPUS_AUTO;
-  unsigned char mapping[256]={0, 1};
-  int err;
+  ogg_page         og;
+  ogg_packet       op;
+  ogg_int64_t      last_granulepos=0;
+  ogg_int32_t      id=-1;
+  int              eos=0;
+  OpusHeader       header;
+  int              comments_length;
+  char             vendor_string[64];
+  char             *comments;
+  /*Counters*/
+  opus_int64       nb_encoded=0;
+  opus_int64       bytes_written=0;
+  opus_int64       pages_out=0;
+  opus_int64       total_bytes=0;
+  opus_int64       total_samples=0;
+  opus_int32       nbBytes;
+  opus_int32       nb_samples;
+  opus_int32       peak_bytes=0;
+  opus_int32       min_bytes=MAX_FRAME_BYTES;
+  struct timeval   start_time;
+  struct timeval   stop_time;
+  time_t           last_spin=0;
+  int              last_spin_len=0;
+  /*Settings*/
+  int              quiet=0;
+  opus_int32       bitrate=-1;
+  opus_int32       rate=48000;
+  opus_int32       coding_rate=48000;
+  opus_int32       frame_size=960;
+  int              chan=2;
+  int              with_hard_cbr=0;
+  int              with_cvbr=0;
+  int              signal=OPUS_AUTO;
+  int              expect_loss=0;
+  int              complexity=10;
+  int              downmix=0;
+  int              uncoupled=0;
+  int              *opt_ctls_ctlval;
+  int              opt_ctls=0;
+  int              max_ogg_delay=48000; /*@48kHz*/
+  opus_int32       lookahead=0;
+  unsigned char    mapping[256];
+  int              force_narrow=0;
 
   opt_ctls_ctlval=NULL;
   frange=NULL;
   range_file=NULL;
+  in_format=NULL;
+  inopt.channels=chan;
+  inopt.rate=coding_rate=rate;
+  inopt.samplesize=16;
+  inopt.endianness=0;
+  inopt.rawmode=0;
+
+  for(i=0;i<256;i++)mapping[i]=i;
+
   opus_version=opus_get_version_string();
   snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
   comment_init(&comments, &comments_length, vendor_string);
@@ -348,6 +277,7 @@ int main(int argc, char **argv)
 
   /*Process command-line options*/
   while(1){
+    int c;
     c=getopt_long(argc, argv, "hv",
                   long_options, &option_index);
     if(c==-1)
@@ -355,7 +285,9 @@ int main(int argc, char **argv)
 
     switch(c){
       case 0:
-        if(strcmp(long_options[option_index].name,"bitrate")==0){
+        if(strcmp(long_options[option_index].name,"quiet")==0){
+          quiet=1;
+        }else if(strcmp(long_options[option_index].name,"bitrate")==0){
           bitrate=atof(optarg)*1000.;
         }else if(strcmp(long_options[option_index].name,"hard-cbr")==0){
           with_hard_cbr=1;
@@ -369,34 +301,39 @@ int main(int argc, char **argv)
         }else if(strcmp(long_options[option_index].name,"help")==0){
           usage();
           exit(0);
-        }else if(strcmp(long_options[option_index].name,"quiet")==0){
-          quiet=1;
         }else if(strcmp(long_options[option_index].name,"version")==0){
           version(opus_version);
           exit(0);
         }else if(strcmp(long_options[option_index].name,"version-short")==0){
           version_short(opus_version);
           exit(0);
-        }else if(strcmp(long_options[option_index].name,"le")==0){
-          lsb=1;
-        }else if(strcmp(long_options[option_index].name,"be")==0){
-          lsb=0;
-        }else if(strcmp(long_options[option_index].name,"8bit")==0){
-          fmt=8;
-        }else if(strcmp(long_options[option_index].name,"16bit")==0){
-          fmt=16;
-        }else if(strcmp(long_options[option_index].name,"stereo")==0){
-          chan=2;
-        }else if(strcmp(long_options[option_index].name,"mono")==0){
-          chan=1;
-        } else if(strcmp(long_options[option_index].name,"rate")==0){
-          rate=atoi(optarg);
+        }else if(strcmp(long_options[option_index].name,"raw")==0){
+          inopt.rawmode=1;
+        }else if(strcmp(long_options[option_index].name,"raw-bits")==0){
+          inopt.rawmode=1;
+          inopt.samplesize=atoi(optarg);
+          if(inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24){
+            fprintf(stderr,"Invalid bit-depth: %s\n",optarg);
+            fprintf(stderr,"--raw-bits must be one of 8,16, or 24\n");
+            exit(1);
+          }
+        }else if(strcmp(long_options[option_index].name,"raw-rate")==0){
+          inopt.rawmode=1;
+          inopt.rate=atoi(optarg);
+        }else if(strcmp(long_options[option_index].name,"raw-chan")==0){
+          inopt.rawmode=1;
+          inopt.channels=atoi(optarg);
+        }else if(strcmp(long_options[option_index].name,"raw-endianness")==0){
+          inopt.rawmode=1;
+          inopt.endianness=atoi(optarg);
         }else if(strcmp(long_options[option_index].name,"music")==0){
           signal=OPUS_SIGNAL_MUSIC;
         }else if(strcmp(long_options[option_index].name,"speech")==0){
           signal=OPUS_SIGNAL_VOICE;
-        }else if(strcmp(long_options[option_index].name,"force-mono")==0){
-          force_mono=1;
+        }else if(strcmp(long_options[option_index].name,"downmix-mono")==0){
+          downmix=1;
+        }else if(strcmp(long_options[option_index].name,"downmix-stereo")==0){
+          downmix=2;
         }else if(strcmp(long_options[option_index].name,"expect-loss")==0){
           expect_loss=atoi(optarg);
           if(expect_loss>100||expect_loss<0){
@@ -458,6 +395,8 @@ int main(int argc, char **argv)
             exit(1);
           }
           range_file=optarg;
+        }else if(strcmp(long_options[option_index].name,"uncoupled")==0){
+          uncoupled=1;
         }else if(strcmp(long_options[option_index].name,"comment")==0){
           if(!strchr(optarg,'=')){
             fprintf(stderr, "Invalid comment: %s\n", optarg);
@@ -513,15 +452,25 @@ int main(int argc, char **argv)
       perror(inFile);
       exit(1);
     }
-    close_in=1;
   }
 
-  err=fread(first_bytes, 1, 12, fin);
-  if(strncmp(first_bytes,"RIFF",4)==0 && strncmp(first_bytes,"RIFF",4)==0){
-    if(read_wav_header(fin, &rate, &chan, &fmt, &size)==-1)exit(1);
-    wave_input=1;
-    lsb=1; /* CHECK: exists big-endian .wav ?? */
+  if(inopt.rawmode){
+    static input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
+    in_format = &raw_format;
+    in_format->open_func(fin, &inopt, NULL, 0);
+  }else in_format=open_audio_file(fin,&inopt);
+
+  if(!in_format){
+    fprintf(stderr,"Error parsing input file: %s\n",inFile);
+    exit(1);
   }
+
+  rate=inopt.rate;
+  chan=inopt.channels;
+  inopt.skip=0;
+
+  /*In order to code the complete length we'll need to do a little padding*/
+  setup_padder(&inopt);
 
   if(rate>24000)coding_rate=48000;
   else if(rate>16000)coding_rate=24000;
@@ -530,105 +479,126 @@ int main(int argc, char **argv)
 
   frame_size=frame_size/(48000/coding_rate);
 
-  bitrate=bitrate>0?bitrate:32000*(force_mono?1:chan)+32000;
-  bytes_per_packet=MAX_FRAME_BYTES;
+
+  /*Scale the resampler complexity, but only for 48000 output because
+    the near-cutoff behavior matters a lot more at lower rates.*/
+  if(rate!=coding_rate)setup_resample(&inopt,coding_rate==48000?complexity/2:5,coding_rate);
+
+  /*OggOpus headers*/ /*FIXME: broke forcemono*/
+  header.channels=chan;
+  header.nb_streams=header.channels;
+  header.nb_coupled=0;
+  if(header.channels<=8&&!uncoupled){
+    static const unsigned char opusenc_streams[8][10]={
+      /*Coupled, NB_bitmap, mapping...*/
+      /*1*/ {0,   0, 0},
+      /*2*/ {1,   0, 0,1},
+      /*3*/ {1,   0, 0,2,1},
+      /*4*/ {2,   0, 0,1,2,3},
+      /*5*/ {2,   0, 0,4,1,2,3},
+      /*6*/ {2,1<<5, 0,4,1,2,3,5},
+      /*7*/ {2,1<<6, 0,4,1,2,3,5,6},
+      /*6*/ {3,1<<7, 0,6,1,2,3,4,5,7}
+    };
+    for(i=0;i<header.channels;i++)mapping[i]=opusenc_streams[header.channels-1][i+2];
+    force_narrow=opusenc_streams[header.channels-1][1];
+    header.nb_coupled=opusenc_streams[header.channels-1][0];
+    header.nb_streams=header.channels-header.nb_coupled;
+  }
+  header.channel_mapping=header.channels>8?255:header.nb_streams>1;
+  if(header.channel_mapping>0)for(i=0;i<header.channels;i++)header.stream_map[i]=mapping[i];
+  /* 0 dB gain is the recommended unless you know what you're doing */
+  header.gain=0;
+  header.input_sample_rate=rate;
+
+  /*Initialize OPUS encoder*/
+  st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled, mapping, OPUS_APPLICATION_AUDIO, &ret);
+  if(ret!=OPUS_OK){
+    fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(ret));
+    exit(1);
+  }
+
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_SIGNAL returned: %s\n",opus_strerror(ret));
+    exit(1);
+  }
+
+  if(force_narrow!=0){
+    for(i=0;i<header.nb_streams;i++){
+      if(force_narrow&(1<<i)){
+        OpusEncoder *oe;
+        opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
+        ret=opus_encoder_ctl(oe, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_NARROWBAND));
+        if(ret!=OPUS_OK){
+          fprintf(stderr,"OPUS_SET_MAX_BANDWIDTH on stream %d returned: %s\n",i,opus_strerror(ret));
+          exit(1);
+        }
+      }
+    }
+  }
+
+  bitrate=bitrate>0?bitrate:64000*header.nb_streams+32000*header.nb_coupled;
 
   if(bitrate>2048000||bitrate<500){
     fprintf(stderr,"Error: Bitrate %d bits/sec is insane.\nDid you mistake bits for kilobits?\n",bitrate);
     fprintf(stderr,"--bitrate values from 6-256 kbit/sec per channel are meaningful.\n");
     exit(1);
   }
-  bitrate=IMIN((force_mono?1:chan)*256000,bitrate);
+  bitrate=IMIN(chan*256000,bitrate);
 
-  if(rate!=coding_rate){
-    /*if(!quiet)fprintf(stderr, "Resampling from %dHz to %dHz before encoding\n", rate, coding_rate);*/
-    resampler=speex_resampler_init(chan, rate, coding_rate, 5, &err);
-    if(err!=0)fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
-    /* Using pre-skip to skip the zeros */
-    /*speex_resampler_skip_zeros(resampler);*/
-  }
-
-
-  /*Initialize OPUS encoder*/
-  st=opus_multistream_encoder_create(coding_rate, chan, 1, chan==2, mapping, OPUS_APPLICATION_AUDIO, &err);
-  if(err!=OPUS_OK){
-    fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_BITRATE(bitrate));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_BITRATE returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
-  err=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_SIGNAL returned: %s\n",opus_strerror(err));
-    exit(1);
-  }
-  header.channels=force_mono?1:chan;
-  header.channel_mapping=0;
-  header.nb_streams=1;
-  header.nb_coupled=1;
-  /* 0 dB gain is the recommended unless you know what you're doing */
-  header.gain=0;
-  header.input_sample_rate=rate;
-
-  if(force_mono){
-    OpusEncoder *oe;
-    opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(0,&oe));
-    err=opus_encoder_ctl(oe, OPUS_SET_FORCE_CHANNELS(1));
-    if(err!=OPUS_OK){
-      fprintf(stderr,"OPUS_SET_FORCE_CHANNELS returned: %s\n",opus_strerror(err));
-      exit(1);
-    }
-  }
-
-  err=opus_multistream_encoder_ctl(st, OPUS_SET_BITRATE(bitrate));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_BITRATE returned: %s\n",opus_strerror(err));
-    exit(1);
-  }
-
-  err=opus_multistream_encoder_ctl(st, OPUS_SET_VBR(!with_hard_cbr));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_VBR returned: %s\n",opus_strerror(err));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR(!with_hard_cbr));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_VBR returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   if(!with_hard_cbr){
-    err=opus_multistream_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
-    if(err!=OPUS_OK){
-      fprintf(stderr,"OPUS_SET_VBR_CONSTRAINT returned: %s\n",opus_strerror(err));
+    ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
+    if(ret!=OPUS_OK){
+      fprintf(stderr,"OPUS_SET_VBR_CONSTRAINT returned: %s\n",opus_strerror(ret));
       exit(1);
     }
   }
 
-  err=opus_multistream_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_COMPLEXITY returned: %s\n",opus_strerror(err));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_COMPLEXITY returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
-  err=opus_multistream_encoder_ctl(st, OPUS_SET_PACKET_LOSS_PERC(expect_loss));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_PACKET_LOSS_PERC returned: %s\n",opus_strerror(err));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_PACKET_LOSS_PERC(expect_loss));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_PACKET_LOSS_PERC returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   for(i=0;i<opt_ctls;i++){
-    err=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1]);
-    if(err!=OPUS_OK){
-      fprintf(stderr,"opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1],opus_strerror(err));
+    ret=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1]);
+    if(ret!=OPUS_OK){
+      fprintf(stderr,"opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1],opus_strerror(ret));
       exit(1);
     }
   }
 
   /*We do the lookahead check late so user CTLs can change it*/
-  err=opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
-  if(err!=OPUS_OK){
-    fprintf(stderr,"OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(err));
+  ret=opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(ret));
     exit(1);
   }
-  header.preskip=lookahead*(48000/coding_rate);
-  if(resampler)header.preskip+=speex_resampler_get_output_latency(resampler)*(48000/coding_rate);
+  inopt.skip+=lookahead;
+  /*Regardless of the rate we're coding at the ogg timestamping/skip is
+    always timed at 48000.*/
+  header.preskip=inopt.skip*(48000./coding_rate);
   /* Extra samples that need to be read to compensate for the pre-skip */
-  extra_samples=(int)header.preskip*(rate/48000.);
+  inopt.extraout=(int)header.preskip*(rate/48000.);
 
   if(!quiet){
     int opus_app;
@@ -641,8 +611,12 @@ int main(int argc, char **argv)
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"  Input: %0.6gkHz %d channel%s\n",
             header.input_sample_rate/1000.,chan,chan<2?"":"s");
-    fprintf(stderr," Output: %d channel%s, %0.2gms packets, %0.6gkbit/sec%s\n",
-       force_mono?1:chan,(force_mono?1:chan)<2?"":"s",
+    fprintf(stderr," Output: %d channel%s (",header.channels,header.channels<2?"":"s");
+    if(header.nb_coupled>0)fprintf(stderr,"%d coupled",header.nb_coupled*2);
+    if(header.nb_streams-header.nb_coupled>0)fprintf(stderr,
+       "%s%d uncoupled",header.nb_coupled>0?", ":"",
+       header.nb_streams-header.nb_coupled);
+    fprintf(stderr,")\n         %0.2gms packets, %0.6gkbit/sec%s\n",
        frame_size/(coding_rate/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
     fprintf(stderr," Pregap: %d\n",header.preskip);
@@ -662,7 +636,6 @@ int main(int argc, char **argv)
       perror(outFile);
       exit(1);
     }
-    close_out=1;
   }
 
   /*Write header*/
@@ -677,8 +650,8 @@ int main(int argc, char **argv)
     op.packetno=0;
     ogg_stream_packetin(&os, &op);
 
-    while((result=ogg_stream_flush(&os, &og))){
-      if(!result)break;
+    while((ret=ogg_stream_flush(&os, &og))){
+      if(!ret)break;
       ret=oe_write_page(&og, fout);
       if(ret!=og.header_len+og.body_len){
         fprintf(stderr,"Error: failed writing header to output stream\n");
@@ -698,8 +671,8 @@ int main(int argc, char **argv)
   }
 
   /* writing the rest of the opus header packets */
-  while((result=ogg_stream_flush(&os, &og))){
-    if(!result)break;
+  while((ret=ogg_stream_flush(&os, &og))){
+    if(!ret)break;
     ret=oe_write_page(&og, fout);
     if(ret!=og.header_len + og.body_len){
       fprintf(stderr,"Error: failed writing header to output stream\n");
@@ -711,8 +684,13 @@ int main(int argc, char **argv)
 
   free(comments);
 
-  if(!wave_input)nb_samples=read_samples(fin,frame_size,fmt,chan,lsb,input, first_bytes, NULL, resampler, &extra_samples);
-  else nb_samples=read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler, &extra_samples);
+  input=malloc(sizeof(float)*frame_size*chan);
+  if(input==NULL){
+    fprintf(stderr,"Error: couldn't allocate sample buffer.\n");
+    exit(1);
+  }
+
+  nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
 
   if(nb_samples==0)eos=1;
   total_samples+=nb_samples;
@@ -722,11 +700,21 @@ int main(int argc, char **argv)
     id++;
     /*Encode current frame*/
 
-    nbBytes=opus_multistream_encode_float(st, input, frame_size, packet, bytes_per_packet);
+    if(nb_samples<frame_size){
+    /*FIXME*/
+      //printf("X: %d %d\n",nb_samples,frame_size);
+      for(i=nb_samples*chan;i<frame_size*chan;i++)input[i]=0;
+    }
+
+    VG_UNDEF(packet,MAX_FRAME_BYTES);
+    VG_CHECK(input,sizeof(float)*chan*frame_size);
+    nbBytes=opus_multistream_encode_float(st, input, frame_size, packet, MAX_FRAME_BYTES);
     if(nbBytes<0){
       fprintf(stderr, "Encoding failed: %s. Aborting.\n", opus_strerror(nbBytes));
       break;
     }
+    VG_CHECK(packet,nbBytes);
+    VG_UNDEF(input,sizeof(float)*chan*frame_size);
     nb_encoded+=frame_size;
     total_bytes+=nbBytes;
     peak_bytes=IMAX(nbBytes,peak_bytes);
@@ -743,14 +731,13 @@ int main(int argc, char **argv)
          bw_strings[opus_packet_get_bandwidth(packet)-OPUS_BANDWIDTH_NARROWBAND],
          packet[0]&4?'S':'M',opus_packet_get_samples_per_frame(packet,48000));
       for(i=0;i<streams;i++){
-        err=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
-        err=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rng));
+        ret=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
+        ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rng));
         fprintf(frange,"%llu%c",(unsigned long long)rng,i+1==streams?'\n':' ');
       }
     }
 
-    if(wave_input)nb_samples=read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, &size, resampler, &extra_samples);
-    else nb_samples=read_samples(fin,frame_size,fmt,chan,lsb,input, NULL, NULL, resampler, &extra_samples);
+    nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
     if(nb_samples==0)eos=1;
     if(eos && total_samples<=nb_encoded)op.e_o_s=1;
     else op.e_o_s=0;
@@ -763,6 +750,7 @@ int main(int argc, char **argv)
     /*Is this redundent?*/
     if(eos && total_samples<=nb_encoded)op.e_o_s=1;
     else op.e_o_s=0;
+    /*FIXME: this doesn't cope with the frame size changing*/
     op.granulepos=(id+1)*frame_size*(48000/coding_rate);
     if(op.granulepos>total_samples)op.granulepos=total_samples*(48000/coding_rate);
     op.packetno=2+id;
@@ -810,8 +798,15 @@ int main(int argc, char **argv)
                       bitrate*(1.-tweight);
         }else estbitrate=nbBytes*8*((double)coding_rate/frame_size);
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
-        snprintf(sbuf,54,"\r[%c] %02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s\r",
-          spinner[last_spin&3],
+        if(inopt.total_samples_per_channel>0 && inopt.total_samples_per_channel<nb_encoded){
+          snprintf(sbuf,54,"\r[%c] %02d%% ",spinner[last_spin&3],
+          (int)floor(nb_encoded/(double)(inopt.total_samples_per_channel+inopt.skip)*100.));
+        }else{
+          snprintf(sbuf,54,"\r[%c] ",spinner[last_spin&3]);
+        }
+        last_spin_len=strlen(sbuf);
+        snprintf(sbuf+last_spin_len,54-last_spin_len,
+          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s\r",
           (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
           (int)(coded_seconds)%60,(int)(coded_seconds*100)%100,
           coded_seconds/wall_time,
@@ -849,7 +844,7 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n    Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n             (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"      Wrote: %lld bytes, %d packets, %lld pages\n",total_bytes,id,pages_out);
+    fprintf(stderr,"      Wrote: %lld bytes, %d packets, %lld pages\n",total_bytes,id+1,pages_out);
     fprintf(stderr,"    Bitrate: %0.6gkbit/s (without overhead)\n",
             total_bytes*8.0/(coded_seconds)/1000.0);
     fprintf(stderr," Rate range: %0.6gkbit/s to %0.6gkbit/s\n             (%d to %d bytes per packet)\n",
@@ -859,15 +854,20 @@ int main(int argc, char **argv)
 #ifdef OLD_LIBOGG
     if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"   (use libogg 1.2.2 or later for lower overhead)\n");
 #endif
+    fprintf(stderr,"\n");
   }
 
   opus_multistream_encoder_destroy(st);
   ogg_stream_clear(&os);
   free(packet);
+  free(input);
   if(opt_ctls)free(opt_ctls_ctlval);
-  if(rate!=coding_rate)speex_resampler_destroy(resampler);
-  if(close_in)fclose(fin);
-  if(close_out)fclose(fout);
+
+  if(rate!=coding_rate)clear_resample(&inopt);
+  clear_padder(&inopt);
+  in_format->close_func(inopt.readdata);
+  if(fin)fclose(fin);
+  if(fout)fclose(fout);
   if(frange)fclose(frange);
   return 0;
 }
