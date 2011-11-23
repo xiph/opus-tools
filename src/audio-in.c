@@ -915,3 +915,95 @@ void clear_resample(oe_enc_opt *opt) {
 
     free(rs);
 }
+
+typedef struct {
+    audio_read_func real_reader;
+    void *real_readdata;
+    float *bufs;
+    float *matrix;
+    int in_channels;
+    int out_channels;
+} downmix;
+
+static long read_downmix(void *data, float *buffer, int samples)
+{
+    downmix *d = data;
+    long in_samples = d->real_reader(d->real_readdata, d->bufs, samples);
+    int i,j,k,in_ch,out_ch;
+
+    in_ch=d->in_channels;
+    out_ch=d->out_channels;
+
+    for(i=0;i<in_samples;i++){
+      for(j=0;j<out_ch;j++){
+        float *samp;
+        samp=&buffer[i*out_ch+j];
+        *samp=0;
+        for(k=0;k<in_ch;k++){
+          *samp+=d->bufs[i*in_ch+k]*d->matrix[in_ch*j+k];
+        }
+      }
+    }
+    return in_samples;
+}
+
+int setup_downmix(oe_enc_opt *opt, int out_channels) {
+    static const float stupid_matrix[7][8][2]={
+      /*2*/  {{1,0},{0,1}},
+      /*3*/  {{1,0},{0.7071f,0.7071f},{0,1}},
+      /*4*/  {{1,0},{0,1},{0.866f,0.5f},{0.5f,0.866f}},
+      /*5*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f}},
+      /*6*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.7071f,0.7071f}},
+      /*7*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.6123f,0.6123f},{0.7071f,0.7071f}},
+      /*8*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.866f,0.5f},{0.5f,0.866f},{0.7071f,0.7071f}},
+    };
+    float sum;
+    downmix *d = calloc(1, sizeof(downmix));
+    int i,j;
+
+    if(opt->channels<=out_channels || out_channels>2 || (out_channels==2&&opt->channels>8)) {
+        fprintf(stderr, "Downmix must actually downmix and only knows mono/stereo out.\n");
+        if(opt->channels>8)fprintf(stderr, "Downmix also only knows how to mix >8ch to mono.\n");
+        return 0;
+    }
+
+    d->bufs = malloc(sizeof(float)*opt->channels*4096);
+    d->matrix = malloc(sizeof(float)*opt->channels*out_channels);
+    d->real_reader = opt->read_samples;
+    d->real_readdata = opt->readdata;
+    d->in_channels=opt->channels;
+    d->out_channels=out_channels;
+
+    if(out_channels==1&&d->in_channels>8){
+      for(i=0;i<d->in_channels;i++)d->matrix[i]=1.0f/d->in_channels;
+    }else if(out_channels==2){
+      for(j=0;j<d->out_channels;j++)
+        for(i=0;i<d->in_channels;i++)d->matrix[d->in_channels*j+i]=
+          stupid_matrix[opt->channels-2][i][j];
+    }else{
+      for(i=0;i<d->in_channels;i++)d->matrix[i]=
+        (stupid_matrix[opt->channels-2][i][0])+
+        (stupid_matrix[opt->channels-2][i][1]);
+    }
+    sum=0;
+    for(i=0;i<d->in_channels*d->out_channels;i++)sum+=d->matrix[i];
+    sum=(float)out_channels/sum;
+    for(i=0;i<d->in_channels*d->out_channels;i++)d->matrix[i]*=sum;
+    opt->read_samples = read_downmix;
+    opt->readdata = d;
+
+    opt->channels = out_channels;
+    return out_channels;
+}
+
+void clear_downmix(oe_enc_opt *opt) {
+    downmix *d = opt->readdata;
+
+    opt->read_samples = d->real_reader;
+    opt->readdata = d->real_readdata;
+    opt->channels = d->in_channels; /* other things in cleanup rely on this */
+
+    free(d->bufs);
+    free(d->matrix);
+    free(d);
+}

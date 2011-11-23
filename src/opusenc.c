@@ -130,6 +130,7 @@ void usage(void)
   printf("\nDiagnostic options:\n");
   printf(" --save-range file  Saves check values for every frame to a file\n");
   printf(" --set-ctl-int x=y  Pass the encoder control x with value y (advanced)\n");
+  printf("                      Preface with s: to direct the ctl to multistream s\n");
   printf("                      This may be used multiple times\n");
   printf(" --uncoupled        Use one mono stream per channel\n");
   printf("\nMetadata options:\n");
@@ -144,6 +145,180 @@ void usage(void)
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for bigendian, 0 for little (defaults to 0)\n");
 }
+
+/*This is some non-exported code copied wholesale from libopus.
+ *Normal programs shouldn't need these functions, but we use them here
+ *to parse deep inside multichannel packets in order to get diagnostic
+ *data for save-range. If you're thinking about copying it and you aren't
+ *making an opus stream diagnostic tool, you're probably doing something
+ *wrong.*/
+static int parse_size(const unsigned char *data, opus_int32 len, short *size)
+{
+   if (len<1)
+   {
+      *size = -1;
+      return -1;
+   } else if (data[0]<252)
+   {
+      *size = data[0];
+      return 1;
+   } else if (len<2)
+   {
+      *size = -1;
+      return -1;
+   } else {
+      *size = 4*data[1] + data[0];
+      return 2;
+   }
+}
+
+static int opus_packet_parse_impl(const unsigned char *data, opus_int32 len,
+      int self_delimited, unsigned char *out_toc,
+      const unsigned char *frames[48], short size[48], int *payload_offset)
+{
+   int i, bytes;
+   int count;
+   int cbr;
+   unsigned char ch, toc;
+   int framesize;
+   int last_size;
+   const unsigned char *data0 = data;
+
+   if (size==NULL)
+      return OPUS_BAD_ARG;
+
+   framesize = opus_packet_get_samples_per_frame(data, 48000);
+
+   cbr = 0;
+   toc = *data++;
+   len--;
+   last_size = len;
+   switch (toc&0x3)
+   {
+   /* One frame */
+   case 0:
+      count=1;
+      break;
+   /* Two CBR frames */
+   case 1:
+      count=2;
+      cbr = 1;
+      if (!self_delimited)
+      {
+         if (len&0x1)
+            return OPUS_INVALID_PACKET;
+         size[0] = last_size = len/2;
+      }
+      break;
+   /* Two VBR frames */
+   case 2:
+      count = 2;
+      bytes = parse_size(data, len, size);
+      len -= bytes;
+      if (size[0]<0 || size[0] > len)
+         return OPUS_INVALID_PACKET;
+      data += bytes;
+      last_size = len-size[0];
+      break;
+   /* Multiple CBR/VBR frames (from 0 to 120 ms) */
+   case 3:
+      if (len<1)
+         return OPUS_INVALID_PACKET;
+      /* Number of frames encoded in bits 0 to 5 */
+      ch = *data++;
+      count = ch&0x3F;
+      if (count <= 0 || framesize*count > 5760)
+         return OPUS_INVALID_PACKET;
+      len--;
+      /* Padding flag is bit 6 */
+      if (ch&0x40)
+      {
+         int padding=0;
+         int p;
+         do {
+            if (len<=0)
+               return OPUS_INVALID_PACKET;
+            p = *data++;
+            len--;
+            padding += p==255 ? 254: p;
+         } while (p==255);
+         len -= padding;
+      }
+      if (len<0)
+         return OPUS_INVALID_PACKET;
+      /* VBR flag is bit 7 */
+      cbr = !(ch&0x80);
+      if (!cbr)
+      {
+         /* VBR case */
+         last_size = len;
+         for (i=0;i<count-1;i++)
+         {
+            bytes = parse_size(data, len, size+i);
+            len -= bytes;
+            if (size[i]<0 || size[i] > len)
+               return OPUS_INVALID_PACKET;
+            data += bytes;
+            last_size -= bytes+size[i];
+         }
+         if (last_size<0)
+            return OPUS_INVALID_PACKET;
+      } else if (!self_delimited)
+      {
+         /* CBR case */
+         last_size = len/count;
+         if (last_size*count!=len)
+            return OPUS_INVALID_PACKET;
+         for (i=0;i<count-1;i++)
+            size[i] = last_size;
+      }
+      break;
+   }
+   /* Self-delimited framing has an extra size for the last frame. */
+   if (self_delimited)
+   {
+      bytes = parse_size(data, len, size+count-1);
+      len -= bytes;
+      if (size[count-1]<0 || size[count-1] > len)
+         return OPUS_INVALID_PACKET;
+      data += bytes;
+      /* For CBR packets, apply the size to all the frames. */
+      if (cbr)
+      {
+         if (size[count-1]*count > len)
+            return OPUS_INVALID_PACKET;
+         for (i=0;i<count-1;i++)
+            size[i] = size[count-1];
+      } else if(size[count-1] > last_size)
+         return OPUS_INVALID_PACKET;
+   } else
+   {
+      /* Because it's not encoded explicitly, it's possible the size of the
+         last packet (or all the packets, for the CBR case) is larger than
+         1275. Reject them here.*/
+      if (last_size > 1275)
+         return OPUS_INVALID_PACKET;
+      size[count-1] = last_size;
+   }
+
+   if (frames)
+   {
+      for (i=0;i<count;i++)
+      {
+         frames[i] = data;
+         data += size[i];
+      }
+   }
+
+   if (out_toc)
+      *out_toc = toc;
+
+   if (payload_offset)
+      *payload_offset = data-data0;
+
+   return count;
+}
+
 
 static inline void print_time(double seconds)
 {
@@ -368,23 +543,30 @@ int main(int argc, char **argv)
             exit(1);
           }
         }else if(strcmp(long_options[option_index].name,"set-ctl-int")==0){
-          int len=strlen(optarg);
-          char *spos;
+          int len=strlen(optarg),target;
+          char *spos,*tpos;
           spos=strchr(optarg,'=');
           if(len<3||spos==NULL||(spos-optarg)<1||(spos-optarg)>=len){
             fprintf(stderr, "Invalid set-ctl-int: %s\n", optarg);
-            fprintf(stderr, "Syntax is --set-ctl-int intX=intY\n");
+            fprintf(stderr, "Syntax is --set-ctl-int intX=intY or\n");
+            fprintf(stderr, "Syntax is --set-ctl-int intS:intX=intY\n");
             exit(1);
           }
-          if((atoi(optarg)&1)!=0){
+          tpos=strchr(optarg,':');
+          if(tpos==NULL){
+            target=-1;
+            tpos=optarg-1;
+          }else target=atoi(optarg);
+          if((atoi(tpos+1)&1)!=0){
             fprintf(stderr, "Invalid set-ctl-int: %s\n", optarg);
             fprintf(stderr, "libopus set CTL values are even.\n");
             exit(1);
           }
-          if(opt_ctls==0)opt_ctls_ctlval=malloc(sizeof(int)*2);
-          else opt_ctls_ctlval=realloc(opt_ctls_ctlval,sizeof(int)*(opt_ctls+1)*2);
-          opt_ctls_ctlval[opt_ctls<<1]=atoi(optarg);
-          opt_ctls_ctlval[(opt_ctls<<1)+1]=atoi(spos+1);
+          if(opt_ctls==0)opt_ctls_ctlval=malloc(sizeof(int)*3);
+          else opt_ctls_ctlval=realloc(opt_ctls_ctlval,sizeof(int)*(opt_ctls+1)*3);
+          opt_ctls_ctlval[opt_ctls*3]=target;
+          opt_ctls_ctlval[opt_ctls*3+1]=atoi(tpos+1);
+          opt_ctls_ctlval[opt_ctls*3+2]=atoi(spos+1);
           opt_ctls++;
         }else if(strcmp(long_options[option_index].name,"save-range")==0){
           frange=fopen(optarg,"w");
@@ -465,6 +647,14 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+  if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(32000*inopt.channels)){
+    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 32kbit/sec/channel, downmixing.\n");
+    downmix=inopt.channels>8?1:2;
+  }
+
+  if(downmix&&downmix<inopt.channels)downmix=setup_downmix(&inopt,downmix);
+  else downmix=0;
+
   rate=inopt.rate;
   chan=inopt.channels;
   inopt.skip=0;
@@ -478,7 +668,6 @@ int main(int argc, char **argv)
   else coding_rate=8000;
 
   frame_size=frame_size/(48000/coding_rate);
-
 
   /*Scale the resampler complexity, but only for 48000 output because
     the near-cutoff behavior matters a lot more at lower rates.*/
@@ -496,9 +685,9 @@ int main(int argc, char **argv)
       /*3*/ {1,   0, 0,2,1},
       /*4*/ {2,   0, 0,1,2,3},
       /*5*/ {2,   0, 0,4,1,2,3},
-      /*6*/ {2,1<<5, 0,4,1,2,3,5},
-      /*7*/ {2,1<<6, 0,4,1,2,3,5,6},
-      /*6*/ {3,1<<7, 0,6,1,2,3,4,5,7}
+      /*6*/ {2,1<<3, 0,4,1,2,3,5},
+      /*7*/ {2,1<<4, 0,4,1,2,3,5,6},
+      /*6*/ {3,1<<4, 0,6,1,2,3,4,5,7}
     };
     for(i=0;i<header.channels;i++)mapping[i]=opusenc_streams[header.channels-1][i+2];
     force_narrow=opusenc_streams[header.channels-1][1];
@@ -579,10 +768,25 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+  /*This should be the last set of CTLs, except the lookahead get, so it can override the defaults.*/
   for(i=0;i<opt_ctls;i++){
-    ret=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1]);
-    if(ret!=OPUS_OK){
-      fprintf(stderr,"opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i<<1],opt_ctls_ctlval[(i<<1)+1],opus_strerror(ret));
+    int target=opt_ctls_ctlval[i*3];
+    if(target==-1){
+      ret=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
+      if(ret!=OPUS_OK){
+        fprintf(stderr,"opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
+        exit(1);
+      }
+    }else if(target<header.nb_streams){
+      OpusEncoder *oe;
+      opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
+      ret=opus_encoder_ctl(oe, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
+      if(ret!=OPUS_OK){
+        fprintf(stderr,"opus_encoder_ctl(st[%d],%d,%d) returned: %s\n",target,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
+        exit(1);
+      }
+    }else{
+      fprintf(stderr,"--set-ctl-int target stream %d is higher than the maximum stream number %d.\n",target,header.nb_streams-1);
       exit(1);
     }
   }
@@ -721,19 +925,32 @@ int main(int argc, char **argv)
     min_bytes=IMIN(nbBytes,min_bytes);
 
     if(frange!=NULL){
+      const unsigned char *subpkt;
+      int parse_size;
       static const char *bw_strings[5]={"NB","MB","WB","SWB","FB"};
       static const char *mode_strings[3]={"LP","HYB","MDCT"};
-      int streams=1; /*FIXME, mode data should be per stream too*/
       OpusEncoder *oe;
       opus_uint32 rng;
-      fprintf(frange,"%d %d ",frame_size*(48000/coding_rate),nbBytes);
-      fprintf(frange,"%s %s %c %d ",mode_strings[((((packet[0]>>3)+48)&92)+4)>>5],
-         bw_strings[opus_packet_get_bandwidth(packet)-OPUS_BANDWIDTH_NARROWBAND],
-         packet[0]&4?'S':'M',opus_packet_get_samples_per_frame(packet,48000));
-      for(i=0;i<streams;i++){
+      fprintf(frange,"%d, %d, ",frame_size*(48000/coding_rate),nbBytes);
+      subpkt=packet;
+      parse_size=nbBytes;
+      for(i=0;i<header.nb_streams;i++){
+        int payload_offset;
+        const unsigned char *frames[48];
+        unsigned char toc;
+        short size[48];
+        payload_offset=0;
+        opus_packet_parse_impl(subpkt,parse_size,i+1!=header.nb_streams,
+          &toc,frames,size,&payload_offset);
+        fprintf(frange,"[%d, %s, %s, %c, %d",payload_offset,
+           mode_strings[((((subpkt[0]>>3)+48)&92)+4)>>5],
+           bw_strings[opus_packet_get_bandwidth(subpkt)-OPUS_BANDWIDTH_NARROWBAND],
+           subpkt[0]&4?'S':'M',opus_packet_get_samples_per_frame(subpkt,48000));
         ret=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
         ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rng));
-        fprintf(frange,"%llu%c",(unsigned long long)rng,i+1==streams?'\n':' ');
+        fprintf(frange,", %llu]%s",(unsigned long long)rng,i+1==header.nb_streams?"\n":", ");
+        parse_size-=payload_offset;
+        subpkt+=payload_offset;
       }
     }
 
@@ -865,6 +1082,7 @@ int main(int argc, char **argv)
 
   if(rate!=coding_rate)clear_resample(&inopt);
   clear_padder(&inopt);
+  if(downmix)clear_downmix(&inopt);
   in_format->close_func(inopt.readdata);
   if(fin)fclose(fin);
   if(fout)fclose(fout);
