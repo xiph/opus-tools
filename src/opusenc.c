@@ -491,7 +491,8 @@ int main(int argc, char **argv)
 
   if(rate>24000)coding_rate=48000;
   else if(rate>16000)coding_rate=24000;
-  else if(rate>12000)coding_rate=12000;
+  else if(rate>12000)coding_rate=16000;
+  else if(rate>8000)coding_rate=12000;
   else coding_rate=8000;
 
   frame_size=frame_size/(48000/coding_rate);
