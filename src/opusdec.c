@@ -82,6 +82,7 @@
 #include <string.h>
 #include "wav_io.h"
 #include "opus_header.h"
+#include "diag_range.h"
 #include "speex_resampler.h"
 
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
@@ -371,6 +372,7 @@ void usage(void)
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
+   printf (" --save-range file     Saves check values for every frame to a file\n");
    printf (" -V                    Verbose mode (show bit-rate)\n");
    printf (" -h, --help            This help\n");
    printf (" -v, --version         Version information\n");
@@ -389,7 +391,7 @@ void version_short(void)
    printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
 }
 
-static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int quiet)
+static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int *streams, int quiet)
 {
    int err;
    OpusMSDecoder *st;
@@ -422,6 +424,8 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
       fprintf (stderr, "Decoder initialization failed: %s\n", opus_strerror(err));
       return NULL;
    }
+
+   *streams=header.nb_streams;
 
    *gain = pow(10., header.gain/5120.);
 
@@ -488,7 +492,8 @@ int main(int argc, char **argv)
    int c;
    int option_index = 0;
    char *inFile, *outFile;
-   FILE *fin, *fout=NULL;
+   FILE *fin, *fout=NULL, *frange=NULL;
+   char             *range_file;
    float *output;
    int frame_size=0;
    OpusMSDecoder *st=NULL;
@@ -508,6 +513,7 @@ int main(int argc, char **argv)
       {"stereo", no_argument, NULL, 0},
       {"no-dither", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
+      {"save-range", required_argument, NULL, 0},
       {0, 0, 0, 0}
    };
    ogg_sync_state oy;
@@ -528,6 +534,7 @@ int main(int argc, char **argv)
    shapestate shapemem;
    SpeexResamplerState *resampler=NULL;
    float gain=1;
+   int streams=0;
 
    output=0;
    shapemem.a_buf=0;
@@ -573,6 +580,15 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
             rate=atoi (optarg);
+        }else if(strcmp(long_options[option_index].name,"save-range")==0){
+          frange=fopen(optarg,"w");
+          if(frange==NULL){
+            perror(optarg);
+            fprintf(stderr,"Could not open save-range file: %s\n",optarg);
+            fprintf(stderr,"Must provide a writable file name.\n");
+            exit(1);
+          }
+          range_file=optarg;
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
             loss_percent = atof(optarg);
@@ -669,7 +685,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, &rate, &channels, &preskip, &gain, quiet);
+               st = process_header(&op, &rate, &channels, &preskip, &gain, &streams, quiet);
                if(shapemem.a_buf)
                  free(shapemem.a_buf);
                if(shapemem.b_buf)
@@ -725,6 +741,17 @@ int main(int argc, char **argv)
                      break;
                   }
                   frame_size = ret;
+
+                  if(frange!=NULL){
+                    OpusDecoder *od;
+                    opus_uint32 rngs[streams];
+                    for(i=0;i<streams;i++){
+                      ret=opus_multistream_decoder_ctl(st,OPUS_MULTISTREAM_GET_DECODER_STATE(i,&od));
+                      ret=opus_decoder_ctl(od,OPUS_GET_FINAL_RANGE(&rngs[i]));
+                    }
+                    save_range(frange,frame_size*(48000/48000/*decoding_rate*/),op.packet,op.bytes,
+                               rngs,streams);
+                  }
 
                   /* Apply header gain */
                   for (i=0;i<frame_size*channels;i++)
@@ -817,6 +844,8 @@ int main(int argc, char **argv)
    if(shapemem.b_buf)free(shapemem.b_buf);
 
    if(output)free(output);
+
+   if(frange)fclose(frange);
 
    if (close_in)
       fclose(fin);
