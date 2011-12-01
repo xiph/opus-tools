@@ -67,11 +67,11 @@
 #define VG_CHECK(x,y)
 #endif
 
-void comment_init(char **comments, int* length, char *vendor_string);
-void comment_add(char **comments, int* length, char *tag, char *val);
+static void comment_init(char **comments, int* length, char *vendor_string);
+static void comment_add(char **comments, int* length, char *tag, char *val);
 
 /*Write an Ogg page to a file pointer*/
-int oe_write_page(ogg_page *page, FILE *fp)
+static inline int oe_write_page(ogg_page *page, FILE *fp)
 {
    int written;
    written=fwrite(page->header,1,page->header_len, fp);
@@ -146,7 +146,6 @@ void usage(void)
   printf(" --raw-endianness n 1 for bigendian, 0 for little (defaults to 0)\n");
 }
 
-
 static inline void print_time(double seconds)
 {
   long long hours, minutes;
@@ -163,6 +162,7 @@ static inline void print_time(double seconds)
 
 int main(int argc, char **argv)
 {
+  static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
   int option_index=0;
   struct option long_options[] =
   {
@@ -197,63 +197,63 @@ int main(int argc, char **argv)
     {0, 0, 0, 0}
   };
   int i, ret;
-  OpusMSEncoder    *st;
-  const char       *opus_version;
-  unsigned char    *packet;
-  float            *input;
+  OpusMSEncoder      *st;
+  const char         *opus_version;
+  unsigned char      *packet;
+  float              *input;
   /*I/O*/
-  oe_enc_opt       inopt;
-  input_format     *in_format;
-  char             *inFile;
-  char             *outFile;
-  char             *range_file;
-  FILE             *fin;
-  FILE             *fout;
-  FILE             *frange;
-  ogg_stream_state os;
-  ogg_page         og;
-  ogg_packet       op;
-  ogg_int64_t      last_granulepos=0;
-  ogg_int32_t      id=-1;
-  int              eos=0;
-  OpusHeader       header;
-  int              comments_length;
-  char             vendor_string[64];
-  char             *comments;
+  oe_enc_opt         inopt;
+  const input_format *in_format;
+  char               *inFile;
+  char               *outFile;
+  char               *range_file;
+  FILE               *fin;
+  FILE               *fout;
+  FILE               *frange;
+  ogg_stream_state   os;
+  ogg_page           og;
+  ogg_packet         op;
+  ogg_int64_t        last_granulepos=0;
+  ogg_int32_t        id=-1;
+  int                eos=0;
+  OpusHeader         header;
+  int                comments_length;
+  char               vendor_string[64];
+  char               *comments;
   /*Counters*/
-  opus_int64       nb_encoded=0;
-  opus_int64       bytes_written=0;
-  opus_int64       pages_out=0;
-  opus_int64       total_bytes=0;
-  opus_int64       total_samples=0;
-  opus_int32       nbBytes;
-  opus_int32       nb_samples;
-  opus_int32       peak_bytes=0;
-  opus_int32       min_bytes=MAX_FRAME_BYTES;
-  struct timeval   start_time;
-  struct timeval   stop_time;
-  time_t           last_spin=0;
-  int              last_spin_len=0;
+  opus_int64         nb_encoded=0;
+  opus_int64         bytes_written=0;
+  opus_int64         pages_out=0;
+  opus_int64         total_bytes=0;
+  opus_int64         total_samples=0;
+  opus_int32         nbBytes;
+  opus_int32         nb_samples;
+  opus_int32         peak_bytes=0;
+  opus_int32         min_bytes=MAX_FRAME_BYTES;
+  struct timeval     start_time;
+  struct timeval     stop_time;
+  time_t             last_spin=0;
+  int                last_spin_len=0;
   /*Settings*/
-  int              quiet=0;
-  opus_int32       bitrate=-1;
-  opus_int32       rate=48000;
-  opus_int32       coding_rate=48000;
-  opus_int32       frame_size=960;
-  int              chan=2;
-  int              with_hard_cbr=0;
-  int              with_cvbr=0;
-  int              signal=OPUS_AUTO;
-  int              expect_loss=0;
-  int              complexity=10;
-  int              downmix=0;
-  int              uncoupled=0;
-  int              *opt_ctls_ctlval;
-  int              opt_ctls=0;
-  int              max_ogg_delay=48000; /*@48kHz*/
-  opus_int32       lookahead=0;
-  unsigned char    mapping[256];
-  int              force_narrow=0;
+  int                quiet=0;
+  opus_int32         bitrate=-1;
+  opus_int32         rate=48000;
+  opus_int32         coding_rate=48000;
+  opus_int32         frame_size=960;
+  int                chan=2;
+  int                with_hard_cbr=0;
+  int                with_cvbr=0;
+  int                signal=OPUS_AUTO;
+  int                expect_loss=0;
+  int                complexity=10;
+  int                downmix=0;
+  int                uncoupled=0;
+  int                *opt_ctls_ctlval;
+  int                opt_ctls=0;
+  int                max_ogg_delay=48000; /*48kHz samples*/
+  opus_int32         lookahead=0;
+  unsigned char      mapping[256];
+  int                force_narrow=0;
 
   opt_ctls_ctlval=NULL;
   frange=NULL;
@@ -464,7 +464,6 @@ int main(int argc, char **argv)
   }
 
   if(inopt.rawmode){
-    static input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
     in_format = &raw_format;
     in_format->open_func(fin, &inopt, NULL, 0);
   }else in_format=open_audio_file(fin,&inopt);
@@ -927,7 +926,7 @@ The comment header is decoded as follows:
                                      buf[base]=(val)&0xff; \
                                  }while(0)
 
-void comment_init(char **comments, int* length, char *vendor_string)
+static void comment_init(char **comments, int* length, char *vendor_string)
 {
   int vendor_length=strlen(vendor_string);
   int user_comment_list_length=0;
@@ -945,7 +944,7 @@ void comment_init(char **comments, int* length, char *vendor_string)
   *comments=p;
 }
 
-void comment_add(char **comments, int* length, char *tag, char *val)
+static void comment_add(char **comments, int* length, char *tag, char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);
