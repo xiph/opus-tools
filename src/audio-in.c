@@ -52,6 +52,7 @@
 #define N_(X) (X)
 #endif
 
+#include <ogg/ogg.h>
 #include "opusenc.h"
 #include "speex_resampler.h"
 
@@ -797,6 +798,7 @@ void setup_scaler(oe_enc_opt *opt, float scale) {
 typedef struct {
     audio_read_func real_reader;
     void *real_readdata;
+    ogg_int64_t *original_samples;
     int channels;
     int *extra_samples;
 } padder;
@@ -805,6 +807,8 @@ static long read_padder(void *data, float *buffer, int samples) {
     padder *d = data;
     long in_samples = d->real_reader(d->real_readdata, buffer, samples);
     int i, extra=0;
+
+    if(d->original_samples)*d->original_samples+=in_samples;
 
     if(in_samples<samples){
       extra=samples-in_samples;
@@ -815,7 +819,7 @@ static long read_padder(void *data, float *buffer, int samples) {
     return in_samples+extra;
 }
 
-void setup_padder(oe_enc_opt *opt) {
+void setup_padder(oe_enc_opt *opt,ogg_int64_t *original_samples) {
     padder *d = calloc(1, sizeof(padder));
 
     d->real_reader = opt->read_samples;
@@ -825,6 +829,7 @@ void setup_padder(oe_enc_opt *opt) {
     opt->readdata = d;
     d->channels = opt->channels;
     d->extra_samples = &opt->extraout;
+    d->original_samples=original_samples;
 }
 
 void clear_padder(oe_enc_opt *opt) {

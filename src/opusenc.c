@@ -58,6 +58,8 @@
 #include <fcntl.h>
 #endif
 
+#define OLD_LIBOGG 1
+
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
 #define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
@@ -214,7 +216,10 @@ int main(int argc, char **argv)
   ogg_page           og;
   ogg_packet         op;
   ogg_int64_t        last_granulepos=0;
+  ogg_int64_t        enc_granulepos=0;
+  ogg_int64_t        original_samples=0;
   ogg_int32_t        id=-1;
+  int                last_segments=0;
   int                eos=0;
   OpusHeader         header;
   int                comments_length;
@@ -229,13 +234,14 @@ int main(int argc, char **argv)
   opus_int32         nbBytes;
   opus_int32         nb_samples;
   opus_int32         peak_bytes=0;
-  opus_int32         min_bytes=MAX_FRAME_BYTES;
+  opus_int32         min_bytes;
   struct timeval     start_time;
   struct timeval     stop_time;
   time_t             last_spin=0;
   int                last_spin_len=0;
   /*Settings*/
   int                quiet=0;
+  int                max_frame_bytes;
   opus_int32         bitrate=-1;
   opus_int32         rate=48000;
   opus_int32         coding_rate=48000;
@@ -271,11 +277,6 @@ int main(int argc, char **argv)
   snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
   comment_init(&comments, &comments_length, vendor_string);
 
-  packet=malloc(sizeof(unsigned char)*MAX_FRAME_BYTES);
-  if(packet==NULL){
-    fprintf(stderr,"Error allocating packet buffer.\n");
-    exit(1);
-  }
 
   /*Process command-line options*/
   while(1){
@@ -486,7 +487,7 @@ int main(int argc, char **argv)
   inopt.skip=0;
 
   /*In order to code the complete length we'll need to do a little padding*/
-  setup_padder(&inopt);
+  setup_padder(&inopt,&original_samples);
 
   if(rate>24000)coding_rate=48000;
   else if(rate>16000)coding_rate=24000;
@@ -527,6 +528,13 @@ int main(int argc, char **argv)
   header.gain=0;
   header.input_sample_rate=rate;
 
+  min_bytes=max_frame_bytes=(1275*3+7)*header.nb_streams;
+  packet=malloc(sizeof(unsigned char)*max_frame_bytes);
+  if(packet==NULL){
+    fprintf(stderr,"Error allocating packet buffer.\n");
+    exit(1);
+  }
+
   /*Initialize OPUS encoder*/
   st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled, mapping, OPUS_APPLICATION_AUDIO, &ret);
   if(ret!=OPUS_OK){
@@ -556,7 +564,7 @@ int main(int argc, char **argv)
 
   bitrate=bitrate>0?bitrate:64000*header.nb_streams+32000*header.nb_coupled;
 
-  if(bitrate>2048000||bitrate<500){
+  if(bitrate>(1024000*chan)||bitrate<500){
     fprintf(stderr,"Error: Bitrate %d bits/sec is insane.\nDid you mistake bits for kilobits?\n",bitrate);
     fprintf(stderr,"--bitrate values from 6-256 kbit/sec per channel are meaningful.\n");
     exit(1);
@@ -721,33 +729,40 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
-
-  if(nb_samples==0)eos=1;
-  total_samples+=nb_samples;
-  nb_encoded=-header.preskip;
   /*Main encoding loop (one frame per iteration)*/
-  while(!eos){
+  eos=0;
+  nb_samples=-1;
+  while(!op.e_o_s){
+    int size_segments,cur_frame_size;
     id++;
-    /*Encode current frame*/
 
-    if(nb_samples<frame_size){
-    /*FIXME*/
-      //printf("X: %d %d\n",nb_samples,frame_size);
-      for(i=nb_samples*chan;i<frame_size*chan;i++)input[i]=0;
+    if(nb_samples<0){
+      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
+      total_samples+=nb_samples;
+      if(nb_samples<frame_size)op.e_o_s=1;
+      else op.e_o_s=0;
     }
+    op.e_o_s|=eos;
 
-    VG_UNDEF(packet,MAX_FRAME_BYTES);
-    VG_CHECK(input,sizeof(float)*chan*frame_size);
-    nbBytes=opus_multistream_encode_float(st, input, frame_size, packet, MAX_FRAME_BYTES);
+    cur_frame_size=frame_size;
+
+    /*No fancy end padding, just fill with zeros for now.*/
+    if(nb_samples<cur_frame_size)for(i=nb_samples*chan;i<cur_frame_size*chan;i++)input[i]=0;
+
+    /*Encode current frame*/
+    VG_UNDEF(packet,max_frame_bytes);
+    VG_CHECK(input,sizeof(float)*chan*cur_frame_size);
+    nbBytes=opus_multistream_encode_float(st, input, cur_frame_size, packet, max_frame_bytes);
     if(nbBytes<0){
       fprintf(stderr, "Encoding failed: %s. Aborting.\n", opus_strerror(nbBytes));
       break;
     }
     VG_CHECK(packet,nbBytes);
-    VG_UNDEF(input,sizeof(float)*chan*frame_size);
-    nb_encoded+=frame_size;
+    VG_UNDEF(input,sizeof(float)*chan*cur_frame_size);
+    nb_encoded+=cur_frame_size;
+    enc_granulepos+=cur_frame_size*48000/coding_rate;
     total_bytes+=nbBytes;
+    size_segments=(nbBytes+255)/255;
     peak_bytes=IMAX(nbBytes,peak_bytes);
     min_bytes=IMIN(nbBytes,min_bytes);
 
@@ -758,50 +773,75 @@ int main(int argc, char **argv)
         ret=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
         ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[i]));
       }
-      save_range(frange,frame_size*(48000/coding_rate),packet,nbBytes,
+      save_range(frange,cur_frame_size*(48000/coding_rate),packet,nbBytes,
                  rngs,header.nb_streams);
     }
 
-    nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
-    if(nb_samples==0)eos=1;
-    if(eos && total_samples<=nb_encoded)op.e_o_s=1;
-    else op.e_o_s=0;
+    /*Flush early if adding this packet would make us end up with a
+      continued page which we wouldn't have otherwise.*/
+    while((((size_segments<=255)&&(last_segments+size_segments>255))||
+           (enc_granulepos-last_granulepos>max_ogg_delay))&&
+#ifdef OLD_LIBOGG
+           ogg_stream_flush(&os, &og)){
+#else
+           ogg_stream_flush_fill(&os, &og,255*255)){
+#endif
+      if(ogg_page_packets(&og)!=0)last_granulepos=ogg_page_granulepos(&og);
+      last_segments-=og.header[26];
+      ret=oe_write_page(&og, fout);
+      if(ret!=og.header_len+og.body_len){
+         fprintf(stderr,"Error: failed writing data to output stream\n");
+         exit(1);
+      }
+      bytes_written+=ret;
+      pages_out++;
+    }
 
-    total_samples+=nb_samples;
+    /*The downside of early reading is if the input is an exact
+      multiple of the frame_size you'll get an extra frame that needs
+      to get cropped off. The downside of late reading is added delay.
+      If your ogg_delay is 120ms or less we'll assume you want the
+      low delay behavior.*/
+    if((!op.e_o_s)&&max_ogg_delay>5760){
+      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
+      total_samples+=nb_samples;
+      if(nb_samples<frame_size)eos=1;
+      if(nb_samples==0)op.e_o_s=1;
+    } else nb_samples=-1;
 
     op.packet=(unsigned char *)packet;
     op.bytes=nbBytes;
     op.b_o_s=0;
-    /*Is this redundent?*/
-    if(eos && total_samples<=nb_encoded)op.e_o_s=1;
-    else op.e_o_s=0;
-    /*FIXME: this doesn't cope with the frame size changing*/
-    op.granulepos=(id+1)*frame_size*(48000/coding_rate);
-    if(op.granulepos>total_samples)op.granulepos=total_samples*(48000/coding_rate);
+    op.granulepos=enc_granulepos;
+    if(op.e_o_s){
+      /*We compute the final GP as ceil(len*48k/input_rate). When a resampling
+        decoder does the matching floor(len*input/48k) conversion the length will
+        be exactly the same as the input.*/
+      op.granulepos=((original_samples*48000+rate-1)/rate)+header.preskip;
+    }
     op.packetno=2+id;
-    /*printf("granulepos: %d %d %d\n", (int)op.granulepos, op.packetno, op.bytes);*/
     ogg_stream_packetin(&os, &op);
+    last_segments+=size_segments;
 
-    /*Write all new pages (most likely 0 or 1)
-      Flush if we've buffered >max_ogg_delay second to avoid excessive framing delay. */
-    while(eos||(op.granulepos-last_granulepos+(frame_size*(48000/coding_rate))>max_ogg_delay)?
-#if 0
+    /*If the stream is over or we're sure that the delayed flush will fire,
+      go ahead and flush now to avoid adding delay.*/
+    while((op.e_o_s||(enc_granulepos+frame_size-last_granulepos>max_ogg_delay)||
+           (last_segments>=255))?
+#ifdef OLD_LIBOGG
     /*Libogg > 1.2.2 allows us to achieve lower overhead by
       producing larger pages. For 20ms frames this is only relevant
-      above ~32kbit/sec. We still target somewhat smaller than the
-      maximum size in order to avoid continued pages.*/
-           ogg_stream_flush_fill(&os, &og,255*255-7*1276):
-           ogg_stream_pageout_fill(&os, &og,255*255-7*1276))
-#else
-#define OLD_LIBOGG
+      above ~32kbit/sec.*/
            ogg_stream_flush(&os, &og):
-           ogg_stream_pageout(&os, &og))
+           ogg_stream_pageout(&os, &og)){
+#else
+           ogg_stream_flush_fill(&os, &og,255*255):
+           ogg_stream_pageout_fill(&os, &og,255*255)){
 #endif
-    {
       if(ogg_page_packets(&og)!=0)last_granulepos=ogg_page_granulepos(&og);
+      last_segments-=og.header[26];
       ret=oe_write_page(&og, fout);
       if(ret!=og.header_len+og.body_len){
-         fprintf(stderr,"Error: failed writing header to output stream\n");
+         fprintf(stderr,"Error: failed writing data to output stream\n");
          exit(1);
       }
       bytes_written+=ret;
@@ -847,17 +887,6 @@ int main(int argc, char **argv)
   for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
   if(last_spin_len)fprintf(stderr,"\r");
 
-  /*Flush all pages left to be written*/
-  while(ogg_stream_flush(&os, &og)){
-    ret=oe_write_page(&og, fout);
-    if(ret!=og.header_len+og.body_len){
-      fprintf(stderr,"Error: failed writing header to output stream\n");
-      exit(1);
-    }
-    bytes_written+=ret;
-    pages_out++;
-  }
-
   if(!quiet){
     double coded_seconds=nb_encoded/(double)coding_rate;
     double wall_time=(stop_time.tv_sec-start_time.tv_sec)+
@@ -877,7 +906,7 @@ int main(int argc, char **argv)
             peak_bytes*8*((double)coding_rate/frame_size/1000.),min_bytes,peak_bytes);
     fprintf(stderr,"   Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)total_bytes*100.);
 #ifdef OLD_LIBOGG
-    if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"   (use libogg 1.2.2 or later for lower overhead)\n");
+    if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"   (use libogg 1.3 or later for lower overhead)\n");
 #endif
     fprintf(stderr,"\n");
   }

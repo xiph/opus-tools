@@ -35,7 +35,7 @@ typedef struct
 
 void setup_scaler(oe_enc_opt *opt, float scale);
 void clear_scaler(oe_enc_opt *opt);
-void setup_padder(oe_enc_opt *opt);
+void setup_padder(oe_enc_opt *opt, ogg_int64_t *original_samples);
 void clear_padder(oe_enc_opt *opt);
 int setup_downmix(oe_enc_opt *opt, int out_channels);
 void clear_downmix(oe_enc_opt *opt);
