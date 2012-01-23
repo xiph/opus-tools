@@ -794,7 +794,7 @@ int main(int argc, char **argv)
       int drain;
 
       for (i=0;i<200;i++)
-         zeros[i] = 200;
+         zeros[i] = 0;
       drain = speex_resampler_get_input_latency(resampler);
       do {
          int tmp = drain;
