@@ -37,6 +37,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <math.h>
+#include <alloca.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
