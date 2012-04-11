@@ -59,6 +59,7 @@
 #endif
 
 #define OLD_LIBOGG 1
+#undef OLD_LIBOGG
 
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
@@ -138,7 +139,7 @@ void usage(void)
   printf("\nMetadata options:\n");
   printf(" --comment          Add the given string as an extra comment\n");
   printf("                      This may be used multiple times\n");
-  printf(" --author           Author of this track\n");
+  printf(" --artist           Author of this track\n");
   printf(" --title            Title for this track\n");
   printf("\nInput options:\n");
   printf(" --raw              Raw input\n");
@@ -194,7 +195,7 @@ int main(int argc, char **argv)
     {"version", no_argument, NULL, 0},
     {"version-short", no_argument, NULL, 0},
     {"comment", required_argument, NULL, 0},
-    {"author", required_argument, NULL, 0},
+    {"artist", required_argument, NULL, 0},
     {"title", required_argument, NULL, 0},
     {0, 0, 0, 0}
   };
@@ -414,8 +415,8 @@ int main(int argc, char **argv)
             exit(1);
           }
           comment_add(&comments, &comments_length, NULL, optarg);
-        }else if(strcmp(long_options[option_index].name,"author")==0){
-          comment_add(&comments, &comments_length, "author=", optarg);
+        }else if(strcmp(long_options[option_index].name,"artist")==0){
+          comment_add(&comments, &comments_length, "artist=", optarg);
         } else if(strcmp(long_options[option_index].name,"title")==0){
           comment_add(&comments, &comments_length, "title=", optarg);
         }
