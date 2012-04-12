@@ -59,7 +59,6 @@
 #endif
 
 #define OLD_LIBOGG 1
-#undef OLD_LIBOGG
 
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
