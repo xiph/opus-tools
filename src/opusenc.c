@@ -99,7 +99,7 @@ void version_short(const char *version)
 
 void usage(void)
 {
-  printf("Usage: opusenc [options] input_file output_file.oga\n");
+  printf("Usage: opusenc [options] input_file output_file.opus\n");
   printf("\n");
   printf("Encodes input_file using Opus. It can read the WAV, AIFF, or raw files.\n");
   printf("\nGeneral options:\n");
@@ -112,7 +112,7 @@ void usage(void)
   printf("  -                 stdin\n");
   printf("\n");
   printf("output_file can be:\n");
-  printf("  filename.oga      compressed file\n");
+  printf("  filename.opus     compressed file\n");
   printf("  -                 stdout\n");
   printf("\nEncoding options:\n");
   printf(" --speech           Optimize for speech\n");

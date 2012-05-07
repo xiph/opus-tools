@@ -352,12 +352,12 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
 
 void usage(void)
 {
-   printf ("Usage: opusdec [options] input_file.oga [output_file]\n");
+   printf ("Usage: opusdec [options] input_file.opus [output_file]\n");
    printf ("\n");
    printf ("Decodes a Opus file and produce a WAV file or raw file\n");
    printf ("\n");
    printf ("input_file can be:\n");
-   printf ("  filename.oga         regular Opus file\n");
+   printf ("  filename.opus        regular Opus file\n");
    printf ("  -                    stdin\n");
    printf ("\n");
    printf ("output_file can be:\n");
