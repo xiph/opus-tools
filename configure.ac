@@ -215,6 +215,26 @@ then
     obtain a copy.])
 fi
 
+dnl check for OSS
+HAVE_OSS=no
+AC_CHECK_HEADERS([sys/soundcard.h soundcard.h machine/soundcard.h],[
+  HAVE_OSS=yes
+  break
+])
+if test x$HAVE_OSS != xyes; then
+  AC_MSG_WARN([OSS audio support not found -- no direct audio output in opusdec])
+fi
+
+dnl OpenBSD needs -lossaudio to use the oss interface
+OSS_LIBS=
+case "$host_os" in
+  openbsd*)
+    OSS_LIBS='-lossaudio'
+    ;;
+esac
+AC_SUBST(OSS_LIBS)
+
+
 AC_OUTPUT([Makefile])
 
 AC_MSG_RESULT([

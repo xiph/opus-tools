@@ -61,8 +61,14 @@
 #include "wave_out.c"
 #endif
 
+#if defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
 #ifdef HAVE_SYS_SOUNDCARD_H
-#include <sys/soundcard.h>
+# include <sys/soundcard.h>
+#elif HAVE_MACHINE_SOUNDCARD_H
+# include <machine/soundcard.h>
+#else
+# include <soundcard.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
