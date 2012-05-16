@@ -106,16 +106,45 @@ AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software 
   AC_DEFINE([ENABLE_ASSERTIONS], , [Assertions])
 fi])
 
-if test $ac_cv_c_compiler_gnu = yes ; then
+dnl Enable stack-protector-all only on x86 where it's well supported.
+dnl on some platforms it causes crashes. Hopefully the OS's default's
+dnl include this on platforms that work but have been missed here.
+
+on_x86=no
+case "$host_cpu" in
+i[[3456]]86 | x86_64)
+  on_x86=yes
+  ;;
+esac
+
+use_stack_protector=no
+
+if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fstack-protector-all"
 AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
       [ AC_MSG_RESULT([yes])
-        STACK_PROTECTOR="-fstack-protector-all" ],
+        STACK_PROTECTOR="-fstack-protector-all"; use_stack_protector=yes ],
         AC_MSG_RESULT([no]))
 CFLAGS="$saved_CFLAGS $STACK_PROTECTOR"
 fi
+
+save_CFLAGS="$CFLAGS"
+save_LDFLAGS="$LDFLAGS"
+CFLAGS="$CFLAGS -fPIE"
+LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
+AC_MSG_CHECKING([for PIE support])
+AC_LINK_IFELSE([AC_LANG_SOURCE([void main () {}])],
+               [have_pie=yes],
+               [have_pie=no])
+AC_MSG_RESULT([$have_pie])
+if test "x$have_pie" = "xyes"; then
+    PIE_CFLAGS="-fPIE"
+    PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
+fi
+CFLAGS="$save_CFLAGS $PIE_CFLAGS"
+LDFLAGS="$save_LDFLAGS $PIE_LDFLAGS"
 
 CFLAGS="$CFLAGS -W"
 
@@ -245,6 +274,8 @@ AC_MSG_RESULT([
 
       C99 var arrays: ................ ${has_var_arrays}
       C99 lrintf: .................... ${ac_cv_func_lrintf}
+      Stack protector: ............... ${use_stack_protector}
+      PIE: ........................... ${have_pie}
 
     General configuration:
 
