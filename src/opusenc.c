@@ -43,8 +43,8 @@
 #define snprintf _snprintf
 #endif
 
-#include <opus.h>
-#include <opus_multistream.h>
+#include <opus/opus.h>
+#include <opus/opus_multistream.h>
 #include <ogg/ogg.h>
 #include "wav_io.h"
 
@@ -58,8 +58,6 @@
 #include <fcntl.h>
 #endif
 
-#define OLD_LIBOGG 1
-
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
 #define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
@@ -67,6 +65,10 @@
 #else
 #define VG_UNDEF(x,y)
 #define VG_CHECK(x,y)
+#endif
+
+#ifndef OPUSTOOLS_VERSION
+#define OPUSTOOLS_VERSION "unknown"
 #endif
 
 static void comment_init(char **comments, int* length, char *vendor_string);
@@ -85,15 +87,15 @@ static inline int oe_write_page(ogg_page *page, FILE *fp)
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
-void version(const char *version)
+void opustoolsversion(const char *version)
 {
-  printf("opusenc (using %s)\n",version);
+  printf("opusenc opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,version);
   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
-void version_short(const char *version)
+void opustoolsversion_short(const char *version)
 {
-  printf("opusenc (using %s)\n",version);
+  printf("opusenc opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,version);
   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
@@ -274,7 +276,7 @@ int main(int argc, char **argv)
   for(i=0;i<256;i++)mapping[i]=i;
 
   opus_version=opus_get_version_string();
-  snprintf(vendor_string, sizeof(vendor_string), "%s\n",opus_version);
+  snprintf(vendor_string, sizeof(vendor_string), "opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,opus_version);
   comment_init(&comments, &comments_length, vendor_string);
 
 
@@ -305,10 +307,10 @@ int main(int argc, char **argv)
           usage();
           exit(0);
         }else if(strcmp(long_options[option_index].name,"version")==0){
-          version(opus_version);
+          opustoolsversion(opus_version);
           exit(0);
         }else if(strcmp(long_options[option_index].name,"version-short")==0){
-          version_short(opus_version);
+          opustoolsversion_short(opus_version);
           exit(0);
         }else if(strcmp(long_options[option_index].name,"raw")==0){
           inopt.rawmode=1;
@@ -425,7 +427,7 @@ int main(int argc, char **argv)
         exit(0);
         break;
       case 'v':
-        version(opus_version);
+        opustoolsversion(opus_version);
         exit(0);
         break;
       case '?':

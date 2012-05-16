@@ -405,14 +405,12 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
 int wav_id(unsigned char *buf, int len)
 {
-    unsigned int flen;
-
     if(len<12) return 0; /* Something screwed up */
 
     if(memcmp(buf, "RIFF", 4))
         return 0; /* Not wave */
 
-    flen = READ_U32_LE(buf+4); /* We don't use this */
+    /*flen = READ_U32_LE(buf+4);*/ /* We don't use this */
 
     if(memcmp(buf+8, "WAVE",4))
         return 0; /* RIFF, but not wave */

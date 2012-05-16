@@ -45,8 +45,8 @@
 #include <limits.h>
 #include <string.h>
 
-#include <opus.h>
-#include <opus_multistream.h>
+#include <opus/opus.h>
+#include <opus/opus_multistream.h>
 #include <ogg/ogg.h>
 
 #if defined WIN32 || defined _WIN32
@@ -85,6 +85,10 @@
 #include "diag_range.h"
 #include "speex_resampler.h"
 
+#ifndef OPUSTOOLS_VERSION
+#define OPUSTOOLS_VERSION "unknown"
+#endif
+
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
 #define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
@@ -106,7 +110,7 @@ struct shapestate {
 };
 
 static unsigned int rngseed = 22222;
-static inline unsigned int fast_rand() {
+static inline unsigned int fast_rand(void) {
   rngseed = (rngseed * 96314165) + 907633515;
   return rngseed;
 }
@@ -344,7 +348,7 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
             exit(1);
          }
          if (strcmp(outFile+strlen(outFile)-4,".wav")==0 || strcmp(outFile+strlen(outFile)-4,".WAV")==0)
-            write_wav_header(fout, rate, *channels, 0, 0);
+            write_wav_header(fout, rate, *channels);
       }
    }
    return fout;
@@ -381,14 +385,14 @@ void usage(void)
 
 void version(void)
 {
-   printf ("opusdec (based on %s)\n",opus_get_version_string());
-   printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
+   printf("opusdec opus-tools %s (based on %s)\n",OPUSTOOLS_VERSION,opus_get_version_string());
+   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
 {
-   printf ("opusdec (based on %s)\n",opus_get_version_string());
-   printf ("Copyright (C) 2008-2011 Jean-Marc Valin\n");
+   printf("opusdec opus-tools %s (based on %s)\n",OPUSTOOLS_VERSION,opus_get_version_string());
+   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
 static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int *streams, int quiet)
@@ -465,7 +469,7 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
      }
 
      if (skip){
-       tmp_skip = (*skip>out_len) ? out_len : *skip;
+       tmp_skip = (*skip>(int)out_len) ? (int)out_len : *skip;
        *skip -= tmp_skip;
      } else {
        tmp_skip = 0;
@@ -475,11 +479,11 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
      if (shapemem){
        shape_dither_toshort(shapemem,out,output,out_len,channels);
      }else{
-       for (i=0;i<out_len*channels;i++)
+       for (i=0;i<(int)out_len*channels;i++)
          out[i]=(short)lrintf(fmax(-32768,fmin(output[i]*32768.f,32767)));
      }
      if ((le_short(1)!=1)&&file){
-       for (i=0;i<out_len*channels;i++)
+       for (i=0;i<(int)out_len*channels;i++)
          out[i]=le_short(out[i]);
      }
 
@@ -493,7 +497,6 @@ int main(int argc, char **argv)
    int option_index = 0;
    char *inFile, *outFile;
    FILE *fin, *fout=NULL, *frange=NULL;
-   char             *range_file;
    float *output;
    int frame_size=0;
    OpusMSDecoder *st=NULL;
@@ -588,7 +591,6 @@ int main(int argc, char **argv)
             fprintf(stderr,"Must provide a writable file name.\n");
             exit(1);
           }
-          range_file=optarg;
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
             loss_percent = atof(optarg);

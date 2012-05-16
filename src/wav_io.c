@@ -32,16 +32,13 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "opus_types.h"
+#include <opus/opus_types.h>
 #include "wav_io.h"
 
-void write_wav_header(FILE *file, int rate, int channels, int format, int size)
+void write_wav_header(FILE *file, int rate, int channels)
 {
-   char ch[5];
    opus_int32 itmp;
    opus_int16 stmp;
-
-   ch[4]=0;
 
    fprintf (file, "RIFF");
 

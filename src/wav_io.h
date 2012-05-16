@@ -29,7 +29,7 @@
 #define WAV_IO_H
 
 #include <stdio.h>
-#include "opus_types.h"
+#include <opus/opus_types.h>
 
 #if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
 #define le_short(s) ((short) ((unsigned short) (s) << 8) | ((unsigned short) (s) >> 8))
@@ -55,6 +55,6 @@ static inline opus_int32 le_int(opus_int32 i)
 #endif
 }
 
-void write_wav_header(FILE *file, int rate, int channels, int format, int size);
+void write_wav_header(FILE *file, int rate, int channels);
 
 #endif

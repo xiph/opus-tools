@@ -32,7 +32,7 @@
 #endif
 
 #include <stdio.h>
-#include <opus.h>
+#include <opus/opus.h>
 #include "diag_range.h"
 
 /*This is some non-exported code copied wholesale from libopus.
@@ -209,20 +209,20 @@ static int opus_packet_parse_impl(const unsigned char *data, opus_int32 len,
 }
 
 void save_range(FILE *frange, int frame_size, unsigned char *packet, int nbBytes, opus_uint32 *rngs, int nb_streams){
-  int i, parse_size;
+  int i, parsed_size;
   const unsigned char *subpkt;
   static const char *bw_strings[5]={"NB","MB","WB","SWB","FB"};
   static const char *mode_strings[3]={"LP","HYB","MDCT"};
   fprintf(frange,"%d, %d, ",frame_size,nbBytes);
   subpkt=packet;
-  parse_size=nbBytes;
+  parsed_size=nbBytes;
   for(i=0;i<nb_streams;i++){
     int j,payload_offset,nf;
     const unsigned char *frames[48];
     unsigned char toc;
     short size[48];
     payload_offset=0;
-    nf=opus_packet_parse_impl(subpkt,parse_size,i+1!=nb_streams,
+    nf=opus_packet_parse_impl(subpkt,parsed_size,i+1!=nb_streams,
       &toc,frames,size,&payload_offset);
     fprintf(frange,"[[%d",(int)(frames[0]-subpkt));
     for(j=0;j<nf;j++)fprintf(frange,", %d",size[j]);
@@ -231,7 +231,7 @@ void save_range(FILE *frange, int frame_size, unsigned char *packet, int nbBytes
        bw_strings[opus_packet_get_bandwidth(subpkt)-OPUS_BANDWIDTH_NARROWBAND],
        subpkt[0]&4?'S':'M',opus_packet_get_samples_per_frame(subpkt,48000));
     fprintf(frange,", %llu]%s",(unsigned long long)rngs[i],i+1==nb_streams?"\n":", ");
-    parse_size-=payload_offset;
+    parsed_size-=payload_offset;
     subpkt+=payload_offset;
   }
 }
