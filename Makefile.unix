@@ -1,0 +1,17 @@
+#CC=gcc
+CFLAGS:=-DHAVE_SYS_SOUNDCARD_H -O2 -g -c -Wall -Wextra -DHAVE_GETOPT_H -DEXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT $(CFLAGS)
+INCLUDES=-I../opus/include
+
+all: opusenc opusdec
+
+.c.o:
+	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
+
+opusenc: src/opus_header.o src/opusenc.o src/resample.o src/audio-in.o src/diag_range.o
+	$(CC) $(LDFLAGS) src/opus_header.o src/audio-in.o src/diag_range.o src/opusenc.o src/resample.o -o opusenc ../opus/.libs/libopus.a -lm -logg
+
+opusdec: src/opus_header.o src/wav_io.o src/wave_out.o src/opusdec.o src/resample.o src/diag_range.o
+	$(CC) $(LDFLAGS) src/wave_out.o src/opus_header.o src/wav_io.o src/diag_range.o src/opusdec.o src/resample.o -o opusdec ../opus/.libs/libopus.a -lm -logg
+
+clean:
+	rm -f src/*.o opusenc opusdec

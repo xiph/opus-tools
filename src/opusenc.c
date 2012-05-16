@@ -43,8 +43,8 @@
 #define snprintf _snprintf
 #endif
 
-#include <opus/opus.h>
-#include <opus/opus_multistream.h>
+#include <opus.h>
+#include <opus_multistream.h>
 #include <ogg/ogg.h>
 #include "wav_io.h"
 

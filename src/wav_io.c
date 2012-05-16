@@ -32,7 +32,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <opus/opus_types.h>
 #include "wav_io.h"
 
 void write_wav_header(FILE *file, int rate, int channels)

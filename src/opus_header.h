@@ -1,7 +1,7 @@
 #ifndef OPUS_HEADER_H
 #define OPUS_HEADER_H
 
-#include <opus/opus_types.h>
+#include <opus_types.h>
 
 typedef struct {
    int version;

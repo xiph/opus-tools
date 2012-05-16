@@ -32,7 +32,7 @@
 #endif
 
 #include <stdio.h>
-#include <opus/opus.h>
+#include <opus.h>
 #include "diag_range.h"
 
 /*This is some non-exported code copied wholesale from libopus.

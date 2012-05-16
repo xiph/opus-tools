@@ -45,8 +45,8 @@
 #include <limits.h>
 #include <string.h>
 
-#include <opus/opus.h>
-#include <opus/opus_multistream.h>
+#include <opus.h>
+#include <opus_multistream.h>
 #include <ogg/ogg.h>
 
 #if defined WIN32 || defined _WIN32
