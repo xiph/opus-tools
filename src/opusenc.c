@@ -152,7 +152,7 @@ void usage(void)
 
 static inline void print_time(double seconds)
 {
-  long long hours, minutes;
+  opus_int64 hours, minutes;
   hours=seconds/3600;
   seconds-=hours*3600.;
   minutes=seconds/60;

@@ -1,6 +1,8 @@
 #ifndef __OPUSENC_H
 #define __OPUSENC_H
 
+#include <opus_types.h>
+
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(X) gettext(X)
@@ -21,7 +23,7 @@ typedef struct
 {
     audio_read_func read_samples;
     void *readdata;
-    long total_samples_per_channel;
+    opus_int64 total_samples_per_channel;
     int rawmode;
     int channels;
     long rate;
@@ -31,7 +33,7 @@ typedef struct
     int ignorelength;
     int skip;
     int extraout;
-} oe_enc_opt;            
+} oe_enc_opt;
 
 void setup_scaler(oe_enc_opt *opt, float scale);
 void clear_scaler(oe_enc_opt *opt);
@@ -63,16 +65,16 @@ typedef struct {
 typedef struct {
     short channels;
     short samplesize;
-    long totalsamples;
-    long samplesread;
+    opus_int64 totalsamples;
+    opus_int64 samplesread;
     FILE *f;
     short bigendian;
-        int *channel_permute;
+    int *channel_permute;
 } wavfile;
 
 typedef struct {
     short channels;
-    int totalframes;
+    opus_int64 totalframes;
     short samplesize;
     int rate;
     int offset;
