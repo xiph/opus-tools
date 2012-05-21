@@ -629,6 +629,11 @@ long wav_read(void *in, float *buffer, int samples)
     opus_int64 realsamples;
     int *ch_permute = f->channel_permute;
 
+    if(f->totalsamples && f->samplesread +
+            bytes_read/(sampbyte*f->channels) > f->totalsamples) {
+        bytes_read = sampbyte*f->channels*(f->totalsamples - f->samplesread);
+    }
+
     realsamples = bytes_read/(sampbyte*f->channels);
     f->samplesread += realsamples;
 
@@ -705,6 +710,10 @@ long wav_ieee_read(void *in, float *buffer, int samples)
     long bytes_read = fread(buf,1,samples*4*f->channels, f->f);
     int i,j;
     opus_int64 realsamples;
+
+    if(f->totalsamples && f->samplesread +
+            bytes_read/(4*f->channels) > f->totalsamples)
+        bytes_read = 4*f->channels*(f->totalsamples - f->samplesread);
 
     realsamples = bytes_read/(4*f->channels);
     f->samplesread += realsamples;
