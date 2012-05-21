@@ -732,7 +732,7 @@ int main(int argc, char **argv)
                   eos=1;
 
                {
-                  int truncate;
+                  int trunc;
                   int ret;
                   /*Decode frame*/
                   if (!lost)
@@ -773,14 +773,14 @@ int main(int argc, char **argv)
                   }
                   decoded += frame_size;
                   if (decoded > page_granule)
-                     truncate = decoded-page_granule;
+                     trunc = decoded-page_granule;
                   else
-                     truncate = 0;
+                     trunc = 0;
                   {
                      int new_frame_size;
-                     if (truncate > frame_size)
-                        truncate = frame_size;
-                     new_frame_size = frame_size - truncate;
+                     if (trunc > frame_size)
+                        trunc = frame_size;
+                     new_frame_size = frame_size - trunc;
                      audio_write(output, channels, new_frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)==0);
                      audio_size+=sizeof(short)*new_frame_size*channels;
                   }
