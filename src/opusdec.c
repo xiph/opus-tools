@@ -439,13 +439,13 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
 
    *gain = pow(10., header.gain/5120.);
 
-   if (header.gain!=0)
-      printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
    if (!quiet)
    {
-      fprintf (stderr, "Decoding %d Hz audio", *rate);
-
-      fprintf(stderr, " (%d channel%s)\n",*channels,*channels>1?"s":"");
+      fprintf(stderr, "Decoding %d Hz audio", *rate);
+      fprintf(stderr, " (%d channel%s)",*channels,*channels>1?"s":"");
+      if(header.version!=1)fprintf(stderr, ", Header v%d",header.version);
+      fprintf(stderr, "\n");
+      if (header.gain!=0)printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
    }
 
    return st;
