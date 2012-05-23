@@ -781,7 +781,7 @@ int main(int argc, char **argv)
                      if (trunc > frame_size)
                         trunc = frame_size;
                      new_frame_size = frame_size - trunc;
-                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)==0);
+                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0);
                      audio_size+=sizeof(short)*new_frame_size*channels;
                   }
                }
