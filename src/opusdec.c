@@ -806,11 +806,13 @@ int main(int argc, char **argv)
                drain -= tmp;
             } while (drain>0);
             speex_resampler_destroy(resampler);
+            resampler=NULL;
          }
          if(eos)
          {
             has_opus_stream=0;
             if(st)opus_multistream_decoder_destroy(st);
+            st=NULL;
          }
       }
       if (feof(fin))
