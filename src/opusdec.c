@@ -441,7 +441,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
 
    if (!quiet)
    {
-      fprintf(stderr, "Decoding %d Hz audio", *rate);
+      fprintf(stderr, "Decoding %d Hz %saudio", *rate, *rate!=(int)header.input_sample_rate?"(forced) ":"");
       fprintf(stderr, " (%d channel%s)",*channels,*channels>1?"s":"");
       if(header.version!=1)fprintf(stderr, ", Header v%d",header.version);
       fprintf(stderr, "\n");
@@ -451,34 +451,35 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    return st;
 }
 
-void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler, int *skip, shapestate *shapemem, int file)
+opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler,
+                       int *skip, shapestate *shapemem, int file, opus_int64 maxout)
 {
-   int i,tmp_skip;
+   opus_int64 sampout=0;
+   int i,ret,tmp_skip;
    unsigned out_len;
    short out[MAX_FRAME_SIZE*channels];
    float buf[MAX_FRAME_SIZE*channels];
    float *output;
 
    do {
-     if (resampler){
-       output=buf;
-       unsigned in_len;
-       in_len = frame_size;
-       out_len = 1024;
-       speex_resampler_process_interleaved_float(resampler, pcm, &in_len, buf, &out_len);
-       pcm += channels*in_len;
-       frame_size -= in_len;
-     } else {
-       output=pcm;
-       out_len=frame_size;
-       frame_size=0;
-     }
-
      if (skip){
-       tmp_skip = (*skip>(int)out_len) ? (int)out_len : *skip;
+       tmp_skip = (*skip>frame_size) ? (int)frame_size : *skip;
        *skip -= tmp_skip;
      } else {
        tmp_skip = 0;
+     }
+     if (resampler){
+       output=buf;
+       unsigned in_len;
+       in_len = frame_size-tmp_skip;
+       out_len = 1024<maxout?1024:maxout;
+       speex_resampler_process_interleaved_float(resampler, pcm+channels*tmp_skip, &in_len, buf, &out_len);
+       pcm += channels*in_len;
+       frame_size -= in_len;
+     } else {
+       output=pcm+channels*tmp_skip;
+       out_len=frame_size-tmp_skip;
+       frame_size=0;
      }
 
      /*Convert to short and save to output file*/
@@ -493,8 +494,14 @@ void audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResa
          out[i]=le_short(out[i]);
      }
 
-     fwrite(out+tmp_skip*channels, 2, (out_len-tmp_skip)*channels, fout);
-   } while (frame_size != 0);
+     if(maxout>0)
+     {
+       ret=fwrite(out, 2*channels, out_len<maxout?out_len:maxout, fout);
+       sampout+=ret;
+       maxout-=ret;
+     }
+   } while (frame_size>0 && maxout>0);
+   return sampout;
 }
 
 int main(int argc, char **argv)
@@ -506,11 +513,12 @@ int main(int argc, char **argv)
    float *output;
    int frame_size=0;
    OpusMSDecoder *st=NULL;
-   int packet_count=0;
+   opus_int64 packet_count=0;
+   int total_links=0;
    int stream_init = 0;
    int quiet = 0;
    ogg_int64_t page_granule=0;
-   ogg_int64_t decoded=0;
+   ogg_int64_t link_out=0;
    struct option long_options[] =
    {
       {"help", no_argument, NULL, 0},
@@ -532,13 +540,15 @@ int main(int argc, char **argv)
    int print_bitrate=0;
    int close_in=0;
    int eos=0;
-   int audio_size=0;
+   ogg_int64_t audio_size=0;
    float loss_percent=-1;
    int channels=-1;
    int rate=0;
    int wav_format=0;
    int preskip=0;
-   int opus_serialno = -1;
+   int gran_offset=0;
+   int has_opus_stream=0;
+   ogg_int32_t opus_serialno;
    int dither=1;
    shapestate shapemem;
    SpeexResamplerState *resampler=NULL;
@@ -683,29 +693,35 @@ int main(int argc, char **argv)
          ogg_stream_pagein(&os, &og);
          page_granule = ogg_page_granulepos(&og);
          /*Extract all available packets*/
-         while (!eos && ogg_stream_packetout(&os, &op) == 1)
+         while (ogg_stream_packetout(&os, &op) == 1)
          {
-            if (op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
-               opus_serialno = os.serialno;
+            if (op.b_o_s && op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
+               if(!has_opus_stream)
+               {
+                 opus_serialno = os.serialno;
+                 has_opus_stream = 1;
+                 link_out = 0;
+                 packet_count = 0;
+                 eos = 0;
+                 total_links++;
+               } else {
+                 fprintf(stderr,"Warning: ignoring opus stream %lld\n",(long long)os.serialno);
+               }
             }
-            if (opus_serialno == -1 || os.serialno != opus_serialno)
+            if (!has_opus_stream || os.serialno != opus_serialno)
                break;
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
                st = process_header(&op, &rate, &channels, &preskip, &gain, &streams, quiet);
-               if(shapemem.a_buf)
-                 free(shapemem.a_buf);
-               if(shapemem.b_buf)
-                 free(shapemem.b_buf);
-               shapemem.a_buf=calloc(channels,sizeof(float)*4);
-               shapemem.b_buf=calloc(channels,sizeof(float)*4);
-               shapemem.fs=rate;
-               if(output)
-                 free(output);
-               output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
-               /* Converting preskip to output sampling rate */
-               preskip = preskip*(rate/48000.);
+               gran_offset=preskip;
+               if(!shapemem.a_buf)
+               {
+                  shapemem.a_buf=calloc(channels,sizeof(float)*4);
+                  shapemem.b_buf=calloc(channels,sizeof(float)*4);
+                  shapemem.fs=rate;
+               }
+               if(!output)output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
                if (!st)
                   exit(1);
                if (rate != 48000)
@@ -716,8 +732,7 @@ int main(int argc, char **argv)
                      fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
                   speex_resampler_skip_zeros(resampler);
                }
-               fout = out_file_open(outFile, rate, &channels);
-
+               if(!fout)fout=out_file_open(outFile, rate, &channels);
             } else if (packet_count==1)
             {
                if (!quiet)
@@ -728,102 +743,91 @@ int main(int argc, char **argv)
                   lost=1;
 
                /*End of stream condition*/
-               if (op.e_o_s && os.serialno == opus_serialno) /* don't care for anything except opus eos */
-                  eos=1;
+               if (op.e_o_s && os.serialno == opus_serialno)eos=1; /* don't care for anything except opus eos */
 
+               int ret;
+               opus_int64 outsamp;
+               /*Decode frame*/
+               if (!lost)
+                  ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
+               else
+                  ret = opus_multistream_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
+
+               if (ret<0)
                {
-                  int trunc;
-                  int ret;
-                  /*Decode frame*/
-                  if (!lost)
-                     ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
-                  else
-                     ret = opus_multistream_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
-
-                  /*for (i=0;i<frame_size*channels;i++)
-                    printf ("%d\n", (int)output[i]);*/
-
-                  if (ret<0)
-                  {
-                     fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
-                     break;
-                  }
-                  frame_size = ret;
-
-                  if(frange!=NULL){
-                    OpusDecoder *od;
-                    opus_uint32 rngs[streams];
-                    for(i=0;i<streams;i++){
-                      ret=opus_multistream_decoder_ctl(st,OPUS_MULTISTREAM_GET_DECODER_STATE(i,&od));
-                      ret=opus_decoder_ctl(od,OPUS_GET_FINAL_RANGE(&rngs[i]));
-                    }
-                    save_range(frange,frame_size*(48000/48000/*decoding_rate*/),op.packet,op.bytes,
-                               rngs,streams);
-                  }
-
-                  /* Apply header gain */
-                  for (i=0;i<frame_size*channels;i++)
-                     output[i] *= gain;
-
-                  if (print_bitrate) {
-                     opus_int32 tmp=op.bytes;
-                     char ch=13;
-                     fputc (ch, stderr);
-                     fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
-                  }
-                  decoded += frame_size;
-                  if (decoded > page_granule)
-                     trunc = decoded-page_granule;
-                  else
-                     trunc = 0;
-                  {
-                     int new_frame_size;
-                     if (trunc > frame_size)
-                        trunc = frame_size;
-                     new_frame_size = frame_size - trunc;
-                     audio_write(output, channels, new_frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0);
-                     audio_size+=sizeof(short)*new_frame_size*channels;
-                  }
+                  fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
+                  break;
                }
+               frame_size = ret;
+
+               if(frange!=NULL){
+                 OpusDecoder *od;
+                 opus_uint32 rngs[streams];
+                 for(i=0;i<streams;i++){
+                   ret=opus_multistream_decoder_ctl(st,OPUS_MULTISTREAM_GET_DECODER_STATE(i,&od));
+                   ret=opus_decoder_ctl(od,OPUS_GET_FINAL_RANGE(&rngs[i]));
+                 }
+                 save_range(frange,frame_size*(48000/48000/*decoding_rate*/),op.packet,op.bytes,
+                            rngs,streams);
+               }
+
+               /* Apply header gain */
+               for (i=0;i<frame_size*channels;i++)
+                  output[i] *= gain;
+
+               if (print_bitrate) {
+                  opus_int32 tmp=op.bytes;
+                  char ch=13;
+                  fputc (ch, stderr);
+                  fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
+               }
+               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,((page_granule-gran_offset)*rate/48000)-link_out);
+               link_out+=outsamp;
+               audio_size+=sizeof(short)*outsamp*channels;
             }
             packet_count++;
+         }
+         /* Drain the resampler */
+         if(eos && resampler)
+         {
+            float zeros[100];
+            int drain;
+
+            for (i=0;i<100;i++)zeros[i] = 0;
+            drain = speex_resampler_get_input_latency(resampler);
+            do {
+               opus_int64 outsamp;
+               int tmp = drain;
+               if (tmp > 100)
+                  tmp = 100;
+               outsamp=audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)==0, ((page_granule-gran_offset)*rate/48000)-link_out);
+               link_out+=outsamp;
+               audio_size+=sizeof(short)*outsamp*channels;
+               drain -= tmp;
+            } while (drain>0);
+            speex_resampler_destroy(resampler);
+         }
+         if(eos)
+         {
+            has_opus_stream=0;
+            if(st)opus_multistream_decoder_destroy(st);
          }
       }
       if (feof(fin))
          break;
-
    }
 
-   /* Drain the resampler */
-   if (resampler)
-   {
-      int i;
-      float zeros[200];
-      int drain;
-
-      for (i=0;i<200;i++)
-         zeros[i] = 0;
-      drain = speex_resampler_get_input_latency(resampler);
-      do {
-         int tmp = drain;
-         if (tmp > 100)
-            tmp = 100;
-         audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)==0);
-         drain -= tmp;
-      } while (drain>0);
-   }
-
-   if (fout && wav_format)
+   if (fout && wav_format && audio_size<0x7FFFFFFF)
    {
       if (fseek(fout,4,SEEK_SET)==0)
       {
          int tmp;
          tmp = le_int(audio_size+36);
-         fwrite(&tmp,4,1,fout);
+         if(fwrite(&tmp,4,1,fout)!=1)fprintf(stderr,"Error writing end length.\n");
          if (fseek(fout,32,SEEK_CUR)==0)
          {
             tmp = le_int(audio_size);
-            fwrite(&tmp,4,1,fout);
+            if(fwrite(&tmp,4,1,fout)!=1)fprintf(stderr,"Error writing header length.\n");
          } else
          {
             fprintf (stderr, "First seek worked, second didn't\n");
@@ -833,12 +837,8 @@ int main(int argc, char **argv)
       }
    }
 
-   if (st)
-   {
-      opus_multistream_decoder_destroy(st);
-   } else {
-      fprintf (stderr, "This doesn't look like a Opus file\n");
-   }
+   if(!total_links)fprintf (stderr, "This doesn't look like a Opus file\n");
+
    if (stream_init)
       ogg_stream_clear(&os);
    ogg_sync_clear(&oy);
@@ -850,8 +850,6 @@ int main(int argc, char **argv)
 
    if(shapemem.a_buf)free(shapemem.a_buf);
    if(shapemem.b_buf)free(shapemem.b_buf);
-
-   if(resampler)speex_resampler_destroy(resampler);
 
    if(output)free(output);
 
