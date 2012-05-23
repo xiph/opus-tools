@@ -851,6 +851,8 @@ int main(int argc, char **argv)
    if(shapemem.a_buf)free(shapemem.a_buf);
    if(shapemem.b_buf)free(shapemem.b_buf);
 
+   if(resampler)speex_resampler_destroy(resampler);
+
    if(output)free(output);
 
    if(frange)fclose(frange);
