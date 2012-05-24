@@ -171,7 +171,9 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
       h->stream_map[0]=0;
       h->stream_map[1]=1;
    }
-   if (h->version==0 && p.pos != len)
+   /*For version 0/1 we know there won't be any more data
+     so reject any that have data past the end.*/
+   if ((h->version==0 || h->version==1) && p.pos != len)
       return 0;
    return 1;
 }
