@@ -443,14 +443,6 @@ int main(int argc, char **argv)
   inFile=argv[optind];
   outFile=argv[optind+1];
 
-  /*Initialize Ogg stream struct*/
-  gettimeofday(&start_time,NULL);
-  srand(start_time.tv_sec^start_time.tv_usec);
-  if(ogg_stream_init(&os, rand())==-1){
-    fprintf(stderr,"Error: stream init failed\n");
-    exit(1);
-  }
-
   if(strcmp(inFile, "-")==0){
 #if defined WIN32 || defined _WIN32
     _setmode(_fileno(stdin), _O_BINARY);
@@ -679,6 +671,15 @@ int main(int argc, char **argv)
     }
   }
 
+  /*Initialize Ogg stream struct*/
+  gettimeofday(&start_time,NULL);
+  srand(start_time.tv_sec^start_time.tv_usec);
+  if(ogg_stream_init(&os, rand())==-1){
+    fprintf(stderr,"Error: stream init failed\n");
+    exit(1);
+  }
+  start_time.tv_sec=0;
+
   /*Write header*/
   {
     unsigned char header_data[100];
@@ -745,6 +746,8 @@ int main(int argc, char **argv)
       else op.e_o_s=0;
     }
     op.e_o_s|=eos;
+
+    if(start_time.tv_sec==0)gettimeofday(&start_time,NULL);
 
     cur_frame_size=frame_size;
 
@@ -900,13 +903,13 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n    Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n             (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"      Wrote: %lld bytes, %d packets, %lld pages\n",total_bytes,id+1,pages_out);
+    fprintf(stderr,"      Wrote: %lld bytes, %d packets, %lld pages\n",bytes_written,id+1,pages_out);
     fprintf(stderr,"    Bitrate: %0.6gkbit/s (without overhead)\n",
             total_bytes*8.0/(coded_seconds)/1000.0);
     fprintf(stderr," Rate range: %0.6gkbit/s to %0.6gkbit/s\n             (%d to %d bytes per packet)\n",
             min_bytes*8*((double)coding_rate/frame_size/1000.),
             peak_bytes*8*((double)coding_rate/frame_size/1000.),min_bytes,peak_bytes);
-    fprintf(stderr,"   Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)total_bytes*100.);
+    fprintf(stderr,"   Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)bytes_written*100.);
 #ifdef OLD_LIBOGG
     if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"   (use libogg 1.3 or later for lower overhead)\n");
 #endif
