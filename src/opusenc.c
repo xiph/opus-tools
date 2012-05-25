@@ -36,6 +36,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <math.h>
 
@@ -530,7 +531,10 @@ int main(int argc, char **argv)
   }
 
   /*Initialize OPUS encoder*/
-  st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled, mapping, OPUS_APPLICATION_AUDIO, &ret);
+  /*Framesizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
+    to save the extra 2.5ms of codec lookahead when we'll be using only small frames.*/
+  st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled,
+     mapping, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
   if(ret!=OPUS_OK){
     fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(ret));
     exit(1);
@@ -642,17 +646,17 @@ int main(int argc, char **argv)
     else if(opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY)fprintf(stderr," (low-delay)\n");
     else fprintf(stderr," (unknown)\n");
     fprintf(stderr,"-----------------------------------------------------\n");
-    fprintf(stderr,"  Input: %0.6gkHz %d channel%s\n",
+    fprintf(stderr,"   Input: %0.6gkHz %d channel%s\n",
             header.input_sample_rate/1000.,chan,chan<2?"":"s");
-    fprintf(stderr," Output: %d channel%s (",header.channels,header.channels<2?"":"s");
+    fprintf(stderr,"  Output: %d channel%s (",header.channels,header.channels<2?"":"s");
     if(header.nb_coupled>0)fprintf(stderr,"%d coupled",header.nb_coupled*2);
     if(header.nb_streams-header.nb_coupled>0)fprintf(stderr,
        "%s%d uncoupled",header.nb_coupled>0?", ":"",
        header.nb_streams-header.nb_coupled);
-    fprintf(stderr,")\n         %0.2gms packets, %0.6gkbit/sec%s\n",
+    fprintf(stderr,")\n          %0.2gms packets, %0.6gkbit/sec%s\n",
        frame_size/(coding_rate/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
-    fprintf(stderr," Pregap: %d\n",header.preskip);
+    fprintf(stderr," Preskip: %d\n",header.preskip);
 
     if(frange!=NULL)fprintf(stderr,"         Writing final range file %s\n",range_file);
     fprintf(stderr,"\n");
@@ -673,7 +677,7 @@ int main(int argc, char **argv)
 
   /*Initialize Ogg stream struct*/
   gettimeofday(&start_time,NULL);
-  srand(start_time.tv_sec^start_time.tv_usec);
+  srand(((getpid()&65535)<<15)^start_time.tv_sec^start_time.tv_usec);
   if(ogg_stream_init(&os, rand())==-1){
     fprintf(stderr,"Error: stream init failed\n");
     exit(1);
