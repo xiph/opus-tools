@@ -42,7 +42,7 @@ typedef struct {
    int pos;
 } ROPacket;
 
-static int write_uint32(Packet *p, opus_uint32 val)
+static int write_uint32(Packet *p, ogg_uint32_t val)
 {
    if (p->pos>p->maxlen-4)
       return 0;
@@ -54,7 +54,7 @@ static int write_uint32(Packet *p, opus_uint32 val)
    return 1;
 }
 
-static int write_uint16(Packet *p, opus_uint16 val)
+static int write_uint16(Packet *p, ogg_uint16_t val)
 {
    if (p->pos>p->maxlen-2)
       return 0;
@@ -74,24 +74,24 @@ static int write_chars(Packet *p, const unsigned char *str, int nb_chars)
    return 1;
 }
 
-static int read_uint32(ROPacket *p, opus_uint32 *val)
+static int read_uint32(ROPacket *p, ogg_uint32_t *val)
 {
    if (p->pos>p->maxlen-4)
       return 0;
-   *val =  (opus_uint32)p->data[p->pos  ];
-   *val |= (opus_uint32)p->data[p->pos+1]<< 8;
-   *val |= (opus_uint32)p->data[p->pos+2]<<16;
-   *val |= (opus_uint32)p->data[p->pos+3]<<24;
+   *val =  (ogg_uint32_t)p->data[p->pos  ];
+   *val |= (ogg_uint32_t)p->data[p->pos+1]<< 8;
+   *val |= (ogg_uint32_t)p->data[p->pos+2]<<16;
+   *val |= (ogg_uint32_t)p->data[p->pos+3]<<24;
    p->pos += 4;
    return 1;
 }
 
-static int read_uint16(ROPacket *p, opus_uint16 *val)
+static int read_uint16(ROPacket *p, ogg_uint16_t *val)
 {
    if (p->pos>p->maxlen-2)
       return 0;
-   *val =  (opus_uint16)p->data[p->pos  ];
-   *val |= (opus_uint16)p->data[p->pos+1]<<8;
+   *val =  (ogg_uint16_t)p->data[p->pos  ];
+   *val |= (ogg_uint16_t)p->data[p->pos+1]<<8;
    p->pos += 2;
    return 1;
 }
@@ -112,14 +112,15 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    char str[9];
    ROPacket p;
    unsigned char ch;
-   opus_uint16 shortval;
+   ogg_uint16_t shortval;
 
    p.data = packet;
    p.maxlen = len;
    p.pos = 0;
    str[8] = 0;
+   if (len<19)return 0;
    read_chars(&p, (unsigned char*)str, 8);
-   if (strcmp(str, "OpusHead")!=0)
+   if (memcmp(str, "OpusHead", 8)!=0)
       return 0;
 
    if (!read_chars(&p, &ch, 1))
@@ -187,6 +188,7 @@ int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len)
    p.data = packet;
    p.maxlen = len;
    p.pos = 0;
+   if (len<19)return 0;
    if (!write_chars(&p, (const unsigned char*)"OpusHead", 8))
       return 0;
    /* Version is 1 */

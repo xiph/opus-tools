@@ -68,10 +68,6 @@
 #define VG_CHECK(x,y)
 #endif
 
-#ifndef OPUSTOOLS_VERSION
-#define OPUSTOOLS_VERSION "unknown"
-#endif
-
 static void comment_init(char **comments, int* length, char *vendor_string);
 static void comment_add(char **comments, int* length, char *tag, char *val);
 
@@ -88,15 +84,15 @@ static inline int oe_write_page(ogg_page *page, FILE *fp)
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
-void opustoolsversion(const char *version)
+void opustoolsversion(const char *opusversion)
 {
-  printf("opusenc opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,version);
+  printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
-void opustoolsversion_short(const char *version)
+void opustoolsversion_short(const char *opusversion)
 {
-  printf("opusenc opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,version);
+  printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
@@ -277,7 +273,7 @@ int main(int argc, char **argv)
   for(i=0;i<256;i++)mapping[i]=i;
 
   opus_version=opus_get_version_string();
-  snprintf(vendor_string, sizeof(vendor_string), "opus-tools %s (using %s)\n",OPUSTOOLS_VERSION,opus_version);
+  snprintf(vendor_string, sizeof(vendor_string), "%s %s (using %s)\n",PACKAGE,VERSION,opus_version);
   comment_init(&comments, &comments_length, vendor_string);
 
 

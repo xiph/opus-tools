@@ -91,10 +91,6 @@
 #include "diag_range.h"
 #include "speex_resampler.h"
 
-#ifndef OPUSTOOLS_VERSION
-#define OPUSTOOLS_VERSION "unknown"
-#endif
-
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
 #define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
@@ -391,13 +387,13 @@ void usage(void)
 
 void version(void)
 {
-   printf("opusdec opus-tools %s (based on %s)\n",OPUSTOOLS_VERSION,opus_get_version_string());
+   printf("opusdec %s %s (based on %s)\n",PACKAGE,VERSION,opus_get_version_string());
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
 {
-   printf("opusdec opus-tools %s (based on %s)\n",OPUSTOOLS_VERSION,opus_get_version_string());
+   printf("opusdec %s %s (based on %s)\n",PACKAGE,VERSION,opus_get_version_string());
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
