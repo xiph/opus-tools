@@ -271,7 +271,7 @@ static void free_stream_set(stream_set *set)
     int i;
     for(i=0; i < set->used; i++) {
         if(!set->streams[i].end) {
-            oi_warn(_("WARNING: EOS not set on stream %d\n"),
+            oi_warn(_("WARNING: EOS not set on stream %d (normal for live streams)\n"),
                     set->streams[i].num);
             if(set->streams[i].process_end)
                 set->streams[i].process_end(&set->streams[i]);
@@ -530,8 +530,8 @@ static void process_file(char *filename) {
         if(p->seqno++ != ogg_page_pageno(&page)) {
             if(!p->lostseq)
                 oi_warn(_("WARNING: sequence number gap in stream %d. Got page "
-                       "%ld when expecting page %ld. Indicates missing data.\n"
-                       ), p->num, ogg_page_pageno(&page), p->seqno - 1);
+                       "%ld when expecting page %ld. Indicates missing data.%s\n"
+                       ), p->num, ogg_page_pageno(&page), p->seqno - 1, p->seqno-1==2?_(" (normal for live streams)"):"");
             p->seqno = ogg_page_pageno(&page);
             p->lostseq = 1;
         }

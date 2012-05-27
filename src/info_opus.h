@@ -29,11 +29,13 @@ typedef struct {
     OpusHeader  oh;
     ogg_int64_t bytes;
     ogg_int64_t overhead_bytes;
+    ogg_int64_t lastlastgranulepos;
     ogg_int64_t lastgranulepos;
     ogg_int64_t firstgranule;
     ogg_int64_t total_samples;
     ogg_int64_t total_packets;
     ogg_int64_t total_pages;
+    ogg_int32_t last_packet_duration;
     ogg_int32_t last_page_duration;
     ogg_int32_t max_page_duration;
     ogg_int32_t min_page_duration;
@@ -41,6 +43,7 @@ typedef struct {
     ogg_int32_t min_packet_duration;
     ogg_int32_t max_packet_bytes;
     ogg_int32_t min_packet_bytes;
+    int last_eos;
 
     int doneheaders;
 } misc_opus_info;

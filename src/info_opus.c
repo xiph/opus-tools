@@ -96,6 +96,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
     ogg_stream_pagein(&stream->os, page);
     if(inf->doneheaders < 2)
         header = 1;
+    inf->last_eos = ogg_page_eos(page);
 
     while(1) {
         int32_t spp;
@@ -201,6 +202,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
         inf->total_samples += spp;
         page_samples += spp;
         inf->total_packets++;
+        inf->last_packet_duration = spp;
         if(inf->max_packet_duration<spp)inf->max_packet_duration=spp;
         if(inf->min_packet_duration>spp)inf->min_packet_duration=spp;
         if(inf->max_packet_bytes<packet.bytes)inf->max_packet_bytes=packet.bytes;
@@ -224,12 +226,15 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                   else inf->firstgranule=0;
                 }
             }
-            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%lld<%lld) in stream %d\n"),
+            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%" I64FORMAT ">%" I64FORMAT ") in stream %d\n"),
                 (long long)inf->total_samples,(long long)(gp-inf->firstgranule),stream->num);
             if(!ogg_page_eos(page) && (inf->total_samples>gp-inf->firstgranule))
-                oi_warn(_("WARNING: Sample count ahead of granule (%lld>%lld) in stream %d\n"),
+                oi_warn(_("WARNING: Sample count ahead of granule (%" I64FORMAT ">%" I64FORMAT ") in stream %d\n"),
                 (long long)inf->total_samples,(long long)(gp-inf->firstgranule),stream->num);
+            inf->lastlastgranulepos = inf->lastgranulepos;
             inf->lastgranulepos = gp;
+            if(!packets)
+                oi_warn(_("WARNING: Page with positive granpos (%" I64FORMAT ") on a page with no completed packets in stream %d\n"),gp,stream->num);
         }
         else if(packets) {
             /* Only do this if we saw at least one packet ending on this page.
@@ -264,9 +269,11 @@ void info_opus_end(stream_processor *stream)
         seconds = (long)(time - minutes*60);
         milliseconds = (long)((time - minutes*60 - seconds)*1000);
         if(inf->lastgranulepos-inf->firstgranule<inf->oh.preskip)
-           oi_warn(_("\tERROR: stream %d has a negative duration\n"),stream->num);
+           oi_error(_("\tERROR: stream %d has a negative duration\n"),stream->num);
         if((inf->total_samples-inf->last_page_duration)>(inf->lastgranulepos-inf->firstgranule))
-           oi_warn(_("\tWARNING: stream %d has holes or excessive end trimming\n"),stream->num);
+           oi_error(_("\tERROR: stream %d has interior holes or more than one page of end trimming\n"),stream->num);
+        if(inf->last_eos &&( (inf->last_page_duration-inf->last_packet_duration)>(inf->lastgranulepos-inf->lastlastgranulepos)))
+           oi_warn(_("\tWARNING: stream %d has more than one packet of end trimming\n"),stream->num);
         if(inf->max_page_duration>=240000)
            oi_warn(_("\tWARNING: stream %d has high muxing delay\n"),stream->num);
         oi_info(_("\tPre-skip: %d\n"),inf->oh.preskip);
