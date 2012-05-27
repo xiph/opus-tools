@@ -43,7 +43,7 @@
 #include "info_opus.h"
 
 /* From libopus, src/opus_decode.c */
-static int packet_get_samples_per_frame(const unsigned char *data, int32_t Fs)
+static int packet_get_samples_per_frame(const unsigned char *data, ogg_int32_t Fs)
 {
    int audiosize;
    if (data[0]&0x80)
@@ -64,7 +64,7 @@ static int packet_get_samples_per_frame(const unsigned char *data, int32_t Fs)
 }
 
 /* From libopus, src/opus_decode.c */
-static int packet_get_nb_frames(const unsigned char packet[], int32_t len)
+static int packet_get_nb_frames(const unsigned char packet[], ogg_int32_t len)
 {
    int count;
    if (len<1)
@@ -99,7 +99,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
     inf->last_eos = ogg_page_eos(page);
 
     while(1) {
-        int32_t spp;
+        ogg_int32_t spp;
         res = ogg_stream_packetout(&stream->os, &packet);
         if(res < 0) {
            oi_warn(_("WARNING: discontinuity in stream (%d)\n"), stream->num);

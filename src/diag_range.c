@@ -31,6 +31,14 @@
 # include "config.h"
 #endif
 
+#ifdef _WIN32
+#define I64FORMAT "I64d"
+#define I64uFORMAT "I64u"
+#else
+#define I64FORMAT "lld"
+#define I64uFORMAT "llu"
+#endif
+
 #include <stdio.h>
 #include <opus.h>
 #include "diag_range.h"
@@ -230,7 +238,7 @@ void save_range(FILE *frange, int frame_size, unsigned char *packet, int nbBytes
        mode_strings[((((subpkt[0]>>3)+48)&92)+4)>>5],
        bw_strings[opus_packet_get_bandwidth(subpkt)-OPUS_BANDWIDTH_NARROWBAND],
        subpkt[0]&4?'S':'M',opus_packet_get_samples_per_frame(subpkt,48000));
-    fprintf(frange,", %llu]%s",(unsigned long long)rngs[i],i+1==nb_streams?"\n":", ");
+    fprintf(frange,", %" I64uFORMAT "]%s",(unsigned long long)rngs[i],i+1==nb_streams?"\n":", ");
     parsed_size-=payload_offset;
     subpkt+=payload_offset;
   }

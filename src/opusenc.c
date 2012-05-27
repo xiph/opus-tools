@@ -44,6 +44,12 @@
 #define snprintf _snprintf
 #endif
 
+#ifdef _WIN32
+#define I64FORMAT "I64d"
+#else
+#define I64FORMAT "lld"
+#endif
+
 #include <opus.h>
 #include <opus_multistream.h>
 #include <ogg/ogg.h>
@@ -154,9 +160,9 @@ static inline void print_time(double seconds)
   seconds-=hours*3600.;
   minutes=seconds/60;
   seconds-=minutes*60.;
-  if(hours)fprintf(stderr," %lld hour%s%s",hours,hours>1?"s":"",
+  if(hours)fprintf(stderr," %" I64FORMAT " hour%s%s",hours,hours>1?"s":"",
                    minutes&&!(seconds>0)?" and":"");
-  if(minutes)fprintf(stderr,"%s%lld minute%s%s",hours?", ":" ",minutes,
+  if(minutes)fprintf(stderr,"%s%" I64FORMAT " minute%s%s",hours?", ":" ",minutes,
                      minutes>1?"s":"",!hours&&seconds>0?" and":seconds>0?", and":"");
   if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
 }
@@ -903,7 +909,7 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n    Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n             (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"      Wrote: %lld bytes, %d packets, %lld pages\n",bytes_written,id+1,pages_out);
+    fprintf(stderr,"      Wrote: %" I64FORMAT " bytes, %d packets, %" I64FORMAT " pages\n",bytes_written,id+1,pages_out);
     fprintf(stderr,"    Bitrate: %0.6gkbit/s (without overhead)\n",
             total_bytes*8.0/(coded_seconds)/1000.0);
     fprintf(stderr," Rate range: %0.6gkbit/s to %0.6gkbit/s\n             (%d to %d bytes per packet)\n",

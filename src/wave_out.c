@@ -54,14 +54,14 @@
 
 static CRITICAL_SECTION  cs;
 static HWAVEOUT          dev                    = NULL;
-static int               ScheduledBlocks        = 0;
+static unsigned          ScheduledBlocks        = 0;
 static int               PlayedWaveHeadersCount = 0;          // free index
 static WAVEHDR*          PlayedWaveHeaders [MAX_WAVEBLOCKS];
 
 static int
 Box ( const char* msg )
 {
-	MessageBox ( NULL, msg, " "VERSION_STRING": Error Message . . .", MB_OK | MB_ICONEXCLAMATION );
+	MessageBox ( NULL, msg, " "PACKAGE" "VERSION": Error Message . . .", MB_OK | MB_ICONEXCLAMATION );
 	return -1;
 }
 
@@ -73,6 +73,9 @@ Box ( const char* msg )
 static void CALLBACK
 wave_callback ( HWAVE hWave, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2 )
 {
+        (void) hWave;
+        (void) dwInstance;
+        (void) dwParam2;
 	if ( uMsg == WOM_DONE ) {
 		EnterCriticalSection ( &cs );
 		PlayedWaveHeaders [PlayedWaveHeadersCount++] = (WAVEHDR*) dwParam1;

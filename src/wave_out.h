@@ -39,20 +39,9 @@
 #include <mmsystem.h>
 #endif
 
-#define VERSION_STRING "\n 0.11.4\n"
-
-#define Cdecl               __cdecl
-#define __attribute__(x)
-#define sleep(__sec)        Sleep ((__sec) * 1000)
-#define inline              __inline
-#define restrict
-
 //// constants /////////////////////////////////////////////////////
 
-#define CD_SAMPLE_FREQ         44.1e3
 #define SAMPLE_SIZE            16
-#define SAMPLE_SIZE_STRING     ""
-#define WINAUDIO_FD            ((FILE_T)-128)
 #define FILE_T                 FILE*
 #define INVALID_FILEDESC       NULL
 

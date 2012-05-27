@@ -571,7 +571,8 @@ static void usage(void) {
     printf (_(" by the Xiph.Org Foundation (http://www.xiph.org/)\n\n"));
     printf(_("(c) 2003-2005 Michael Smith <msmith@xiph.org>\n"
              "(c) 2012 Gregory Maxwell <greg@xiph.org>\n\n"
-             "Opusinfo is a version of ogginfo from the vorbis-tools package which only works with opus.\n\n"
+             "Opusinfo is a fork of ogginfo from the vorbis-tools package\n"
+             "which has been cut down to only support opus file.\n\n"
              "Usage: opusinfo [flags] file1.opua [file2.opua ... fileN.opus]\n"
              "Flags supported:\n"
              "\t-h Show this help message\n"

@@ -90,6 +90,8 @@ if test x"$fp_libm_not_needed" = xdunno; then
 fi
 AC_SUBST([LIBM])
 
+AC_CHECK_LIB(winmm, main)
+
 AC_DEFINE_UNQUOTED(PACKAGE, "${OPUSTOOLS_VERSION}", [Package name])
 AC_DEFINE_UNQUOTED(VERSION, "${OPUSTOOLS_VERSION}", [Package version])
 AC_DEFINE_UNQUOTED(OPUSTOOLS_MAJOR_VERSION, ${OPUSTOOLS_MAJOR_VERSION}, [Version major])

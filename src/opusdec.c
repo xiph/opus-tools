@@ -1,6 +1,6 @@
 /* Copyright (c) 2002-2007 Jean-Marc Valin
    Copyright (c) 2008 CSIRO
-   Copyright (c) 2007-2009 Xiph.Org Foundation
+   Copyright (c) 2007-2012 Xiph.Org Foundation
    File: opusdec.c
 
    Redistribution and use in source and binary forms, with or without
@@ -57,8 +57,10 @@
 #endif
 #include <math.h>
 
-#ifdef __MINGW32__
-#include "wave_out.c"
+#ifdef _WIN32
+#define I64FORMAT "I64d"
+#else
+#define I64FORMAT "lld"
 #endif
 
 #if defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
@@ -193,7 +195,7 @@ static inline void shape_dither_toshort(shapestate *_ss, short *_o, float *_i, i
 static void print_comments(char *comments, int length)
 {
    char *c=comments;
-   int len, i, nb_fields;
+   int len, i, nb_fields, err=0;
 
    if (length<(8+4+4))
    {
@@ -214,7 +216,7 @@ static void print_comments(char *comments, int length)
       fprintf (stderr, "Invalid/corrupted comments\n");
       return;
    }
-   fwrite(c, 1, len, stderr);
+   err&=fwrite(c, 1, len, stderr)!=(unsigned)len;
    c+=len;
    fprintf (stderr, "\n");
    /*The -16 check above makes sure we can read this.*/
@@ -241,7 +243,7 @@ static void print_comments(char *comments, int length)
          fprintf (stderr, "Invalid/corrupted comments\n");
          return;
       }
-      fwrite(c, 1, len, stderr);
+      err&=fwrite(c, 1, len, stderr)!=(unsigned)len;
       c+=len;
       length-=len;
       fprintf (stderr, "\n");
@@ -492,7 +494,14 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
 
      if(maxout>0)
      {
-       ret=fwrite(out, 2*channels, out_len<maxout?out_len:maxout, fout);
+#if defined WIN32 || defined _WIN32
+       if(!file){
+         ret=WIN_Play_Samples (out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
+         if(ret>0)ret/=sizeof(short)*channels;
+         else fprintf(stderr, "Error playing audio.\n");
+       }else
+#endif
+         ret=fwrite(out, 2*channels, out_len<maxout?out_len:maxout, fout);
        sampout+=ret;
        maxout-=ret;
      }
@@ -701,7 +710,7 @@ int main(int argc, char **argv)
                  eos = 0;
                  total_links++;
                } else {
-                 fprintf(stderr,"Warning: ignoring opus stream %lld\n",(long long)os.serialno);
+                 fprintf(stderr,"Warning: ignoring opus stream %" I64FORMAT "\n",(long long)os.serialno);
                }
             }
             if (!has_opus_stream || os.serialno != opus_serialno)

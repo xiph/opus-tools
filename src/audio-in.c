@@ -37,7 +37,16 @@
 #include <string.h>
 #include <sys/types.h>
 #include <math.h>
-#include <alloca.h>
+
+#ifdef WIN32
+# include <malloc.h>
+#else
+# ifdef HAVE_ALLOCA_H
+#  include <alloca.h>
+# else
+#  include <stdlib.h>
+# endif
+#endif
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
