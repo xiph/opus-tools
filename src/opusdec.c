@@ -795,10 +795,10 @@ int main(int argc, char **argv)
          /* Drain the resampler */
          if(eos && resampler)
          {
-            float zeros[100];
+            float *zeros;
             int drain;
 
-            for (i=0;i<100;i++)zeros[i] = 0;
+            zeros=(float *)calloc(100*channels,sizeof(float));
             drain = speex_resampler_get_input_latency(resampler);
             do {
                opus_int64 outsamp;
@@ -810,6 +810,7 @@ int main(int argc, char **argv)
                audio_size+=sizeof(short)*outsamp*channels;
                drain -= tmp;
             } while (drain>0);
+            free(zeros);
             speex_resampler_destroy(resampler);
             resampler=NULL;
          }
