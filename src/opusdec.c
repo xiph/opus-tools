@@ -719,6 +719,8 @@ int main(int argc, char **argv)
             if (packet_count==0)
             {
                st = process_header(&op, &rate, &channels, &preskip, &gain, &streams, quiet);
+               if (!st)
+                  exit(1);
                gran_offset=preskip;
                if(!shapemem.a_buf)
                {
@@ -727,8 +729,6 @@ int main(int argc, char **argv)
                   shapemem.fs=rate;
                }
                if(!output)output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
-               if (!st)
-                  exit(1);
                if (rate != 48000)
                {
                   int err;

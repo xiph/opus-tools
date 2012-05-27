@@ -154,9 +154,15 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
    {
       if (!read_chars(&p, &ch, 1))
          return 0;
+
+      if (ch<1)
+         return 0;
       h->nb_streams = ch;
 
       if (!read_chars(&p, &ch, 1))
+         return 0;
+
+      if (ch>h->nb_streams || (ch+h->nb_streams)>255)
          return 0;
       h->nb_coupled = ch;
 
@@ -165,8 +171,12 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
       {
          if (!read_chars(&p, &h->stream_map[i], 1))
             return 0;
+         if (h->stream_map[i]>(h->nb_streams+h->nb_coupled) && h->stream_map[i]!=255)
+            return 0;
       }
    } else {
+      if(h->channels>2)
+         return 0;
       h->nb_streams = 1;
       h->nb_coupled = h->channels>1;
       h->stream_map[0]=0;
