@@ -1,4 +1,6 @@
-AUTOMAKE_OPTIONS = subdir-objects
+
+#AUTOMAKE_OPTIONS = subdir-objects 1.6 dist-zip
+AUTOMAKE_OPTIONS = subdir-objects 1.11 dist-zip dist-xz
 
 SUBDIRS = .
 
@@ -7,6 +9,18 @@ INCLUDES = -I$(top_srcdir)/src
 AM_CFLAGS = $(OGG_CFLAGS) $(Opus_CFLAGS) -DOPUSTOOLS -D_FORTIFY_SOURCE=2 -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
 
 bin_PROGRAMS = opusenc opusdec opusinfo
+
+noinst_HEADERS = src/arch.h \
+                 src/diag_range.h \
+                 src/info_opus.h \
+                 src/opusenc.h \
+                 src/opus_header.h \
+                 src/opusinfo.h \
+                 src/os_support.h \
+                 src/speex_resampler.h \
+                 src/stack_alloc.h \
+                 src/wave_out.h \
+                 src/wav_io.h
 
 opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c
 opusenc_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
