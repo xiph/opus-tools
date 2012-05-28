@@ -384,6 +384,7 @@ void usage(void)
    printf (" -V                    Verbose mode (show bit-rate)\n");
    printf (" -h, --help            This help\n");
    printf (" -v, --version         Version information\n");
+   printf (" --quiet               Quiet mode\n");
    printf ("\n");
 }
 

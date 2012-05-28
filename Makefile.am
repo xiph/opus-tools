@@ -10,11 +10,14 @@ bin_PROGRAMS = opusenc opusdec opusinfo
 
 opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c
 opusenc_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
+opusenc_MANS = man/opusenc.1
 
 opusdec_SOURCES = src/opus_header.c src/wav_io.c src/wave_out.c src/opusdec.c src/resample.c src/diag_range.c
 opusdec_LDADD = $(OGG_LIBS) $(Opus_LIBS) $(OSS_LIBS) -lm
+opusdec_MANS = man/opusdec.1
 
 opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c
 opusinfo_LDADD = $(OGG_LIBS)
+opusinfo_MANS = man/opusinfo.1
 
 #TESTS = FIXME
