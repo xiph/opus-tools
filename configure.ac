@@ -37,6 +37,8 @@ AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
 
+AC_PROG_LIBTOOL
+
 #Use a hacked up version of autoconf's AC_C_RESTRICT because it's not
 #strong enough a test to detect old buggy versions of GCC (e.g. 2.95.3)
 AC_CACHE_CHECK([for C/C++ restrict keyword], ac_cv_c_restrict,
