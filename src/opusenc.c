@@ -122,7 +122,7 @@ void usage(void)
   printf("\nEncoding options:\n");
   printf(" --speech           Optimize for speech\n");
   printf(" --music            Optimize for music\n");
-  printf(" --bitrate n.nnn    Encoding bit-rate in kbit/sec (6-256 per-channel)\n");
+  printf(" --bitrate n.nnn    Encoding bitrate in kbit/sec (6-256 per channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -131,7 +131,7 @@ void usage(void)
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
   printf(" --expect-loss      Percentage packet loss to expect (default: 0)\n");
   printf(" --downmix-mono     Downmix to mono\n");
-  printf(" --downmix-stereo   Downmix to to stereo (if >2 channels)\n");
+  printf(" --downmix-stereo   Downmix to stereo (if >2 channels)\n");
   printf(" --max-ogg-delay n  Maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf("\nDiagnostic options:\n");

@@ -370,7 +370,7 @@ void usage(void)
    printf ("\n");
    printf ("output_file can be:\n");
    printf ("  filename.wav         Wav file\n");
-   printf ("  filename.*           Raw PCM file (any extension other that .wav)\n");
+   printf ("  filename.*           Raw PCM file (any extension other than .wav)\n");
    printf ("  -                    stdout\n");
    printf ("  (nothing)            Will be played to soundcard\n");
    printf ("\n");
@@ -381,7 +381,7 @@ void usage(void)
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
-   printf (" -V                    Verbose mode (show bit-rate)\n");
+   printf (" -V                    Verbose mode (show bitrate)\n");
    printf (" -h, --help            This help\n");
    printf (" -v, --version         Version information\n");
    printf (" --quiet               Quiet mode\n");

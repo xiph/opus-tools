@@ -21,7 +21,7 @@ opusdec \- decode audio from Opus format to WAV (or simple audio output)
 ] [
 .B --packet-loss pct
 ] [
-.B --save-rae file
+.B --save-range file
 ]
 [
 .B output.wav
@@ -47,16 +47,18 @@ audio playback on your system.
 
 .SH "OPTIONS"
 .IP "-h, --help"
-Print help message.
+Print help message
 .IP "-V, --version"
-Display version information.
+Display version information
 .IP "--quiet"
-Suppresses program output.
+Suppresses program output
 .IP "--mono"
+.br
 Force decoding in mono
 .IP "--stereo"
 Force decoding in stereo
 .IP "--rate"
+.br
 Force decoding at sampling rate n Hz
 .IP "--no-dither"
 Do not dither 16-bit output
@@ -84,12 +86,12 @@ the original sampling rate
 opusdec --rate 48000 input.opus
 .RE
 
-Reencode a high bitrate Opus file to a lower rate
+Re-encode a high bitrate Opus file to a lower rate
 .RS
 opusdec input.opus - | opusenc --bitrate 64 - output.opus
 .RE
 
-Play a http stream
+Play an http stream
 .B http://icecast.somwhere.org:8000/stream.opus
 with the help of curl on a system with pulseaudio
 .br
@@ -101,13 +103,14 @@ curl http://icecast.somwhere.org:8000/stream.opus | padsp opusdec -
 .SH AUTHORS
 .br
 Jean-Marc Valin <jmvalin@jmvalin.ca>
+.br
 Gregory Maxwell <greg@xiph.org>
 
 .SH BUGS
 
 Opusdec does not currently reject all invalid files which it should reject.
 It also doesn't provide very helpful output for the corrupted files it
-does reject, use \fBopusinfo\fR(1) for somewhat better diagnostics.
+does reject. Use \fBopusinfo\fR(1) for somewhat better diagnostics.
 
 .SH SEE ALSO
 

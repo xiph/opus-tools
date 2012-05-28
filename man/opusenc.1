@@ -79,8 +79,8 @@ opusenc \- encode audio into the Opus format
 .SH DESCRIPTION
 .B opusenc
 reads audio data in either raw, Wave, or AIFF format and encodes it into an
-Opus stream. If the input file is "-" audio data is read from stdin,
-likewise if the output file is "-" opus data is written to stdout.
+Opus stream. If the input file is "-" audio data is read from stdin.
+Likewise, if the output file is "-" opus data is written to stdout.
 
 Unless quieted
 .B opusenc
@@ -88,15 +88,15 @@ displays fancy statistics about the encoding progress.
 
 .SH OPTIONS
 .IP "-h, --help"
-Show command help.
+Show command help
 .IP "-v, --version"
-Show the version number.
+Show the version number
 .IP "--speech"
 Optimize for speech
 .IP "--music"
 Optimize for music
 .IP "--bitrate N.nnn"
-Encoding bit-rate in kbit/sec (6-256 per-channel)
+Encoding bitrate in kbit/sec (6-256 per channel)
 .IP "--vbr"
 Use variable bitrate encoding (default)
 .IP "--cvbr"
@@ -118,7 +118,7 @@ Percentage packet loss to expect (default: 0)
 .IP "--downmix-mono"
 Downmix to mono
 .IP "--downmix-stereo"
-Downmix to to stereo (if >2 channels input)
+Downmix to stereo (if >2 channels input)
 .IP "--max-ogg-delay N"
 Maximum container delay in milliseconds (0-1000, default: 1000)
 .IP "--save-range file"
@@ -126,6 +126,7 @@ Saves check values for every frame to a file
 .IP "--set-ctl-int x=y"
 Pass the encoder control x with value y (advanced)
 Preface with s: to direct the ctl to multistream s
+.br
 This may be used multiple times
 .IP "--uncoupled"
 Use one mono stream per channel
@@ -137,10 +138,10 @@ See the vorbis-comment specification for well known tag names:
 http://www.xiph.org/vorbis/doc/v-comment.html
 .IP "--artist artist"
 Set the artist comment field in the comments to
-.I artist.
+.I artist
 .IP "--title title"
 Set the track title comment field to
-.I title.
+.I title
 .IP "--raw"
 Raw (headerless) PCM input
 .IP "--raw-bits N"
@@ -150,7 +151,7 @@ Set sampling rate for raw input (default: 48000)
 .IP "--raw-chan N"
 Set number of channels for raw input (default: 2)
 .IP "--raw-endianness [0/1]"
-Set the endianness for raw input 1 for bigendian, 0 for little (defaults to 0)
+Set the endianness for raw input: 1 for bigendian, 0 for little (defaults to 0)
 
 .SH EXAMPLES
 

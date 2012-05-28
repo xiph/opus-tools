@@ -572,15 +572,15 @@ static void usage(void) {
     printf(_("(c) 2003-2005 Michael Smith <msmith@xiph.org>\n"
              "(c) 2012 Gregory Maxwell <greg@xiph.org>\n\n"
              "Opusinfo is a fork of ogginfo from the vorbis-tools package\n"
-             "which has been cut down to only support opus file.\n\n"
-             "Usage: opusinfo [flags] file1.opua [file2.opua ... fileN.opus]\n"
+             "which has been cut down to only support opus files.\n\n"
+             "Usage: opusinfo [flags] file1.opus [file2.opus ... fileN.opus]\n"
              "Flags supported:\n"
-             "\t-h Show this help message\n"
+             "\t-h Show this help message.\n"
              "\t-q Make less verbose. Once will remove detailed informative\n"
-             "\t   messages, two will remove warnings\n"
+             "\t   messages, twice will remove warnings.\n"
              "\t-v Make more verbose. This may enable more detailed checks\n"
              "\t   for some stream types.\n"));
-    printf (_("\t-V Output version information and exit\n"));
+    printf (_("\t-V Output version information and exit.\n"));
 }
 
 int main(int argc, char **argv) {
