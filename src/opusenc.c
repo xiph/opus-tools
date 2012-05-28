@@ -74,7 +74,7 @@
 #define VG_CHECK(x,y)
 #endif
 
-static void comment_init(char **comments, int* length, char *vendor_string);
+static void comment_init(char **comments, int* length, const char *vendor_string);
 static void comment_add(char **comments, int* length, char *tag, char *val);
 
 /*Write an Ogg page to a file pointer*/
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
   int                eos=0;
   OpusHeader         header;
   int                comments_length;
-  char               vendor_string[64];
+  char               ENCODER_string[64];
   char               *comments;
   /*Counters*/
   opus_int64         nb_encoded=0;
@@ -279,9 +279,11 @@ int main(int argc, char **argv)
   for(i=0;i<256;i++)mapping[i]=i;
 
   opus_version=opus_get_version_string();
-  snprintf(vendor_string, sizeof(vendor_string), "%s %s (using %s)\n",PACKAGE,VERSION,opus_version);
-  comment_init(&comments, &comments_length, vendor_string);
-
+  /*Vendor string should just be the encoder library,
+    the ENCODER comment specifies the tool used.*/
+  comment_init(&comments, &comments_length, opus_version);
+  snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s\n",PACKAGE,VERSION);
+  comment_add(&comments, &comments_length, "ENCODER=", ENCODER_string);
 
   /*Process command-line options*/
   while(1){
@@ -966,8 +968,9 @@ The comment header is decoded as follows:
                                      buf[base]=(val)&0xff; \
                                  }while(0)
 
-static void comment_init(char **comments, int* length, char *vendor_string)
+static void comment_init(char **comments, int* length, const char *vendor_string)
 {
+  /*The 'vendor' field should be the actual encoding library used.*/
   int vendor_length=strlen(vendor_string);
   int user_comment_list_length=0;
   int len=8+4+vendor_length+4;
