@@ -22,6 +22,8 @@ noinst_HEADERS = src/arch.h \
                  src/wave_out.h \
                  src/wav_io.h
 
+EXTRA_DIST = Makefile.unix
+
 opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c
 opusenc_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
 opusenc_MANS = man/opusenc.1
