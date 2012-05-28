@@ -1,4 +1,5 @@
 INSTALL
+libtool
 Makefile.in
 aclocal.m4
 autom4te.cache
@@ -15,6 +16,8 @@ Makefile
 config.h
 config.log
 config.status
+src/info_opus.o
+src/opusinfo.o
 src/audio-in.o
 src/diag_range.o
 src/opus_header.o
@@ -28,3 +31,7 @@ src/.dirstamp
 stamp-h1
 opusenc
 opusdec
+opusinfo
+opusenc.exe
+opusdec.exe
+opusinfo.exe
