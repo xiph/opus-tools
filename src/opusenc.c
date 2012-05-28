@@ -132,7 +132,7 @@ void usage(void)
   printf(" --expect-loss      Percentage packet loss to expect (default: 0)\n");
   printf(" --downmix-mono     Downmix to mono\n");
   printf(" --downmix-stereo   Downmix to stereo (if >2 channels)\n");
-  printf(" --max-ogg-delay n  Maximum container delay in milliseconds\n");
+  printf(" --max-delay n      Maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf("\nDiagnostic options:\n");
   printf(" --save-range file  Saves check values for every frame to a file\n");
@@ -183,7 +183,7 @@ int main(int argc, char **argv)
     {"expect-loss", required_argument, NULL, 0},
     {"downmix-mono",no_argument,NULL, 0},
     {"downmix-stereo",no_argument,NULL, 0},
-    {"max-ogg-delay", required_argument, NULL, 0},
+    {"max-delay", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
     {"set-ctl-int", required_argument, NULL, 0},
     {"uncoupled", no_argument, NULL, 0},
@@ -370,11 +370,11 @@ int main(int argc, char **argv)
             fprintf(stderr,"Framesize must be 2.5, 5, 10, 20, 40, or 60.\n");
             exit(1);
           }
-        }else if(strcmp(long_options[option_index].name,"max-ogg-delay")==0){
+        }else if(strcmp(long_options[option_index].name,"max-delay")==0){
           max_ogg_delay=floor(atof(optarg)*48.);
           if(max_ogg_delay<0||max_ogg_delay>48000){
-            fprintf(stderr,"Invalid max-ogg-delay: %s\n",optarg);
-            fprintf(stderr,"max-ogg-delay 0-1000 ms.\n");
+            fprintf(stderr,"Invalid max-delay: %s\n",optarg);
+            fprintf(stderr,"max-delay 0-1000 ms.\n");
             exit(1);
           }
         }else if(strcmp(long_options[option_index].name,"set-ctl-int")==0){

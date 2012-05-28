@@ -39,7 +39,7 @@ opusenc \- encode audio into the Opus format
 ] [
 .B --downmix-stereo
 ] [
-.B --max-ogg-delay
+.B --max-delay
 .I ms
 ] [
 .B --save-range
@@ -119,7 +119,7 @@ Percentage packet loss to expect (default: 0)
 Downmix to mono
 .IP "--downmix-stereo"
 Downmix to stereo (if >2 channels input)
-.IP "--max-ogg-delay N"
+.IP "--max-delay N"
 Maximum container delay in milliseconds (0-1000, default: 1000)
 .IP "--save-range file"
 Saves check values for every frame to a file
@@ -175,7 +175,7 @@ arecord -c 2 -r 48000 -twav - | opusenc --bitrate 96 -  - | oggfwd icecast.somew
 
 .SH NOTES
 
-While it is possible to use opusenc for low latency streaming (e.g. with --max-ogg-delay set to 0
+While it is possible to use opusenc for low latency streaming (e.g. with --max-delay set to 0
 and netcat instead of Icecast) it's not really designed for this, and the Ogg container
 and TCP transport aren't the best tools for that application. Shell
 pipelines themselves will often have high buffering. The ability to set
