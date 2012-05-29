@@ -277,7 +277,7 @@ void info_opus_end(stream_processor *stream)
         if(inf->max_page_duration>=240000)
            oi_warn(_("\tWARNING: stream %d has high muxing delay\n"),stream->num);
         oi_info(_("\tPre-skip: %d\n"),inf->oh.preskip);
-        oi_info(_("\tPlayback gain: %0.1gdB\n"),inf->oh.gain*256.);
+        oi_info(_("\tPlayback gain: %gdB\n"),inf->oh.gain/256.);
         oi_info(_("\tChannels: %d\n"),inf->oh.channels);
         if(inf->oh.input_sample_rate)oi_info(_("\tOriginal sample rate: %dHz\n"),inf->oh.input_sample_rate);
         if(inf->oh.nb_streams>1)oi_info(_("\tStreams: %d, Coupled: %d\n"),inf->oh.nb_streams,inf->oh.nb_coupled);
