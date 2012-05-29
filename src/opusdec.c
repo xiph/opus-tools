@@ -459,7 +459,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
    short out[MAX_FRAME_SIZE*channels];
    float buf[MAX_FRAME_SIZE*channels];
    float *output;
-
+   maxout=maxout<0?0:maxout;
    do {
      if (skip){
        tmp_skip = (*skip>frame_size) ? (int)frame_size : *skip;
@@ -744,6 +744,7 @@ int main(int argc, char **argv)
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
             } else {
+               opus_int64 maxout;
                int lost=0;
                if (loss_percent>0 && 100*((float)rand())/RAND_MAX<loss_percent)
                   lost=1;
@@ -787,7 +788,13 @@ int main(int argc, char **argv)
                   fputc (ch, stderr);
                   fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
                }
-               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,((page_granule-gran_offset)*rate/48000)-link_out);
+               maxout=((page_granule-gran_offset)*rate/48000)-link_out;
+               if (maxout<0)
+               {
+                  fprintf (stderr, "Decoding error: needed to write a negative number of samples. The input is probably corrupted.\n");
+                  exit(1);
+               }
+               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,maxout);
                link_out+=outsamp;
                audio_size+=sizeof(short)*outsamp*channels;
             }
