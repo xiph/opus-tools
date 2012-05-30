@@ -104,95 +104,6 @@ AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software 
   AC_DEFINE([ENABLE_ASSERTIONS], , [Assertions])
 fi])
 
-dnl Enable stack-protector-all only on x86 where it's well supported.
-dnl on some platforms it causes crashes. Hopefully the OS's default's
-dnl include this on platforms that work but have been missed here.
-
-on_x86=no
-case "$host_cpu" in
-i[[3456]]86 | x86_64)
-  on_x86=yes
-  ;;
-esac
-
-use_stack_protector=no
-
-if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
-saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -fstack-protector-all"
-AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
-      [ AC_MSG_RESULT([yes])
-        STACK_PROTECTOR="-fstack-protector-all"; use_stack_protector=yes ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS $STACK_PROTECTOR"
-fi
-
-save_CFLAGS="$CFLAGS"
-save_LDFLAGS="$LDFLAGS"
-CFLAGS="$CFLAGS -fPIE"
-LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
-AC_MSG_CHECKING([for PIE support])
-AC_LINK_IFELSE([AC_LANG_SOURCE([void main () {}])],
-               [have_pie=yes],
-               [have_pie=no])
-AC_MSG_RESULT([$have_pie])
-if test "x$have_pie" = "xyes"; then
-    PIE_CFLAGS="-fPIE"
-    PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
-fi
-CFLAGS="$save_CFLAGS $PIE_CFLAGS"
-LDFLAGS="$save_LDFLAGS $PIE_LDFLAGS"
-
-CFLAGS="$CFLAGS -W"
-
-saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
-AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes])
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
-      [ AC_MSG_RESULT([yes])
-        EXTRA_WARNS="-Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes" ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS $EXTRA_WARNS"
-
-AC_CHECK_FUNCS([lrintf])
-AC_CHECK_FUNCS([lrint])
-AC_CHECK_FUNCS([__malloc_hook])
-
-AC_CHECK_SIZEOF(short)
-AC_CHECK_SIZEOF(int)
-AC_CHECK_SIZEOF(long)
-AC_CHECK_SIZEOF(long long)
-
-if test x$has_char16 = "xyes" ; then
-        case 1 in
-                $ac_cv_sizeof_short) SIZE16="short";;
-                $ac_cv_sizeof_int) SIZE16="int";;
-        esac
-else
-        case 2 in
-                $ac_cv_sizeof_short) SIZE16="short";;
-                $ac_cv_sizeof_int) SIZE16="int";;
-        esac
-fi
-
-if test x$has_char16 = "xyes" ; then
-        case 2 in
-                $ac_cv_sizeof_int) SIZE32="int";;
-                $ac_cv_sizeof_long) SIZE32="long";;
-                $ac_cv_sizeof_short) SIZE32="short";;
-        esac
-else
-        case 4 in
-                $ac_cv_sizeof_int) SIZE32="int";;
-                $ac_cv_sizeof_long) SIZE32="long";;
-                $ac_cv_sizeof_short) SIZE32="short";;
-        esac
-fi
-
-AC_SUBST(SIZE16)
-AC_SUBST(SIZE32)
-
 dnl check for Ogg
 HAVE_OGG=no
 
@@ -261,6 +172,102 @@ case "$host_os" in
 esac
 AC_SUBST(OSS_LIBS)
 
+
+dnl Enable stack-protector-all only on x86 where it's well supported.
+dnl on some platforms it causes crashes. Hopefully the OS's default's
+dnl include this on platforms that work but have been missed here.
+
+on_x86=no
+case "$host_cpu" in
+i[[3456]]86 | x86_64)
+  on_x86=yes
+  ;;
+esac
+
+use_stack_protector=no
+
+if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
+saved_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -fstack-protector-all"
+AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+      [ AC_MSG_RESULT([yes])
+        STACK_PROTECTOR="-fstack-protector-all"; use_stack_protector=yes ],
+        AC_MSG_RESULT([no]))
+CFLAGS="$saved_CFLAGS $STACK_PROTECTOR"
+fi
+
+save_CFLAGS="$CFLAGS"
+save_LDFLAGS="$LDFLAGS"
+save_LIBS="$LIBS"
+CFLAGS="$CFLAGS -fPIE $Opus_CFLAGS"
+LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
+LIBS="$LIBS $Opus_LIBS"
+AC_MSG_CHECKING([for PIE support])
+AC_LINK_IFELSE([AC_LANG_SOURCE([
+#include <opus.h>
+void main () {
+  OpusDecoder *dec = opus_decoder_create(48000, 2, 0L);
+}])],
+               [have_pie=yes],
+               [have_pie=no])
+AC_MSG_RESULT([$have_pie])
+if test "x$have_pie" = "xyes"; then
+    PIE_CFLAGS="-fPIE"
+    PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
+fi
+CFLAGS="$save_CFLAGS $PIE_CFLAGS"
+LDFLAGS="$save_LDFLAGS $PIE_LDFLAGS"
+LIBS="$save_LIBS"
+
+CFLAGS="$CFLAGS -W"
+
+saved_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
+AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+      [ AC_MSG_RESULT([yes])
+        EXTRA_WARNS="-Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes" ],
+        AC_MSG_RESULT([no]))
+CFLAGS="$saved_CFLAGS $EXTRA_WARNS"
+
+AC_CHECK_FUNCS([lrintf])
+AC_CHECK_FUNCS([lrint])
+AC_CHECK_FUNCS([__malloc_hook])
+
+AC_CHECK_SIZEOF(short)
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_CHECK_SIZEOF(long long)
+
+if test x$has_char16 = "xyes" ; then
+        case 1 in
+                $ac_cv_sizeof_short) SIZE16="short";;
+                $ac_cv_sizeof_int) SIZE16="int";;
+        esac
+else
+        case 2 in
+                $ac_cv_sizeof_short) SIZE16="short";;
+                $ac_cv_sizeof_int) SIZE16="int";;
+        esac
+fi
+
+if test x$has_char16 = "xyes" ; then
+        case 2 in
+                $ac_cv_sizeof_int) SIZE32="int";;
+                $ac_cv_sizeof_long) SIZE32="long";;
+                $ac_cv_sizeof_short) SIZE32="short";;
+        esac
+else
+        case 4 in
+                $ac_cv_sizeof_int) SIZE32="int";;
+                $ac_cv_sizeof_long) SIZE32="long";;
+                $ac_cv_sizeof_short) SIZE32="short";;
+        esac
+fi
+
+AC_SUBST(SIZE16)
+AC_SUBST(SIZE32)
 
 AC_OUTPUT([Makefile])
 
