@@ -794,12 +794,7 @@ int main(int argc, char **argv)
                   fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
                }
                maxout=((page_granule-gran_offset)*rate/48000)-link_out;
-               if (maxout<0)
-               {
-                  fprintf (stderr, "Decoding error: needed to write a negative number of samples. The input is probably corrupted.\n");
-                  exit(1);
-               }
-               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,maxout);
+               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,0>maxout?0:maxout);
                link_out+=outsamp;
                audio_size+=sizeof(short)*outsamp*channels;
             }
