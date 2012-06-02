@@ -355,6 +355,11 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
             write_wav_header(fout, rate, *channels);
       }
    }
+   if(!fout)
+   {
+     perror("Cannot open output");
+     exit(1);
+   }
    return fout;
 }
 
