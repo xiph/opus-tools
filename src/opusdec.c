@@ -296,6 +296,11 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
          exit(1);
       }
       fout = fdopen(audio_fd, "w");
+      if(!fout)
+      {
+        perror("Cannot open output");
+        exit(1);
+      }
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
       int audio_fd;
@@ -322,6 +327,11 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
          exit(1);
       }
       fout = fdopen(audio_fd, "w");
+      if(!fout)
+      {
+        perror("Cannot open output");
+        exit(1);
+      }
 #elif defined WIN32 || defined _WIN32
       {
          unsigned int opus_channels = *channels;
@@ -354,11 +364,6 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
          if (strcmp(outFile+strlen(outFile)-4,".wav")==0 || strcmp(outFile+strlen(outFile)-4,".WAV")==0)
             write_wav_header(fout, rate, *channels);
       }
-   }
-   if(!fout)
-   {
-     perror("Cannot open output");
-     exit(1);
    }
    return fout;
 }
