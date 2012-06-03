@@ -478,8 +478,8 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
        in_len = frame_size-tmp_skip;
        out_len = 1024<maxout?1024:maxout;
        speex_resampler_process_interleaved_float(resampler, pcm+channels*tmp_skip, &in_len, buf, &out_len);
-       pcm += channels*in_len;
-       frame_size -= in_len;
+       pcm += channels*(in_len+tmp_skip);
+       frame_size -= in_len+tmp_skip;
      } else {
        output=pcm+channels*tmp_skip;
        out_len=frame_size-tmp_skip;
