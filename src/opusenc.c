@@ -183,6 +183,7 @@ int main(int argc, char **argv)
     {"expect-loss", required_argument, NULL, 0},
     {"downmix-mono",no_argument,NULL, 0},
     {"downmix-stereo",no_argument,NULL, 0},
+    {"no-downmix",no_argument,NULL, 0},
     {"max-delay", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
     {"set-ctl-int", required_argument, NULL, 0},
@@ -344,6 +345,8 @@ int main(int argc, char **argv)
           downmix=1;
         }else if(strcmp(long_options[option_index].name,"downmix-stereo")==0){
           downmix=2;
+        }else if(strcmp(long_options[option_index].name,"no-downmix")==0){
+          downmix=-1;
         }else if(strcmp(long_options[option_index].name,"expect-loss")==0){
           expect_loss=atoi(optarg);
           if(expect_loss>100||expect_loss<0){
@@ -478,7 +481,7 @@ int main(int argc, char **argv)
     downmix=inopt.channels>8?1:2;
   }
 
-  if(downmix&&downmix<inopt.channels)downmix=setup_downmix(&inopt,downmix);
+  if(downmix>0&&downmix<inopt.channels)downmix=setup_downmix(&inopt,downmix);
   else downmix=0;
 
   rate=inopt.rate;
