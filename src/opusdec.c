@@ -391,7 +391,6 @@ void usage(void)
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
-   printf (" -V                    Verbose mode (show bitrate)\n");
    printf (" -h, --help            This help\n");
    printf (" -v, --version         Version information\n");
    printf (" --quiet               Quiet mode\n");
@@ -553,7 +552,6 @@ int main(int argc, char **argv)
    ogg_page       og;
    ogg_packet     op;
    ogg_stream_state os;
-   int print_bitrate=0;
    int close_in=0;
    int eos=0;
    ogg_int64_t audio_size=0;
@@ -635,9 +633,6 @@ int main(int argc, char **argv)
       case 'v':
          version();
          exit(0);
-         break;
-      case 'V':
-         print_bitrate=1;
          break;
       case '?':
          usage();
@@ -792,12 +787,6 @@ int main(int argc, char **argv)
                for (i=0;i<frame_size*channels;i++)
                   output[i] *= gain;
 
-               if (print_bitrate) {
-                  opus_int32 tmp=op.bytes;
-                  char ch=13;
-                  fputc (ch, stderr);
-                  fprintf (stderr, "Bitrate in use: %d bytes/packet     ", tmp);
-               }
                maxout=((page_granule-gran_offset)*rate/48000)-link_out;
                outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,0>maxout?0:maxout);
                link_out+=outsamp;
