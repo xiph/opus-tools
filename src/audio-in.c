@@ -584,7 +584,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                                             of trying to abstract stuff. */
         wav->samplesize = format.samplesize;
 
-        if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536)) /*Length provided is plausible.*/
+        if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536) && opt->ignorelength!=1) /*Length provided is plausible.*/
         {
             opt->total_samples_per_channel = len/(format.channels*samplesize);
         }

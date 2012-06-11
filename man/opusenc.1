@@ -72,6 +72,8 @@ opusenc \- encode audio into the Opus format
 ] [
 .B --raw-endianness
 .I flag
+] [
+.B --ignorelength
 ]
 .I input.wav
 .I output.opus
@@ -152,6 +154,10 @@ Set sampling rate for raw input (default: 48000)
 Set number of channels for raw input (default: 2)
 .IP "--raw-endianness [0/1]"
 Set the endianness for raw input: 1 for bigendian, 0 for little (defaults to 0)
+.IP "--ignorelength"
+Always ignore the datalength in Wave headers. Opusenc automatically ignores
+the length when its implausible (very small or very large) but some STDIN
+usage may still need this option to avoid truncation.
 
 .SH EXAMPLES
 

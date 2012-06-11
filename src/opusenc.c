@@ -151,6 +151,7 @@ void usage(void)
   printf(" --raw-rate n       Set sampling rate for raw input (default: 48000)\n");
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for bigendian, 0 for little (defaults to 0)\n");
+  printf(" --ignorelength     Always ignore the datalength in Wave headers\n");
 }
 
 static inline void print_time(double seconds)
@@ -194,6 +195,7 @@ int main(int argc, char **argv)
     {"raw-rate", required_argument, NULL, 0},
     {"raw-chan", required_argument, NULL, 0},
     {"raw-endianness", required_argument, NULL, 0},
+    {"ignorelength", no_argument, NULL, 0},
     {"rate", required_argument, NULL, 0},
     {"music", no_argument, NULL, 0},
     {"speech", no_argument, NULL, 0},
@@ -276,6 +278,7 @@ int main(int argc, char **argv)
   inopt.samplesize=16;
   inopt.endianness=0;
   inopt.rawmode=0;
+  inopt.ignorelength=0;
 
   for(i=0;i<256;i++)mapping[i]=i;
 
@@ -318,6 +321,8 @@ int main(int argc, char **argv)
         }else if(strcmp(long_options[option_index].name,"version-short")==0){
           opustoolsversion_short(opus_version);
           exit(0);
+        }else if(strcmp(long_options[option_index].name,"ignorelength")==0){
+          inopt.ignorelength=1;
         }else if(strcmp(long_options[option_index].name,"raw")==0){
           inopt.rawmode=1;
         }else if(strcmp(long_options[option_index].name,"raw-bits")==0){
