@@ -40,6 +40,8 @@
 
 #ifdef WIN32
 # include <malloc.h>
+# include <windows.h> /*GetFileType()*/
+# include <io.h>      /*_get_osfhandle()*/
 #else
 # ifdef HAVE_ALLOCA_H
 #  include <alloca.h>
@@ -588,7 +590,12 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         {
             opt->total_samples_per_channel = len/(format.channels*samplesize);
         }
+#ifdef WIN32
+        /*On Mingw/Win32 fseek() returns zero on pipes.*/
+        else if (opt->ignorelength==1 || ((GetFileType((HANDLE)_get_osfhandle(fileno(in)))&~FILE_TYPE_REMOTE)!=FILE_TYPE_DISK))
+#else
         else if (opt->ignorelength==1)
+#endif
         {
            opt->total_samples_per_channel = 0;
         }
