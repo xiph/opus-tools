@@ -588,6 +588,10 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         {
             opt->total_samples_per_channel = len/(format.channels*samplesize);
         }
+        else if (opt->ignorelength==1)
+        {
+           opt->total_samples_per_channel = 0;
+        }
         else
         {
             opus_int64 pos;
