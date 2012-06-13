@@ -288,8 +288,9 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     unsigned int len;
     unsigned char *buffer;
     unsigned char buf2[8];
+    int bigendian = 1;
     aiff_fmt format;
-    aifffile *aiff = malloc(sizeof(aifffile));
+    aifffile *aiff;
     int i;
     (void)buflen;/*unused*/
 
@@ -323,8 +324,6 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     format.samplesize = READ_U16_BE(buffer+6);
     format.rate = (int)read_IEEE80(buffer+8);
 
-    aiff->bigendian = 1;
-
     if(aifc)
     {
         if(len < 22)
@@ -335,11 +334,11 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
         if(!memcmp(buffer+18, "NONE", 4))
         {
-            aiff->bigendian = 1;
+            bigendian = 1;
         }
         else if(!memcmp(buffer+18, "sowt", 4))
         {
-            aiff->bigendian = 0;
+            bigendian = 0;
         }
         else
         {
@@ -379,11 +378,13 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         opt->read_samples = wav_read; /* Similar enough, so we use the same */
         opt->total_samples_per_channel = format.totalframes;
 
+        aiff = malloc(sizeof(aifffile));
         aiff->f = in;
         aiff->samplesread = 0;
         aiff->channels = format.channels;
         aiff->samplesize = format.samplesize;
         aiff->totalsamples = format.totalframes;
+        aiff->bigendian = bigendian;
 
         if(aiff->channels>3)
           fprintf(stderr,"WARNING: AIFF[-C] files with greater than three channels use\n"
@@ -984,7 +985,7 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
       /*8*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.866f,0.5f},{0.5f,0.866f},{0.7071f,0.7071f}},
     };
     float sum;
-    downmix *d = calloc(1, sizeof(downmix));
+    downmix *d;
     int i,j;
 
     if(opt->channels<=out_channels || out_channels>2 || (out_channels==2&&opt->channels>8) || opt->channels<=0 || out_channels<=0) {
@@ -993,6 +994,7 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
         return 0;
     }
 
+    d = calloc(1, sizeof(downmix));
     d->bufs = malloc(sizeof(float)*opt->channels*4096);
     d->matrix = malloc(sizeof(float)*opt->channels*out_channels);
     d->real_reader = opt->read_samples;
