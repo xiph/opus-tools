@@ -422,6 +422,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
    }
 
    *channels = header.channels;
+   if(*channels>2)fprintf (stderr, "Warning: Opusdec currently gets the channel order wrong for wav output with >2 channels.\n");
 
    if(!*rate)*rate=header.input_sample_rate;
    /*If the rate is unspecified we decode to 48000*/
