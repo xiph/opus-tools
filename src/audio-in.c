@@ -447,7 +447,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     unsigned int len;
     int samplesize;
     wav_fmt format;
-    wavfile *wav = malloc(sizeof(wavfile));
+    wavfile *wav;
     int i;
     (void)buflen;/*unused*/
     (void)oldbuf;/*unused*/
@@ -579,6 +579,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         opt->rate = format.samplerate;
         opt->channels = format.channels;
 
+        wav = malloc(sizeof(wavfile));
         wav->f = in;
         wav->samplesread = 0;
         wav->bigendian = 0;
@@ -986,7 +987,7 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
     downmix *d = calloc(1, sizeof(downmix));
     int i,j;
 
-    if(opt->channels<=out_channels || out_channels>2 || (out_channels==2&&opt->channels>8)) {
+    if(opt->channels<=out_channels || out_channels>2 || (out_channels==2&&opt->channels>8) || opt->channels<=0 || out_channels<=0) {
         fprintf(stderr, "Downmix must actually downmix and only knows mono/stereo out.\n");
         if(opt->channels>8)fprintf(stderr, "Downmix also only knows how to mix >8ch to mono.\n");
         return 0;
