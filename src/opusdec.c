@@ -399,13 +399,13 @@ void usage(void)
 
 void version(void)
 {
-   printf("opusdec %s %s (based on %s)\n",PACKAGE,VERSION,opus_get_version_string());
+   printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
 {
-   printf("opusdec %s %s (based on %s)\n",PACKAGE,VERSION,opus_get_version_string());
+   printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
