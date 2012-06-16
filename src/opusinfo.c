@@ -436,14 +436,14 @@ static stream_processor *find_stream_processor(stream_set *set, ogg_page *page)
    return stream;
 }
 
-static int get_next_page(FILE *f, ogg_sync_state *sync, ogg_page *page,
+static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
         ogg_int64_t *written)
 {
     int ret;
     char *buffer;
     int bytes;
 
-    while((ret = ogg_sync_pageseek(sync, page)) <= 0) {
+    while((ret = ogg_sync_pageseek(ogsync, page)) <= 0) {
         if(ret < 0) {
             /* unsynced, we jump over bytes to a possible capture - we don't need to read more just yet */
             oi_warn(_("WARNING: Hole in data (%d bytes) found at approximate offset %" I64FORMAT " bytes. Corrupted Ogg.\n"), -ret, *written);
@@ -451,13 +451,13 @@ static int get_next_page(FILE *f, ogg_sync_state *sync, ogg_page *page,
         }
 
         /* zero return, we didn't have enough data to find a whole page, read */
-        buffer = ogg_sync_buffer(sync, CHUNK);
+        buffer = ogg_sync_buffer(ogsync, CHUNK);
         bytes = fread(buffer, 1, CHUNK, f);
         if(bytes <= 0) {
-            ogg_sync_wrote(sync, 0);
+            ogg_sync_wrote(ogsync, 0);
             return 0;
         }
-        ogg_sync_wrote(sync, bytes);
+        ogg_sync_wrote(ogsync, bytes);
         *written += bytes;
     }
 
@@ -466,7 +466,7 @@ static int get_next_page(FILE *f, ogg_sync_state *sync, ogg_page *page,
 
 static void process_file(char *filename) {
     FILE *file = fopen(filename, "rb");
-    ogg_sync_state sync;
+    ogg_sync_state ogsync;
     ogg_page page;
     stream_set *processors = create_stream_set();
     int gotpage = 0;
@@ -480,9 +480,9 @@ static void process_file(char *filename) {
 
     printf(_("Processing file \"%s\"...\n\n"), filename);
 
-    ogg_sync_init(&sync);
+    ogg_sync_init(&ogsync);
 
-    while(get_next_page(file, &sync, &page, &written)) {
+    while(get_next_page(file, &ogsync, &page, &written)) {
         stream_processor *p = find_stream_processor(processors, &page);
         gotpage = 1;
 
@@ -557,7 +557,7 @@ static void process_file(char *filename) {
 
     free_stream_set(processors);
 
-    ogg_sync_clear(&sync);
+    ogg_sync_clear(&ogsync);
 
     fclose(file);
 }
