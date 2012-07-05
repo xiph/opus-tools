@@ -67,6 +67,7 @@
 #include <ogg/ogg.h>
 #include "opusenc.h"
 #include "speex_resampler.h"
+#include "lpc.h"
 
 #ifdef HAVE_LIBFLAC
 #include "flac.h"
@@ -822,22 +823,38 @@ typedef struct {
     void *real_readdata;
     ogg_int64_t *original_samples;
     int channels;
+    int lpc_ptr;
     int *extra_samples;
+    float *lpc_out;
 } padder;
 
 static long read_padder(void *data, float *buffer, int samples) {
     padder *d = data;
     long in_samples = d->real_reader(d->real_readdata, buffer, samples);
     int i, extra=0;
+    const int lpc_order=32;
 
     if(d->original_samples)*d->original_samples+=in_samples;
 
     if(in_samples<samples){
+      if(d->lpc_ptr<0){
+        d->lpc_out=calloc(d->channels * *d->extra_samples, sizeof(*d->lpc_out));
+        if(in_samples>lpc_order*2){
+          float *lpc=alloca(lpc_order*sizeof(*lpc));
+          for(i=0;i<d->channels;i++){
+            vorbis_lpc_from_data(buffer+i,lpc,in_samples,lpc_order,d->channels);
+            vorbis_lpc_predict(lpc,buffer+i+(in_samples-lpc_order)*d->channels,
+                               lpc_order,d->lpc_out+i,*d->extra_samples,d->channels);
+          }
+        }
+        d->lpc_ptr=0;
+      }
       extra=samples-in_samples;
       if(extra>*d->extra_samples)extra=*d->extra_samples;
       *d->extra_samples-=extra;
     }
-    for(i=0;i<extra*d->channels;i++)buffer[(in_samples*d->channels)+i]=0;
+    memcpy(buffer+in_samples*d->channels,d->lpc_out+d->lpc_ptr*d->channels,extra*d->channels*sizeof(*buffer));
+    d->lpc_ptr+=extra;
     return in_samples+extra;
 }
 
@@ -852,6 +869,8 @@ void setup_padder(oe_enc_opt *opt,ogg_int64_t *original_samples) {
     d->channels = opt->channels;
     d->extra_samples = &opt->extraout;
     d->original_samples=original_samples;
+    d->lpc_ptr = -1;
+    d->lpc_out = NULL;
 }
 
 void clear_padder(oe_enc_opt *opt) {
@@ -860,6 +879,7 @@ void clear_padder(oe_enc_opt *opt) {
     opt->read_samples = d->real_reader;
     opt->readdata = d->real_readdata;
 
+    if(d->lpc_out)free(d->lpc_out);
     free(d);
 }
 

@@ -13,6 +13,7 @@ bin_PROGRAMS = opusenc opusdec opusinfo
 noinst_HEADERS = src/arch.h \
                  src/diag_range.h \
                  src/info_opus.h \
+                 src/lpc.h \
                  src/opusenc.h \
                  src/opus_header.h \
                  src/opusinfo.h \
@@ -26,7 +27,7 @@ EXTRA_DIST = Makefile.unix
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
-opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c
+opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c src/lpc.c
 opusenc_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
 opusenc_MANS = man/opusenc.1
 
