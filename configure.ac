@@ -190,7 +190,7 @@ if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fstack-protector-all"
 AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
       [ AC_MSG_RESULT([yes])
         STACK_PROTECTOR="-fstack-protector-all"; use_stack_protector=yes ],
         AC_MSG_RESULT([no]))
