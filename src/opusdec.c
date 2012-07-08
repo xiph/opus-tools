@@ -250,7 +250,7 @@ static void print_comments(char *comments, int length)
    }
 }
 
-FILE *out_file_open(char *outFile, int rate, int *channels)
+FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family, int *channels)
 {
    FILE *fout=NULL;
    /*Open output file*/
@@ -361,8 +361,15 @@ FILE *out_file_open(char *outFile, int rate, int *channels)
             perror(outFile);
             exit(1);
          }
-         if (strcmp(outFile+strlen(outFile)-4,".wav")==0 || strcmp(outFile+strlen(outFile)-4,".WAV")==0)
-            write_wav_header(fout, rate, *channels);
+         if (*wav_format)
+         {
+            *wav_format = write_wav_header(fout, rate, mapping_family, *channels);
+            if (*wav_format < 0)
+            {
+               fprintf (stderr, "Error writing WAV header.\n");
+               exit(1);
+            }
+         }
       }
    }
    return fout;
@@ -409,7 +416,7 @@ void version_short(void)
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
-static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *channels, int *preskip, float *gain, int *streams, int quiet)
+static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapping_family, int *channels, int *preskip, float *gain, int *streams, int wav_format, int quiet)
 {
    int err;
    OpusMSDecoder *st;
@@ -421,8 +428,9 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *chan
       return NULL;
    }
 
+   *mapping_family = header.channel_mapping;
    *channels = header.channels;
-   if(*channels>2)fprintf (stderr, "Warning: Opusdec currently gets the channel order wrong for wav output with >2 channels.\n");
+   if(wav_format)adjust_wav_mapping(*mapping_family, *channels, header.stream_map);
 
    if(!*rate)*rate=header.input_sample_rate;
    /*If the rate is unspecified we decode to 48000*/
@@ -558,6 +566,7 @@ int main(int argc, char **argv)
    ogg_int64_t audio_size=0;
    float loss_percent=-1;
    int channels=-1;
+   int mapping_family;
    int rate=0;
    int wav_format=0;
    int preskip=0;
@@ -725,7 +734,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, &rate, &channels, &preskip, &gain, &streams, quiet);
+               st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, &streams, wav_format, quiet);
                if (!st)
                   exit(1);
                gran_offset=preskip;
@@ -744,7 +753,7 @@ int main(int argc, char **argv)
                      fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
                   speex_resampler_skip_zeros(resampler);
                }
-               if(!fout)fout=out_file_open(outFile, rate, &channels);
+               if(!fout)fout=out_file_open(outFile, &wav_format, rate, mapping_family, &channels);
             } else if (packet_count==1)
             {
                if (!quiet)
@@ -828,14 +837,14 @@ int main(int argc, char **argv)
          break;
    }
 
-   if (fout && wav_format && audio_size<0x7FFFFFFF)
+   if (fout && wav_format>=0 && audio_size<0x7FFFFFFF)
    {
       if (fseek(fout,4,SEEK_SET)==0)
       {
          int tmp;
-         tmp = le_int(audio_size+36);
+         tmp = le_int(audio_size+20+wav_format);
          if(fwrite(&tmp,4,1,fout)!=1)fprintf(stderr,"Error writing end length.\n");
-         if (fseek(fout,32,SEEK_CUR)==0)
+         if (fseek(fout,16+wav_format,SEEK_CUR)==0)
          {
             tmp = le_int(audio_size);
             if(fwrite(&tmp,4,1,fout)!=1)fprintf(stderr,"Error writing header length.\n");

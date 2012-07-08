@@ -46,4 +46,6 @@ typedef struct {
 int opus_header_parse(const unsigned char *header, int len, OpusHeader *h);
 int opus_header_to_packet(const OpusHeader *h, unsigned char *packet, int len);
 
+extern const int wav_permute_matrix[8][8];
+
 #endif

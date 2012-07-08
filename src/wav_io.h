@@ -55,6 +55,8 @@ static inline opus_int32 le_int(opus_int32 i)
 #endif
 }
 
-void write_wav_header(FILE *file, int rate, int channels);
+void adjust_wav_mapping(int mapping_family, int channels, unsigned char *stream_map);
+
+int write_wav_header(FILE *file, int rate, int mapping_family, int channels);
 
 #endif

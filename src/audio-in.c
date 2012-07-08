@@ -68,6 +68,7 @@
 #include "opusenc.h"
 #include "speex_resampler.h"
 #include "lpc.h"
+#include "opus_header.h"
 
 #ifdef HAVE_LIBFLAC
 #include "flac.h"
@@ -430,18 +431,6 @@ int wav_id(unsigned char *buf, int len)
 
     return 1;
 }
-
-static int wav_permute_matrix[8][8] =
-{
-  {0},              /* 1.0 mono   */
-  {0,1},            /* 2.0 stereo */
-  {0,2,1},          /* 3.0 channel ('wide') stereo */
-  {0,1,2,3},        /* 4.0 discrete quadraphonic */
-  {0,2,1,3,4},      /* 5.0 surround */
-  {0,2,1,4,5,3},    /* 5.1 surround */
-  {0,2,1,5,6,4,3},  /* 6.1 surround */
-  {0,2,1,6,7,4,5,3} /* 7.1 surround (classic theater 8-track) */
-};
 
 int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
 {
