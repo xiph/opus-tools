@@ -10,7 +10,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 OPUSTOOLS_MAJOR_VERSION=0
 OPUSTOOLS_MINOR_VERSION=1
 OPUSTOOLS_MICRO_VERSION=3
-OPUSTOOLS_EXTRA_VERSION=
+OPUSTOOLS_EXTRA_VERSION=git
 
 OPUSTOOLS_VERSION="$OPUSTOOLS_MAJOR_VERSION.$OPUSTOOLS_MINOR_VERSION.$OPUSTOOLS_MICRO_VERSION$OPUSTOOLS_EXTRA_VERSION"
 AC_MSG_CHECKING([git revision])
@@ -184,19 +184,40 @@ i[[3456]]86 | x86_64)
   ;;
 esac
 
-use_stack_protector=no
-
+ac_build_stack_protector=no
 if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
+AC_ARG_ENABLE(stack-protector,
+     AS_HELP_STRING([--disable-stack-protector],[Disable compiler stack hardening]),
+     [
+       if test "x$enableval" = "xno"; then
+         ac_build_stack_protector=$enableval
+       fi
+     ], [
+       ac_build_stack_protector=yes
+     ])
+if test "x$ac_build_stack_protector" = "xyes"; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fstack-protector-all"
 AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
 AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
       [ AC_MSG_RESULT([yes])
-        STACK_PROTECTOR="-fstack-protector-all"; use_stack_protector=yes ],
+        STACK_PROTECTOR="-fstack-protector-all"; ac_build_stack_protector=yes ],
         AC_MSG_RESULT([no]))
 CFLAGS="$saved_CFLAGS $STACK_PROTECTOR"
 fi
+fi
 
+ac_build_pie=no
+AC_ARG_ENABLE(pie,
+     AS_HELP_STRING([--disable-pie],[Disable PIE/RELRO hardening]),
+     [
+       if test "x$enableval" = "xno"; then
+         ac_build_pie=$enableval
+       fi
+     ], [
+       ac_build_pie=yes
+     ])
+if test "x$ac_build_pie" = "xyes"; then
 save_CFLAGS="$CFLAGS"
 save_LDFLAGS="$LDFLAGS"
 save_LIBS="$LIBS"
@@ -209,16 +230,17 @@ AC_LINK_IFELSE([AC_LANG_SOURCE([
 void main () {
   OpusDecoder *dec = opus_decoder_create(48000, 2, 0L);
 }])],
-               [have_pie=yes],
-               [have_pie=no])
-AC_MSG_RESULT([$have_pie])
-if test "x$have_pie" = "xyes"; then
+               [ac_build_pie=yes],
+               [ac_build_pie=no])
+AC_MSG_RESULT([$ac_build_pie])
+if test "x$ac_build_pie" = "xyes"; then
     PIE_CFLAGS="-fPIE"
     PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
 fi
 CFLAGS="$save_CFLAGS $PIE_CFLAGS"
 LDFLAGS="$save_LDFLAGS $PIE_LDFLAGS"
 LIBS="$save_LIBS"
+fi
 
 CFLAGS="$CFLAGS -W"
 
@@ -279,8 +301,8 @@ AC_MSG_RESULT([
 
       C99 var arrays: ................ ${has_var_arrays}
       C99 lrintf: .................... ${ac_cv_func_lrintf}
-      Stack protector: ............... ${use_stack_protector}
-      PIE: ........................... ${have_pie}
+      Stack protector: ............... ${ac_build_stack_protector}
+      PIE: ........................... ${ac_build_pie}
 
     General configuration:
 
