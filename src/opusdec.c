@@ -392,8 +392,6 @@ void usage(void)
    printf ("  (nothing)            Will be played to soundcard\n");
    printf ("\n");
    printf ("Options:\n");
-   printf (" --mono                Force decoding in mono\n");
-   printf (" --stereo              Force decoding in stereo\n");
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
@@ -550,8 +548,6 @@ int main(int argc, char **argv)
       {"version", no_argument, NULL, 0},
       {"version-short", no_argument, NULL, 0},
       {"rate", required_argument, NULL, 0},
-      {"mono", no_argument, NULL, 0},
-      {"stereo", no_argument, NULL, 0},
       {"no-dither", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {"save-range", required_argument, NULL, 0},
@@ -611,12 +607,6 @@ int main(int argc, char **argv)
          {
             version_short();
             exit(0);
-         } else if (strcmp(long_options[option_index].name,"mono")==0)
-         {
-            channels=1;
-         } else if (strcmp(long_options[option_index].name,"stereo")==0)
-         {
-            channels=2;
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
             dither=0;
