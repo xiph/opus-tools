@@ -452,7 +452,23 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
 
    *streams=header.nb_streams;
 
-   *gain = pow(10., header.gain/5120.);
+   if(header.gain!=0)
+   {
+      /*Gain API added in a newer libopus version..*/
+#ifdef OPUS_SET_GAIN
+      err=opus_multistream_decoder_ctl(st,OPUS_SET_GAIN(header.gain));
+      if(err==OPUS_UNIMPLEMENTED)
+      {
+#endif
+         *gain = pow(10., header.gain/5120.);
+#ifdef OPUS_SET_GAIN
+      } else if (err!=OPUS_OK)
+      {
+         fprintf (stderr, "Error setting gain: %s\n", opus_strerror(err));
+         return NULL;
+      }
+#endif
+   }
 
    if (!quiet)
    {
