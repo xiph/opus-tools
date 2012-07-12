@@ -57,6 +57,12 @@
 #endif
 #include <math.h>
 
+#ifdef HAVE_LRINTF
+# define float2int(x) lrintf(x)
+#else
+# define float2int(flt) ((int)(floor(.5+flt)))
+#endif
+
 #ifdef _WIN32
 #define I64FORMAT "I64d"
 #else
@@ -120,6 +126,14 @@ static inline unsigned int fast_rand(void) {
   return rngseed;
 }
 
+#ifndef HAVE_FMINF
+# define fminf(_x,_y) ((_x)<(_y)?(_x):(_y))
+#endif
+
+#ifndef HAVE_FMAXF
+# define fmaxf(_x,_y) ((_x)>(_y)?(_x):(_y))
+#endif
+
 /* This implements a 16 bit quantization with full triangular dither
    and IIR noise shaping. The noise shaping filters were designed by
    Sebastian Gesemann based on the LAME ATH curves with flattening
@@ -179,7 +193,7 @@ static inline void shape_dither_toshort(shapestate *_ss, short *_o, float *_i, i
       if (mute>16)r=0;
       /*Clamp in float out of paranoia that the input will be >96dBFS and wrap if the
         integer is clamped.*/
-      _o[pos+c] = si = lrintf(fmaxf(-32768,fminf(s + r,32767)));
+      _o[pos+c] = si = float2int(fmaxf(-32768,fminf(s + r,32767)));
       /*Including clipping in the noise shaping is generally disastrous:
         the futile effort to restore the clipped energy results in more clipping.
         However, small amounts-- at the level which could normally be created by
@@ -521,7 +535,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
        shape_dither_toshort(shapemem,out,output,out_len,channels);
      }else{
        for (i=0;i<(int)out_len*channels;i++)
-         out[i]=(short)lrintf(fmax(-32768,fmin(output[i]*32768.f,32767)));
+         out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
      }
      if ((le_short(1)!=1)&&file){
        for (i=0;i<(int)out_len*channels;i++)

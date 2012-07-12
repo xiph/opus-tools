@@ -255,6 +255,8 @@ CFLAGS="$saved_CFLAGS $EXTRA_WARNS"
 
 AC_CHECK_FUNCS([lrintf])
 AC_CHECK_FUNCS([lrint])
+AC_CHECK_FUNCS([fminf])
+AC_CHECK_FUNCS([fmaxf])
 AC_CHECK_FUNCS([__malloc_hook])
 
 AC_CHECK_SIZEOF(short)
