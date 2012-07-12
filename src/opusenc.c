@@ -36,8 +36,10 @@
 
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/time.h>
+#endif
 #include <math.h>
 
 #ifdef _MSC_VER
@@ -243,8 +245,8 @@ int main(int argc, char **argv)
   opus_int32         nb_samples;
   opus_int32         peak_bytes=0;
   opus_int32         min_bytes;
-  struct timeval     start_time;
-  struct timeval     stop_time;
+  time_t             start_time;
+  time_t             stop_time;
   time_t             last_spin=0;
   int                last_spin_len=0;
   /*Settings*/
@@ -688,13 +690,12 @@ int main(int argc, char **argv)
   }
 
   /*Initialize Ogg stream struct*/
-  gettimeofday(&start_time,NULL);
-  srand(((getpid()&65535)<<15)^start_time.tv_sec^start_time.tv_usec);
+  start_time = time(NULL);
+  srand(((getpid()&65535)<<15)^start_time);
   if(ogg_stream_init(&os, rand())==-1){
     fprintf(stderr,"Error: stream init failed\n");
     exit(1);
   }
-  start_time.tv_sec=0;
 
   /*Write header*/
   {
@@ -763,7 +764,9 @@ int main(int argc, char **argv)
     }
     op.e_o_s|=eos;
 
-    if(start_time.tv_sec==0)gettimeofday(&start_time,NULL);
+    if(start_time==0){
+      start_time = time(NULL);
+    }
 
     cur_frame_size=frame_size;
 
@@ -870,12 +873,11 @@ int main(int argc, char **argv)
     }
 
     if(!quiet){
-      gettimeofday(&stop_time,NULL);
-      if(stop_time.tv_sec>last_spin){
+      stop_time = time(NULL);      
+      if(stop_time>last_spin){
         double estbitrate;
         double coded_seconds=nb_encoded/(double)coding_rate;
-        double wall_time=(stop_time.tv_sec-start_time.tv_sec)+
-          (stop_time.tv_usec-start_time.tv_usec)*1e-06;
+        double wall_time=(stop_time-start_time)+1e-6;
         char sbuf[55];
         static const char spinner[]="|/-\\";
         if(!with_hard_cbr){
@@ -899,19 +901,18 @@ int main(int argc, char **argv)
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
         last_spin_len=strlen(sbuf);
-        last_spin=stop_time.tv_sec;
+        last_spin=stop_time;
       }
     }
   }
-  gettimeofday(&stop_time,NULL);
+  stop_time = time(NULL);
 
   for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
   if(last_spin_len)fprintf(stderr,"\r");
 
   if(!quiet){
     double coded_seconds=nb_encoded/(double)coding_rate;
-    double wall_time=(stop_time.tv_sec-start_time.tv_sec)+
-      (stop_time.tv_usec-start_time.tv_usec)*1e-06;
+    double wall_time=(stop_time-start_time)+1e-6;
     fprintf(stderr,"Encoding complete\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"    Encoded:");
