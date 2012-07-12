@@ -159,18 +159,17 @@ AC_CHECK_HEADERS([sys/soundcard.h soundcard.h machine/soundcard.h],[
   HAVE_OSS=yes
   break
 ])
-if test x$HAVE_OSS != xyes; then
-  AC_MSG_WARN([OSS audio support not found -- no direct audio output in opusdec])
+
+dnl check for sndio
+HAVE_SNDIO=no
+AC_CHECK_LIB([sndio], [sio_open])
+if x$ac_cv_lib_sndio_sio_open = xyes; then
+  HAVE_SNDIO=yes
 fi
 
-dnl OpenBSD needs -lossaudio to use the oss interface
-OSS_LIBS=
-case "$host_os" in
-  openbsd*)
-    OSS_LIBS='-lossaudio'
-    ;;
-esac
-AC_SUBST(OSS_LIBS)
+if test x$HAVE_OSS != xyes && test x$HAVE_SNDIO != xyes; then
+  AC_MSG_WARN([Audio support not found -- no direct audio output in opusdec])
+fi
 
 
 dnl Enable stack-protector-all only on x86 where it's well supported.

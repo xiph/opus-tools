@@ -69,7 +69,10 @@
 #define I64FORMAT "lld"
 #endif
 
-#if defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
+#if defined HAVE_LIBSNDIO
+#include <sndio.h>
+
+#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
 #ifdef HAVE_SYS_SOUNDCARD_H
 # include <sys/soundcard.h>
 #elif HAVE_MACHINE_SOUNDCARD_H
@@ -111,6 +114,10 @@
                            ((buf[base+2]<<16)&0xff0000)| \
                            ((buf[base+1]<<8)&0xff00)| \
                            (buf[base]&0xff))
+
+#ifdef HAVE_LIBSNDIO
+struct sio_hdl *hdl;
+#endif
 
 typedef struct shapestate shapestate;
 struct shapestate {
@@ -315,6 +322,32 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       {
         perror("Cannot open output");
         exit(1);
+      }
+#elif defined HAVE_LIBSNDIO
+      struct sio_par par;
+
+      hdl = sio_open(NULL, SIO_PLAY, 0);
+      if (!hdl)
+      {
+         fprintf(stderr, "Cannot open sndio device\n");
+         exit(1);
+      }
+
+      sio_initpar(&par);
+      par.sig = 1;
+      par.bits = 16;
+      par.rate = rate;
+      par.pchan = *channels;
+
+      if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
+        par.sig != 1 || par.bits != 16 || par.rate != rate) {
+          fprintf(stderr, "could not set sndio parameters\n");
+          exit(1);
+      }
+      *channels = par.pchan;
+      if (!sio_start(hdl)) {
+          fprintf(stderr, "could not start sndio\n");
+          exit(1);
       }
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
@@ -547,6 +580,12 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
 #if defined WIN32 || defined _WIN32
        if(!file){
          ret=WIN_Play_Samples (out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
+         if(ret>0)ret/=sizeof(short)*channels;
+         else fprintf(stderr, "Error playing audio.\n");
+       }else
+#elif defined HAVE_LIBSNDIO
+       if(!file){
+         ret=sio_write (hdl, out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
          if(ret>0)ret/=sizeof(short)*channels;
          else fprintf(stderr, "Error playing audio.\n");
        }else
