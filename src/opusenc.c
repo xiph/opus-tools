@@ -36,9 +36,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
+#if (!defined WIN32 && !defined _WIN32) || defined(__MINGW32__)
 #include <unistd.h>
-#include <sys/time.h>
+#include <time.h>
 #endif
 #include <math.h>
 
@@ -873,7 +873,7 @@ int main(int argc, char **argv)
     }
 
     if(!quiet){
-      stop_time = time(NULL);      
+      stop_time = time(NULL);
       if(stop_time>last_spin){
         double estbitrate;
         double coded_seconds=nb_encoded/(double)coding_rate;
