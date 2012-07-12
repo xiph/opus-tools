@@ -788,8 +788,8 @@ int main(int argc, char **argv)
     min_bytes=IMIN(nbBytes,min_bytes);
 
     if(frange!=NULL){
+      opus_uint32 rngs[256];
       OpusEncoder *oe;
-      opus_uint32 rngs[header.nb_streams];
       for(i=0;i<header.nb_streams;i++){
         ret=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
         ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[i]));

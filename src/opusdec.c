@@ -92,6 +92,7 @@
 #include "opus_header.h"
 #include "diag_range.h"
 #include "speex_resampler.h"
+#include "stack_alloc.h"
 
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
@@ -488,9 +489,11 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
    opus_int64 sampout=0;
    int i,ret,tmp_skip;
    unsigned out_len;
-   short out[MAX_FRAME_SIZE*channels];
-   float buf[MAX_FRAME_SIZE*channels];
+   short *out;
+   float *buf;
    float *output;
+   out=alloca(sizeof(short)*MAX_FRAME_SIZE*channels);
+   buf=alloca(sizeof(float)*MAX_FRAME_SIZE*channels);
    maxout=maxout<0?0:maxout;
    do {
      if (skip){
@@ -500,8 +503,8 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
        tmp_skip = 0;
      }
      if (resampler){
-       output=buf;
        unsigned in_len;
+       output=buf;
        in_len = frame_size-tmp_skip;
        out_len = 1024<maxout?1024:maxout;
        speex_resampler_process_interleaved_float(resampler, pcm+channels*tmp_skip, &in_len, buf, &out_len);
@@ -765,7 +768,9 @@ int main(int argc, char **argv)
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
             } else {
+               int ret;
                opus_int64 maxout;
+               opus_int64 outsamp;
                int lost=0;
                if (loss_percent>0 && 100*((float)rand())/RAND_MAX<loss_percent)
                   lost=1;
@@ -773,8 +778,6 @@ int main(int argc, char **argv)
                /*End of stream condition*/
                if (op.e_o_s && os.serialno == opus_serialno)eos=1; /* don't care for anything except opus eos */
 
-               int ret;
-               opus_int64 outsamp;
                /*Decode frame*/
                if (!lost)
                   ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
@@ -790,7 +793,7 @@ int main(int argc, char **argv)
 
                if(frange!=NULL){
                  OpusDecoder *od;
-                 opus_uint32 rngs[streams];
+                 opus_uint32 rngs[256];
                  for(i=0;i<streams;i++){
                    ret=opus_multistream_decoder_ctl(st,OPUS_MULTISTREAM_GET_DECODER_STATE(i,&od));
                    ret=opus_decoder_ctl(od,OPUS_GET_FINAL_RANGE(&rngs[i]));

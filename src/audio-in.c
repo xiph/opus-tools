@@ -38,16 +38,11 @@
 #include <sys/types.h>
 #include <math.h>
 
+#include "stack_alloc.h"
+
 #ifdef WIN32
-# include <malloc.h>
 # include <windows.h> /*GetFileType()*/
 # include <io.h>      /*_get_osfhandle()*/
-#else
-# ifdef HAVE_ALLOCA_H
-#  include <alloca.h>
-# else
-#  include <stdlib.h>
-# endif
 #endif
 
 #ifdef ENABLE_NLS
