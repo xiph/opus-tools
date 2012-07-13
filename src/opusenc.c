@@ -616,7 +616,7 @@ int main(int argc, char **argv)
   }
 
 #ifdef OPUS_SET_LSB_DEPTH
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_LSB_DEPTH(inopt.samplesize));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_LSB_DEPTH(IMAX(8,IMIN(24,inopt.samplesize))));
   if(ret!=OPUS_OK){
     fprintf(stderr,"OPUS_SET_LSB_DEPTH returned: %s\n",opus_strerror(ret));
     exit(1);
