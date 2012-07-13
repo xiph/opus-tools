@@ -3,6 +3,10 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusenc", "opusenc.vcxproj", "{3AD211C2-C18B-DB6E-E9CA-D8E4CE2AB83A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusinfo", "opusinfo.vcxproj", "{CF02F200-664E-BFE7-93AC-54BE1FA42595}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusdec", "opusdec.vcxproj", "{C8DA8D4D-21FC-9C2B-FC22-6AC347458B02}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +17,14 @@ Global
 		{3AD211C2-C18B-DB6E-E9CA-D8E4CE2AB83A}.Debug|Win32.Build.0 = Debug|Win32
 		{3AD211C2-C18B-DB6E-E9CA-D8E4CE2AB83A}.Release|Win32.ActiveCfg = Release|Win32
 		{3AD211C2-C18B-DB6E-E9CA-D8E4CE2AB83A}.Release|Win32.Build.0 = Release|Win32
+		{CF02F200-664E-BFE7-93AC-54BE1FA42595}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CF02F200-664E-BFE7-93AC-54BE1FA42595}.Debug|Win32.Build.0 = Debug|Win32
+		{CF02F200-664E-BFE7-93AC-54BE1FA42595}.Release|Win32.ActiveCfg = Release|Win32
+		{CF02F200-664E-BFE7-93AC-54BE1FA42595}.Release|Win32.Build.0 = Release|Win32
+		{C8DA8D4D-21FC-9C2B-FC22-6AC347458B02}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C8DA8D4D-21FC-9C2B-FC22-6AC347458B02}.Debug|Win32.Build.0 = Debug|Win32
+		{C8DA8D4D-21FC-9C2B-FC22-6AC347458B02}.Release|Win32.ActiveCfg = Release|Win32
+		{C8DA8D4D-21FC-9C2B-FC22-6AC347458B02}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
