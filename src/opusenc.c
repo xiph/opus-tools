@@ -615,6 +615,14 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+#ifdef OPUS_SET_LSB_DEPTH
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_LSB_DEPTH(inopt.samplesize));
+  if(ret!=OPUS_OK){
+    fprintf(stderr,"OPUS_SET_LSB_DEPTH returned: %s\n",opus_strerror(ret));
+    exit(1);
+  }
+#endif
+
   /*This should be the last set of CTLs, except the lookahead get, so it can override the defaults.*/
   for(i=0;i<opt_ctls;i++){
     int target=opt_ctls_ctlval[i*3];
