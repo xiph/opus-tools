@@ -550,13 +550,13 @@ int main(int argc, char **argv)
   st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled,
      mapping, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
   if(ret!=OPUS_OK){
-    fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(ret));
+    fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
     exit(1);
   }
 
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_SIGNAL returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_SET_SIGNAL returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
@@ -567,7 +567,7 @@ int main(int argc, char **argv)
         opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
         ret=opus_encoder_ctl(oe, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_NARROWBAND));
         if(ret!=OPUS_OK){
-          fprintf(stderr,"OPUS_SET_MAX_BANDWIDTH on stream %d returned: %s\n",i,opus_strerror(ret));
+          fprintf(stderr,"Error OPUS_SET_MAX_BANDWIDTH on stream %d returned: %s\n",i,opus_strerror(ret));
           exit(1);
         }
       }
@@ -585,41 +585,40 @@ int main(int argc, char **argv)
 
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_BITRATE(bitrate));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_BITRATE returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_SET_BITRATE returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR(!with_hard_cbr));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_VBR returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_SET_VBR returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   if(!with_hard_cbr){
     ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
     if(ret!=OPUS_OK){
-      fprintf(stderr,"OPUS_SET_VBR_CONSTRAINT returned: %s\n",opus_strerror(ret));
+      fprintf(stderr,"Error OPUS_SET_VBR_CONSTRAINT returned: %s\n",opus_strerror(ret));
       exit(1);
     }
   }
 
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_COMPLEXITY returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_SET_COMPLEXITY returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_PACKET_LOSS_PERC(expect_loss));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_PACKET_LOSS_PERC returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_SET_PACKET_LOSS_PERC returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
 #ifdef OPUS_SET_LSB_DEPTH
   ret=opus_multistream_encoder_ctl(st, OPUS_SET_LSB_DEPTH(IMAX(8,IMIN(24,inopt.samplesize))));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_SET_LSB_DEPTH returned: %s\n",opus_strerror(ret));
-    exit(1);
+    fprintf(stderr,"Warning OPUS_SET_LSB_DEPTH returned: %s\n",opus_strerror(ret));
   }
 #endif
 
@@ -629,7 +628,7 @@ int main(int argc, char **argv)
     if(target==-1){
       ret=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
       if(ret!=OPUS_OK){
-        fprintf(stderr,"opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
+        fprintf(stderr,"Error opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
         exit(1);
       }
     }else if(target<header.nb_streams){
@@ -637,11 +636,11 @@ int main(int argc, char **argv)
       opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
       ret=opus_encoder_ctl(oe, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
       if(ret!=OPUS_OK){
-        fprintf(stderr,"opus_encoder_ctl(st[%d],%d,%d) returned: %s\n",target,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
+        fprintf(stderr,"Error opus_encoder_ctl(st[%d],%d,%d) returned: %s\n",target,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
         exit(1);
       }
     }else{
-      fprintf(stderr,"--set-ctl-int target stream %d is higher than the maximum stream number %d.\n",target,header.nb_streams-1);
+      fprintf(stderr,"Error --set-ctl-int target stream %d is higher than the maximum stream number %d.\n",target,header.nb_streams-1);
       exit(1);
     }
   }
@@ -649,7 +648,7 @@ int main(int argc, char **argv)
   /*We do the lookahead check late so user CTLs can change it*/
   ret=opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
   if(ret!=OPUS_OK){
-    fprintf(stderr,"OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(ret));
+    fprintf(stderr,"Error OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(ret));
     exit(1);
   }
   inopt.skip+=lookahead;
