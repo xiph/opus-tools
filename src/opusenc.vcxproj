@@ -10,9 +10,35 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\share\getopt.c" />
+    <ClCompile Include="..\share\getopt1.c" />
+    <ClCompile Include="audio-in.c" />
+    <ClCompile Include="diag_range.c" />
+    <ClCompile Include="lpc.c" />
+    <ClCompile Include="opusenc.c" />
+    <ClCompile Include="opus_header.c" />
+    <ClCompile Include="resample.c" />
+    <ClCompile Include="wave_out.c" />
+    <ClCompile Include="wav_io.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="arch.h" />
+    <ClInclude Include="diag_range.h" />
+    <ClInclude Include="info_opus.h" />
+    <ClInclude Include="lpc.h" />
+    <ClInclude Include="opusenc.h" />
+    <ClInclude Include="opusinfo.h" />
+    <ClInclude Include="opus_header.h" />
+    <ClInclude Include="os_support.h" />
+    <ClInclude Include="speex_resampler.h" />
+    <ClInclude Include="stack_alloc.h" />
+    <ClInclude Include="wave_out.h" />
+    <ClInclude Include="wav_io.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>
-    <ProjectName>opusdec</ProjectName>
+    <ProjectName>opusenc</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -36,13 +62,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\opus\include;..\libogg\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\opus\Debug32;..\libogg\win32\VS2010\Win32\Debug;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\Debug;..\..\libogg\win32\VS2010\Win32\Debug;$(LibraryPath)</LibraryPath>
+    <IntDir>$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\opus-tools\win32;..\opus\include;..\libogg\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\opus\Release32;..\libogg\win32\VS2010\Win32\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\Release;..\..\libogg\win32\VS2010\Win32\Release;$(LibraryPath)</LibraryPath>
+    <IntDir>$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -51,7 +77,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>win32;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -65,8 +91,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>..\libogg\include;..\opus\include;win32;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
@@ -79,34 +104,6 @@
       <AdditionalDependencies>celt.lib;opus.lib;silk_common.lib;silk_float.lib;libogg_static.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="share\getopt.c" />
-    <ClCompile Include="share\getopt1.c" />
-    <ClCompile Include="src\audio-in.c" />
-    <ClCompile Include="src\diag_range.c" />
-    <ClCompile Include="src\lpc.c" />
-    <ClCompile Include="src\opusdec.c" />
-    <ClCompile Include="src\opus_header.c" />
-    <ClCompile Include="src\resample.c" />
-    <ClCompile Include="src\wave_out.c" />
-    <ClCompile Include="src\wav_io.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\getopt.h" />
-    <ClInclude Include="src\arch.h" />
-    <ClInclude Include="src\diag_range.h" />
-    <ClInclude Include="src\info_opus.h" />
-    <ClInclude Include="src\lpc.h" />
-    <ClInclude Include="src\opusdec.h" />
-    <ClInclude Include="src\opusinfo.h" />
-    <ClInclude Include="src\opus_header.h" />
-    <ClInclude Include="src\os_support.h" />
-    <ClInclude Include="src\speex_resampler.h" />
-    <ClInclude Include="src\stack_alloc.h" />
-    <ClInclude Include="src\wave_out.h" />
-    <ClInclude Include="src\wav_io.h" />
-    <ClInclude Include="win32\config.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
