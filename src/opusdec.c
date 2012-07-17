@@ -879,7 +879,7 @@ int main(int argc, char **argv)
                int tmp = drain;
                if (tmp > 100)
                   tmp = 100;
-               outsamp=audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)==0, ((page_granule-gran_offset)*rate/48000)-link_out);
+               outsamp=audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)!=0, ((page_granule-gran_offset)*rate/48000)-link_out);
                link_out+=outsamp;
                audio_size+=sizeof(short)*outsamp*channels;
                drain -= tmp;
