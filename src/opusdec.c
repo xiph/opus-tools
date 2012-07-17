@@ -832,10 +832,26 @@ int main(int argc, char **argv)
                if (op.e_o_s && os.serialno == opus_serialno)eos=1; /* don't care for anything except opus eos */
 
                /*Decode frame*/
-               if (!lost)
+               if (!lost){
                   ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
-               else
-                  ret = opus_multistream_decode_float(st, NULL, 0, output, MAX_FRAME_SIZE, 0);
+               } else {
+                  /*Extract the original duration.
+                    Normally you wouldn't have it for a lost frame, but normally the
+                    transports used on lossy channels will effectively tell you.
+                    This avoids opusdec squaking when the decoded samples and
+                    granpos mismatches.*/
+                  opus_int32 lost_size;
+                  lost_size = MAX_FRAME_SIZE;
+                  if(op.bytes>0){
+                    opus_int32 spp;
+                    spp=opus_packet_get_nb_frames(op.packet,op.bytes);
+                    if(spp>0){
+                      spp*=opus_packet_get_samples_per_frame(op.packet,48000/*decoding_rate*/);
+                      if(spp>0)lost_size=spp;
+                    }
+                  }
+                  ret = opus_multistream_decode_float(st, NULL, 0, output, lost_size, 0);
+               }
 
                if (ret<0)
                {
