@@ -441,6 +441,7 @@ void usage(void)
    printf ("\n");
    printf ("Options:\n");
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
+   printf (" --gain n              Manually adjust gain by n.nn dB (0 default)\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
@@ -462,7 +463,7 @@ void version_short(void)
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
-static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapping_family, int *channels, int *preskip, float *gain, int *streams, int wav_format, int quiet)
+static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapping_family, int *channels, int *preskip, float *gain, float manual_gain, int *streams, int wav_format, int quiet)
 {
    int err;
    OpusMSDecoder *st;
@@ -500,15 +501,16 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
 
    *streams=header.nb_streams;
 
-   if(header.gain!=0)
+   if(header.gain!=0 || manual_gain!=0)
    {
       /*Gain API added in a newer libopus version..*/
+      int gainadj = (int)(manual_gain*256.)+header.gain;
 #ifdef OPUS_SET_GAIN
-      err=opus_multistream_decoder_ctl(st,OPUS_SET_GAIN(header.gain));
+      err=opus_multistream_decoder_ctl(st,OPUS_SET_GAIN(gainadj));
       if(err==OPUS_UNIMPLEMENTED)
       {
 #endif
-         *gain = pow(10., header.gain/5120.);
+         *gain = pow(10., gainadj/5120.);
 #ifdef OPUS_SET_GAIN
       } else if (err!=OPUS_OK)
       {
@@ -524,7 +526,8 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
       fprintf(stderr, " (%d channel%s)",*channels,*channels>1?"s":"");
       if(header.version!=1)fprintf(stderr, ", Header v%d",header.version);
       fprintf(stderr, "\n");
-      if (header.gain!=0)printf("Playback gain: %f (%f dB)\n", *gain, header.gain/256.);
+      if (header.gain!=0)printf("Playback gain: %f dB\n", header.gain/256.);
+      if (manual_gain!=0)printf("Manual gain: %f dB\n", manual_gain);
    }
 
    return st;
@@ -620,6 +623,7 @@ int main(int argc, char **argv)
       {"version", no_argument, NULL, 0},
       {"version-short", no_argument, NULL, 0},
       {"rate", required_argument, NULL, 0},
+      {"gain", required_argument, NULL, 0},
       {"no-dither", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {"save-range", required_argument, NULL, 0},
@@ -633,6 +637,7 @@ int main(int argc, char **argv)
    int eos=0;
    ogg_int64_t audio_size=0;
    float loss_percent=-1;
+   float manual_gain=0;
    int channels=-1;
    int mapping_family;
    int rate=0;
@@ -685,7 +690,10 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
             rate=atoi (optarg);
-        }else if(strcmp(long_options[option_index].name,"save-range")==0){
+         } else if (strcmp(long_options[option_index].name,"gain")==0)
+         {
+            manual_gain=atof (optarg);
+         }else if(strcmp(long_options[option_index].name,"save-range")==0){
           frange=fopen(optarg,"w");
           if(frange==NULL){
             perror(optarg);
@@ -796,7 +804,7 @@ int main(int argc, char **argv)
             /*If first packet, process as OPUS header*/
             if (packet_count==0)
             {
-               st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, &streams, wav_format, quiet);
+               st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, manual_gain, &streams, wav_format, quiet);
                if (!st)
                   exit(1);
                gran_offset=preskip;

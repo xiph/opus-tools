@@ -13,6 +13,8 @@ opusdec \- decode audio from Opus format to WAV (or simple audio output)
 ] [
 .B --rate Hz
 ] [
+.B --gain dB
+] [
 .B --no-dither
 ] [
 .B --packet-loss pct
@@ -52,6 +54,9 @@ Suppresses program output
 .IP "--rate"
 .br
 Force decoding at sampling rate n Hz
+.IP "--gain"
+.br
+Adjust the output volume n dB, negative values make the signal quieter.
 .IP "--no-dither"
 Do not dither 16-bit output
 .IP "--packet-loss"
