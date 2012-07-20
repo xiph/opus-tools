@@ -15,7 +15,7 @@
 #define RANDOM_PREFIX foo
 
 #define PACKAGE "opus-tools"
-#define VERSION "0.1.3-git"
+#include "version.h"
 
 
 #endif CONFIG_H
