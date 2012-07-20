@@ -36,3 +36,7 @@ opusinfo
 opusenc.exe
 opusdec.exe
 opusinfo.exe
+*.vcxproj.user
+opus-tools.sdf
+opus-tools.suo
+version.h
