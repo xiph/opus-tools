@@ -128,7 +128,7 @@ Set_WIN_Params ( FILE_T   dummyFile ,
 	outFormat.nBlockAlign     = (outFormat.wBitsPerSample + 7) / 8 * outFormat.nChannels;
 	outFormat.nAvgBytesPerSec = outFormat.nSamplesPerSec * outFormat.nBlockAlign;
 
-	switch ( waveOutOpen ( &dev, deviceID, &outFormat, (DWORD)wave_callback, 0, CALLBACK_FUNCTION ) )
+	switch ( waveOutOpen ( &dev, deviceID, &outFormat, (DWORD_PTR)wave_callback, 0, CALLBACK_FUNCTION ) )
 	{
 		case MMSYSERR_ALLOCATED:   return Box ( "Device is already open." );
 		case MMSYSERR_BADDEVICEID: return Box ( "The specified device is out of range." );
