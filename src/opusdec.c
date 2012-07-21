@@ -503,7 +503,9 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
 
    if(header.gain!=0 || manual_gain!=0)
    {
-      /*Gain API added in a newer libopus version..*/
+      /*Gain API added in a newer libopus version, if we don't have it
+        we apply the gain ourselves. We also add in a user provided
+        manual gain at the same time.*/
       int gainadj = (int)(manual_gain*256.)+header.gain;
 #ifdef OPUS_SET_GAIN
       err=opus_multistream_decoder_ctl(st,OPUS_SET_GAIN(gainadj));
@@ -753,12 +755,10 @@ int main(int argc, char **argv)
       close_in=1;
    }
 
-
    /*Init Ogg data struct*/
    ogg_sync_init(&oy);
 
    /*Main decoding loop*/
-
    while (1)
    {
       char *data;
@@ -786,6 +786,8 @@ int main(int argc, char **argv)
          /*Extract all available packets*/
          while (ogg_stream_packetout(&os, &op) == 1)
          {
+            /*OggOpus streams are identified by a magic string in the initial
+              stream header.*/
             if (op.b_o_s && op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
                if(!has_opus_stream)
                {
@@ -801,13 +803,18 @@ int main(int argc, char **argv)
             }
             if (!has_opus_stream || os.serialno != opus_serialno)
                break;
-            /*If first packet, process as OPUS header*/
+            /*If first packet in a logical stream, process the Opus header*/
             if (packet_count==0)
             {
                st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, manual_gain, &streams, wav_format, quiet);
                if (!st)
                   exit(1);
+
+               /*Remember how many samples at the front we were told to skip
+                 so that we can adjust the timestamp counting.*/
                gran_offset=preskip;
+
+               /*Setup the memory for the dithered output*/
                if(!shapemem.a_buf)
                {
                   shapemem.a_buf=calloc(channels,sizeof(float)*4);
@@ -815,6 +822,11 @@ int main(int argc, char **argv)
                   shapemem.fs=rate;
                }
                if(!output)output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
+
+               /*Normal players should just play at 48000 or their maximum rate,
+                 as described in the OggOpus spec.  But for commandline tools
+                 like opusdec it can be desirable to exactly preserve the original
+                 sampling rate and duration, so we have a resampler here.*/
                if (rate != 48000)
                {
                   int err;
@@ -839,12 +851,12 @@ int main(int argc, char **argv)
                /*End of stream condition*/
                if (op.e_o_s && os.serialno == opus_serialno)eos=1; /* don't care for anything except opus eos */
 
-               /*Decode frame*/
                if (!lost){
+                  /*Decode Opus packet*/
                   ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
                } else {
                   /*Extract the original duration.
-                    Normally you wouldn't have it for a lost frame, but normally the
+                    Normally you wouldn't have it for a lost packet, but normally the
                     transports used on lossy channels will effectively tell you.
                     This avoids opusdec squaking when the decoded samples and
                     granpos mismatches.*/
@@ -858,6 +870,7 @@ int main(int argc, char **argv)
                       if(spp>0)lost_size=spp;
                     }
                   }
+                  /*Invoke packet loss concealment.*/
                   ret = opus_multistream_decode_float(st, NULL, 0, output, lost_size, 0);
                }
 
@@ -868,6 +881,7 @@ int main(int argc, char **argv)
                }
                frame_size = ret;
 
+               /*If we're collecting --save-range debugging data, collect it now.*/
                if(frange!=NULL){
                  OpusDecoder *od;
                  opus_uint32 rngs[256];
@@ -879,10 +893,16 @@ int main(int argc, char **argv)
                             rngs,streams);
                }
 
-               /* Apply header gain */
-               for (i=0;i<frame_size*channels;i++)
-                  output[i] *= gain;
+               /*Apply header gain, if we're not using an opus library new
+                 enough to do this internally.*/
+               if (gain!=0){
+                 for (i=0;i<frame_size*channels;i++)
+                    output[i] *= gain;
+               }
 
+               /*This handles making sure that our output duration respects
+                 the final end-trim by not letting the output sample count
+                 get ahead of the granpos indicated value.*/
                maxout=((page_granule-gran_offset)*rate/48000)-link_out;
                outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,0>maxout?0:maxout);
                link_out+=outsamp;
@@ -890,7 +910,7 @@ int main(int argc, char **argv)
             }
             packet_count++;
          }
-         /* Drain the resampler */
+         /*We're done, drain the resampler if we were using it.*/
          if(eos && resampler)
          {
             float *zeros;
@@ -923,6 +943,7 @@ int main(int argc, char **argv)
          break;
    }
 
+   /*If we were writing wav, go set the duration.*/
    if (fout && wav_format>=0 && audio_size<0x7FFFFFFF)
    {
       if (fseek(fout,4,SEEK_SET)==0)
