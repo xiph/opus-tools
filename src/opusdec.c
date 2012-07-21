@@ -144,7 +144,7 @@ static inline unsigned int fast_rand(void) {
 /* This implements a 16 bit quantization with full triangular dither
    and IIR noise shaping. The noise shaping filters were designed by
    Sebastian Gesemann based on the LAME ATH curves with flattening
-   to limit their peak gain to 20dB.
+   to limit their peak gain to 20 dB.
    (Everyone elses' noise shaping filters are mildly crazy)
    The 48kHz version of this filter is just a warped version of the
    44.1kHz filter and probably could be improved by shifting the
@@ -152,7 +152,7 @@ static inline unsigned int fast_rand(void) {
    room and being more conservative against bat-ears is probably
    more important than more noise suppression.
    This process can increase the peak level of the signal (in theory
-   by the peak error of 1.5 +20dB though this much is unobservable rare)
+   by the peak error of 1.5 +20 dB though this much is unobservable rare)
    so to avoid clipping the signal is attenuated by a couple thousandths
    of a dB. Initially the approach taken here was to only attenuate by
    the 99.9th percentile, making clipping rare but not impossible (like
@@ -198,7 +198,7 @@ static inline void shape_dither_toshort(shapestate *_ss, short *_o, float *_i, i
       s = s - err;
       r=(float)fast_rand()*(1/(float)UINT_MAX) - (float)fast_rand()*(1/(float)UINT_MAX);
       if (mute>16)r=0;
-      /*Clamp in float out of paranoia that the input will be >96dBFS and wrap if the
+      /*Clamp in float out of paranoia that the input will be >96 dBFS and wrap if the
         integer is clamped.*/
       _o[pos+c] = si = float2int(fmaxf(-32768,fminf(s + r,32767)));
       /*Including clipping in the noise shaping is generally disastrous:
