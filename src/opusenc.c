@@ -76,6 +76,8 @@
 #define VG_CHECK(x,y)
 #endif
 
+#include "unicode_support.h"
+
 static void comment_init(char **comments, int* length, const char *vendor_string);
 static void comment_add(char **comments, int* length, char *tag, char *val);
 
@@ -170,7 +172,7 @@ static inline void print_time(double seconds)
   if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
 }
 
-int main(int argc, char **argv)
+static int opusenc_main(int argc, char **argv)
 {
   static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
   int option_index=0;
@@ -414,7 +416,7 @@ int main(int argc, char **argv)
           opt_ctls_ctlval[opt_ctls*3+2]=atoi(spos+1);
           opt_ctls++;
         }else if(strcmp(long_options[option_index].name,"save-range")==0){
-          frange=fopen(optarg,"w");
+          frange=fopen_utf8(optarg,"w");
           if(frange==NULL){
             perror(optarg);
             fprintf(stderr,"Could not open save-range file: %s\n",optarg);
@@ -466,7 +468,7 @@ int main(int argc, char **argv)
 #endif
     fin=stdin;
   }else{
-    fin=fopen(inFile, "rb");
+    fin=fopen_utf8(inFile, "rb");
     if(!fin){
       perror(inFile);
       exit(1);
@@ -689,7 +691,7 @@ int main(int argc, char **argv)
 #endif
     fout=stdout;
   }else{
-    fout=fopen(outFile, "wb");
+    fout=fopen_utf8(outFile, "wb");
     if(!fout){
       perror(outFile);
       exit(1);
@@ -907,6 +909,7 @@ int main(int argc, char **argv)
           coded_seconds/wall_time,
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
+        fflush(stderr); //Required for real-time progress updates in GUI's!
         last_spin_len=strlen(sbuf);
         last_spin=stop_time;
       }
@@ -1027,3 +1030,16 @@ static void comment_add(char **comments, int* length, char *tag, char *val)
 }
 #undef readint
 #undef writeint
+
+int main( int argc, char **argv )
+{
+  int my_argc;
+  char **my_argv;
+  int exit_code;
+
+  init_commandline_arguments_utf8(&my_argc, &my_argv);
+  exit_code = opusenc_main(my_argc, my_argv);
+  free_commandline_arguments_utf8(&my_argc, &my_argv);
+
+  return exit_code;
+}

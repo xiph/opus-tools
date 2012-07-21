@@ -27,6 +27,7 @@
     <ClCompile Include="opusdec.c" />
     <ClCompile Include="opus_header.c" />
     <ClCompile Include="resample.c" />
+    <ClCompile Include="unicode_support.c" />
     <ClCompile Include="wave_out.c" />
     <ClCompile Include="wav_io.c" />
   </ItemGroup>
@@ -43,6 +44,7 @@
     <ClInclude Include="resample_sse.h" />
     <ClInclude Include="speex_resampler.h" />
     <ClInclude Include="stack_alloc.h" />
+    <ClInclude Include="unicode_support.h" />
     <ClInclude Include="wave_out.h" />
     <ClInclude Include="wav_io.h" />
   </ItemGroup>
@@ -167,9 +169,14 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\libogg-1.3.0\include;..\..\opus-git\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <OmitFramePointers>true</OmitFramePointers>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -177,8 +184,10 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>celt.lib;opus.lib;silk_common.lib;silk_float.lib;libogg_static.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>F:\DeLpHi\EncodePointerLib\Release\EncodePointer.lib;celt.lib;opus.lib;silk_common.lib;silk_float.lib;libogg_static.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);D:\SVN\Tools\opus-git\Release;D:\SVN\Tools\libogg-1.3.0\win32\VS2010\Win32\Release</AdditionalLibraryDirectories>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <MinimumRequiredVersion>5.0</MinimumRequiredVersion>
     </Link>
     <PreBuildEvent>
       <Command>"$(ProjectDir)..\win32\genversion.bat" "$(ProjectDir)..\win32\version.h" VERSION</Command>

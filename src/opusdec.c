@@ -103,6 +103,8 @@
 #include "speex_resampler.h"
 #include "stack_alloc.h"
 
+#include "unicode_support.h"
+
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
 #define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
@@ -403,7 +405,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       }
       else
       {
-         fout = fopen(outFile, "wb");
+         fout = fopen_utf8(outFile, "wb");
          if (!fout)
          {
             perror(outFile);
@@ -603,7 +605,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
    return sampout;
 }
 
-int main(int argc, char **argv)
+static int opusdec_main(int argc, char **argv)
 {
    int c;
    int option_index = 0;
@@ -653,6 +655,7 @@ int main(int argc, char **argv)
    SpeexResamplerState *resampler=NULL;
    float gain=1;
    int streams=0;
+   size_t last_spin=0;
 
    output=0;
    shapemem.a_buf=0;
@@ -696,7 +699,7 @@ int main(int argc, char **argv)
          {
             manual_gain=atof (optarg);
          }else if(strcmp(long_options[option_index].name,"save-range")==0){
-          frange=fopen(optarg,"w");
+          frange=fopen_utf8(optarg,"w");
           if(frange==NULL){
             perror(optarg);
             fprintf(stderr,"Could not open save-range file: %s\n",optarg);
@@ -746,7 +749,7 @@ int main(int argc, char **argv)
    }
    else
    {
-      fin = fopen(inFile, "rb");
+      fin = fopen_utf8(inFile, "rb");
       if (!fin)
       {
          perror(inFile);
@@ -874,6 +877,16 @@ int main(int argc, char **argv)
                   ret = opus_multistream_decode_float(st, NULL, 0, output, lost_size, 0);
                }
 
+               if(!quiet){
+                  static const char spinner[]="|/-\\";
+                  if(!(last_spin % 100)) {
+                     fprintf(stderr,"[%c]\b\b\b", spinner[(last_spin/100) % 3]);
+                     fflush(stderr);
+                  }
+                  last_spin++;
+               }
+
+
                if (ret<0)
                {
                   fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
@@ -939,8 +952,11 @@ int main(int argc, char **argv)
             st=NULL;
          }
       }
-      if (feof(fin))
+      if (feof(fin)) {
+         fprintf(stderr, "Complete.\n");
+         fflush(stderr);
          break;
+      }
    }
 
    /*If we were writing wav, go set the duration.*/
@@ -988,4 +1004,17 @@ int main(int argc, char **argv)
       fclose(fout);
 
    return 0;
+}
+
+int main( int argc, char **argv )
+{
+  int my_argc;
+  char **my_argv;
+  int exit_code;
+
+  init_commandline_arguments_utf8(&my_argc, &my_argv);
+  exit_code = opusdec_main(my_argc, my_argv);
+  free_commandline_arguments_utf8(&my_argc, &my_argv);
+
+  return exit_code;
 }
