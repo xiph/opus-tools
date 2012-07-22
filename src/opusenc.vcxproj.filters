@@ -86,6 +86,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\win32\config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\win32\unicode_support.h">
       <Filter>Header Files</Filter>
     </ClInclude>
