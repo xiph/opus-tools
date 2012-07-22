@@ -31,6 +31,12 @@
 #include "opus_header.h"
 #include "info_opus.h"
 
+#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+# include "unicode_support.h"
+#else
+# define fopen_utf8(_x,_y) fopen((_x),(_y))
+#endif
+
 #define CHUNK 4500
 
 static int printlots = 0;
@@ -465,7 +471,7 @@ static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
 }
 
 static void process_file(char *filename) {
-    FILE *file = fopen(filename, "rb");
+    FILE *file = fopen_utf8(filename, "rb");
     ogg_sync_state ogsync;
     ogg_page page;
     stream_set *processors = create_stream_set();
@@ -583,7 +589,12 @@ static void usage(void) {
     printf (_("\t-V Output version information and exit.\n"));
 }
 
-int main(int argc, char **argv) {
+#ifdef WIN_UNICODE
+static int opusinfo_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
+{
     int f, ret;
 
     if(argc < 2) {
@@ -637,3 +648,18 @@ int main(int argc, char **argv) {
 
     return ret;
 }
+
+#ifdef WIN_UNICODE
+int main( int argc, char **argv )
+{
+  int my_argc;
+  char **my_argv;
+  int exit_code;
+
+  init_commandline_arguments_utf8(&my_argc, &my_argv);
+  exit_code = opusinfo_main(my_argc, my_argv);
+  free_commandline_arguments_utf8(&my_argc, &my_argv);
+
+  return exit_code;
+}
+#endif

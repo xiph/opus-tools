@@ -34,6 +34,8 @@
 #include <windows.h>
 #include <io.h>
 
+static UINT g_old_output_cp = ((UINT)-1);
+
 char *utf16_to_utf8(const wchar_t *input)
 {
 	char *Buffer;
@@ -176,6 +178,20 @@ int unlink_utf8(const char *path_utf8)
 	}
 	
 	return ret;
+}
+
+void init_console_utf8(void)
+{
+	g_old_output_cp = GetConsoleOutputCP();
+	SetConsoleOutputCP(CP_UTF8);
+}
+
+void uninit_console_utf8(void)
+{
+	if(g_old_output_cp != ((UINT)-1))
+	{
+		SetConsoleOutputCP(g_old_output_cp);
+	}
 }
 
 #endif

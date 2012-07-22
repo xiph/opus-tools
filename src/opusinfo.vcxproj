@@ -30,6 +30,7 @@
     <ClCompile Include="resample.c" />
     <ClCompile Include="wave_out.c" />
     <ClCompile Include="wav_io.c" />
+    <ClCompile Include="..\win32\unicode_support.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\win32\config.h" />
@@ -46,6 +47,7 @@
     <ClInclude Include="stack_alloc.h" />
     <ClInclude Include="wave_out.h" />
     <ClInclude Include="wav_io.h" />
+    <ClInclude Include="..\win32\unicode_support.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>

@@ -878,8 +878,13 @@ int main(int argc, char **argv)
 
                if(!quiet){
                   static const char spinner[]="|/-\\";
-                  if(!(last_spin % 100)) {
-                     fprintf(stderr,"[%c]\b\b\b", spinner[(last_spin/100) % 3]);
+                  if(!(last_spin % 128)) {
+                     unsigned int sec, min, hrs;
+                     unsigned int total_secs = (unsigned int)(audio_size / (((ogg_int64_t) channels) * ((ogg_int64_t) rate) * ((ogg_int64_t) 2)));
+                     hrs = total_secs / 3600;
+                     min = (total_secs % 3600) / 60;
+                     sec = (total_secs % 3600) % 60;
+                     fprintf(stderr,"[%c] %02u:%02u:%02u\r", spinner[(last_spin/128) % 4], hrs, min, sec);
                      fflush(stderr);
                   }
                   last_spin++;
@@ -952,7 +957,7 @@ int main(int argc, char **argv)
       }
       if (feof(fin)) {
          if(!quiet) {
-           fprintf(stderr, "Complete.\n");
+           fprintf(stderr, "Decoding complete.\n");
            fflush(stderr);
          }
          break;
