@@ -31,6 +31,7 @@
     <ClCompile Include="wav_io.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\win32\config.h" />
     <ClInclude Include="arch.h" />
     <ClInclude Include="diag_range.h" />
     <ClInclude Include="info_opus.h" />
@@ -39,6 +40,7 @@
     <ClInclude Include="opusinfo.h" />
     <ClInclude Include="opus_header.h" />
     <ClInclude Include="os_support.h" />
+    <ClInclude Include="resample_sse.h" />
     <ClInclude Include="speex_resampler.h" />
     <ClInclude Include="stack_alloc.h" />
     <ClInclude Include="wave_out.h" />

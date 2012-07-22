@@ -95,7 +95,7 @@ static void speex_free (void *ptr) {free(ptr);}
 #define NULL 0
 #endif
 
-#ifdef _USE_SSE
+#if defined(FLOATING_POINT) && (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__amd64__))
 #include "resample_sse.h"
 #endif
 

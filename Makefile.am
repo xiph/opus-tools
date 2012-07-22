@@ -18,6 +18,7 @@ noinst_HEADERS = src/arch.h \
                  src/opus_header.h \
                  src/opusinfo.h \
                  src/os_support.h \
+                 src/resample_sse.h \
                  src/speex_resampler.h \
                  src/stack_alloc.h \
                  src/wave_out.h \

@@ -79,5 +79,11 @@
     <ClInclude Include="info_opus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resample_sse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\win32\config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
