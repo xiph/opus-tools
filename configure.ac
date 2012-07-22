@@ -163,11 +163,11 @@ AC_CHECK_HEADERS([sys/soundcard.h soundcard.h machine/soundcard.h],[
 dnl check for sndio
 HAVE_SNDIO=no
 AC_CHECK_LIB([sndio], [sio_open])
-if x$ac_cv_lib_sndio_sio_open = xyes; then
+if test "x$ac_cv_lib_sndio_sio_open" = "xyes"; then
   HAVE_SNDIO=yes
 fi
 
-if test x$HAVE_OSS != xyes && test x$HAVE_SNDIO != xyes; then
+if test "x$HAVE_OSS" != "xyes" && test "x$HAVE_SNDIO" != "xyes"; then
   AC_MSG_WARN([Audio support not found -- no direct audio output in opusdec])
 fi
 
@@ -184,7 +184,7 @@ i[[3456]]86 | x86_64)
 esac
 
 ac_build_stack_protector=no
-if test $ac_cv_c_compiler_gnu = yes && test $on_x86 = yes; then
+if test "x$ac_cv_c_compiler_gnu" = "xyes" && test "x$on_x86" = "xyes"; then
 AC_ARG_ENABLE(stack-protector,
      AS_HELP_STRING([--disable-stack-protector],[Disable compiler stack hardening]),
      [

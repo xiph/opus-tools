@@ -27,7 +27,7 @@
     <ClCompile Include="opusenc.c" />
     <ClCompile Include="opus_header.c" />
     <ClCompile Include="resample.c" />
-    <ClCompile Include="unicode_support.c" />
+    <ClCompile Include="..\win32\unicode_support.c" />
     <ClCompile Include="wave_out.c" />
     <ClCompile Include="wav_io.c" />
   </ItemGroup>
@@ -44,7 +44,7 @@
     <ClInclude Include="resample_sse.h" />
     <ClInclude Include="speex_resampler.h" />
     <ClInclude Include="stack_alloc.h" />
-    <ClInclude Include="unicode_support.h" />
+    <ClInclude Include="..\win32\unicode_support.h" />
     <ClInclude Include="wave_out.h" />
     <ClInclude Include="wav_io.h" />
   </ItemGroup>
@@ -180,10 +180,8 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>F:\DeLpHi\EncodePointerLib\Release\EncodePointer.lib;celt.lib;opus.lib;silk_common.lib;silk_float.lib;libogg_static.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);D:\SVN\Tools\opus-git\Release;D:\SVN\Tools\libogg-1.3.0\win32\VS2010\Win32\Release</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <MinimumRequiredVersion>5.0</MinimumRequiredVersion>
+      <AdditionalDependencies>celt.lib;opus.lib;silk_common.lib;silk_float.lib;libogg_static.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
       <Command>"$(ProjectDir)..\win32\genversion.bat" "$(ProjectDir)..\win32\version.h" VERSION</Command>

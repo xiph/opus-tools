@@ -46,10 +46,15 @@
 #define snprintf _snprintf
 #endif
 
-#ifdef _WIN32
-#define I64FORMAT "I64d"
+#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+# include "unicode_support.h"
+/* We need the following two to set stdout to binary */
+# include <io.h>
+# include <fcntl.h>
+# define I64FORMAT "I64d"
 #else
-#define I64FORMAT "lld"
+# define I64FORMAT "lld"
+# define fopen_utf8(_x,_y) fopen((_x),(_y))
 #endif
 
 #include <opus.h>
@@ -61,12 +66,6 @@
 #include "opusenc.h"
 #include "diag_range.h"
 
-#if defined WIN32 || defined _WIN32
-/* We need the following two to set stdout to binary */
-#include <io.h>
-#include <fcntl.h>
-#endif
-
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
 #define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
@@ -76,7 +75,6 @@
 #define VG_CHECK(x,y)
 #endif
 
-#include "unicode_support.h"
 
 static void comment_init(char **comments, int* length, const char *vendor_string);
 static void comment_add(char **comments, int* length, char *tag, char *val);
@@ -172,7 +170,11 @@ static inline void print_time(double seconds)
   if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
 }
 
+#ifdef WIN_UNICODE
 static int opusenc_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
 {
   static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
   int option_index=0;
@@ -909,7 +911,7 @@ static int opusenc_main(int argc, char **argv)
           coded_seconds/wall_time,
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
-        fflush(stderr); //Required for real-time progress updates in GUI's!
+        fflush(stderr);
         last_spin_len=strlen(sbuf);
         last_spin=stop_time;
       }
@@ -1031,6 +1033,7 @@ static void comment_add(char **comments, int* length, char *tag, char *val)
 #undef readint
 #undef writeint
 
+#ifdef WIN_UNICODE
 int main( int argc, char **argv )
 {
   int my_argc;
@@ -1043,3 +1046,4 @@ int main( int argc, char **argv )
 
   return exit_code;
 }
+#endif

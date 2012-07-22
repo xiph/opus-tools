@@ -49,12 +49,18 @@
 #include <opus_multistream.h>
 #include <ogg/ogg.h>
 
-#if defined WIN32 || defined _WIN32
-#include "wave_out.h"
+#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+# include "unicode_support.h"
+# include "wave_out.h"
 /* We need the following two to set stdout to binary */
-#include <io.h>
-#include <fcntl.h>
+# include <io.h>
+# include <fcntl.h>
+# define I64FORMAT "I64d"
+#else
+# define I64FORMAT "lld"
+# define fopen_utf8(_x,_y) fopen((_x),(_y))
 #endif
+
 #include <math.h>
 
 #ifdef HAVE_LRINTF
@@ -63,37 +69,28 @@
 # define float2int(flt) ((int)(floor(.5+flt)))
 #endif
 
-#ifdef _WIN32
-#define I64FORMAT "I64d"
-#else
-#define I64FORMAT "lld"
-#endif
-
 #if defined HAVE_LIBSNDIO
-#include <sndio.h>
-
+# include <sndio.h>
 #elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
-#ifdef HAVE_SYS_SOUNDCARD_H
-# include <sys/soundcard.h>
-#elif HAVE_MACHINE_SOUNDCARD_H
-# include <machine/soundcard.h>
-#else
-# include <soundcard.h>
-#endif
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-
+# ifdef HAVE_SYS_SOUNDCARD_H
+#  include <sys/soundcard.h>
+# elif HAVE_MACHINE_SOUNDCARD_H
+#  include <machine/soundcard.h>
+# else
+#  include <soundcard.h>
+# endif
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+# include <sys/ioctl.h>
 #elif defined HAVE_SYS_AUDIOIO_H
-#include <sys/types.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/audioio.h>
-#ifndef AUDIO_ENCODING_SLINEAR
-#define AUDIO_ENCODING_SLINEAR AUDIO_ENCODING_LINEAR /* Solaris */
-#endif
-
+# include <sys/types.h>
+# include <fcntl.h>
+# include <sys/ioctl.h>
+# include <sys/audioio.h>
+# ifndef AUDIO_ENCODING_SLINEAR
+#  define AUDIO_ENCODING_SLINEAR AUDIO_ENCODING_LINEAR /* Solaris */
+# endif
 #endif
 
 #include <string.h>
@@ -102,8 +99,6 @@
 #include "diag_range.h"
 #include "speex_resampler.h"
 #include "stack_alloc.h"
-
-#include "unicode_support.h"
 
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
@@ -605,7 +600,11 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
    return sampout;
 }
 
+#ifdef WIN_UNICODE
 static int opusdec_main(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
 {
    int c;
    int option_index = 0;
@@ -886,7 +885,6 @@ static int opusdec_main(int argc, char **argv)
                   last_spin++;
                }
 
-
                if (ret<0)
                {
                   fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
@@ -953,8 +951,10 @@ static int opusdec_main(int argc, char **argv)
          }
       }
       if (feof(fin)) {
-         fprintf(stderr, "Complete.\n");
-         fflush(stderr);
+         if(!quiet) {
+           fprintf(stderr, "Complete.\n");
+           fflush(stderr);
+         }
          break;
       }
    }
@@ -1006,6 +1006,7 @@ static int opusdec_main(int argc, char **argv)
    return 0;
 }
 
+#ifdef WIN_UNICODE
 int main( int argc, char **argv )
 {
   int my_argc;
@@ -1018,3 +1019,4 @@ int main( int argc, char **argv )
 
   return exit_code;
 }
+#endif
