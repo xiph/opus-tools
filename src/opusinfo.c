@@ -35,6 +35,8 @@
 # include "unicode_support.h"
 #else
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
+# define argc_utf8 argc
+# define argv_utf8 argv
 #endif
 
 #define CHUNK 4500
@@ -589,25 +591,35 @@ static void usage(void) {
     printf (_("\t-V Output version information and exit.\n"));
 }
 
-#ifdef WIN_UNICODE
-static int opusinfo_main(int argc, char **argv)
-#else
 int main(int argc, char **argv)
-#endif
 {
     int f, ret;
 
-    if(argc < 2) {
+#ifdef WIN_UNICODE
+    int argc_utf8;
+    char **argv_utf8;
+
+    (void)argc;
+    (void)argv;
+
+    init_console_utf8();
+    init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+#endif
+
+    if(argc_utf8 < 2) {
         fprintf(stdout,
                 _("Usage: opusinfo [flags] file1.opus [file2.opus ... fileN.opus]\n"
                   "\n"
                   "opusinfo is a tool for printing information about Opus files\n"
                   "and for diagnosing problems with them.\n"
                   "Full help shown with \"opusinfo -h\".\n"));
+#ifdef WIN_UNICODE
+        uninit_console_utf8();
+#endif
         exit(1);
     }
 
-    while((ret = getopt(argc, argv, "hqvV")) >= 0) {
+    while((ret = getopt(argc_utf8, argv_utf8, "hqvV")) >= 0) {
         switch(ret) {
             case 'h':
                 usage();
@@ -631,7 +643,7 @@ int main(int argc, char **argv)
     if(verbose < 0)
         printwarn = 0;
 
-    if(optind >= argc) {
+    if(optind >= argc_utf8) {
         fprintf(stderr,
                 _("No input files specified. \"opusinfo -h\" for help\n"));
         return 1;
@@ -639,27 +651,17 @@ int main(int argc, char **argv)
 
     ret = 0;
 
-    for(f=optind; f < argc; f++) {
+    for(f=optind; f < argc_utf8; f++) {
         flawed = 0;
-        process_file(argv[f]);
+        process_file(argv_utf8[f]);
         if(flawed != 0)
             ret = flawed;
     }
 
+#ifdef WIN_UNICODE
+   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+   uninit_console_utf8();
+#endif
+
     return ret;
 }
-
-#ifdef WIN_UNICODE
-int main( int argc, char **argv )
-{
-  int my_argc;
-  char **my_argv;
-  int exit_code;
-
-  init_commandline_arguments_utf8(&my_argc, &my_argv);
-  exit_code = opusinfo_main(my_argc, my_argv);
-  free_commandline_arguments_utf8(&my_argc, &my_argv);
-
-  return exit_code;
-}
-#endif

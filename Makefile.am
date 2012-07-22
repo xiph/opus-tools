@@ -37,7 +37,7 @@ opusdec_SOURCES = src/opus_header.c src/wav_io.c src/wave_out.c src/opusdec.c sr
 opusdec_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
 opusdec_MANS = man/opusdec.1
 
-opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c
+opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c win32/unicode_support.c
 opusinfo_LDADD = $(OGG_LIBS)
 opusinfo_MANS = man/opusinfo.1
 

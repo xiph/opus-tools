@@ -59,6 +59,8 @@
 #else
 # define I64FORMAT "lld"
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
+# define argc_utf8 argc
+# define argv_utf8 argv
 #endif
 
 #include <math.h>
@@ -137,6 +139,13 @@ static inline unsigned int fast_rand(void) {
 #ifndef HAVE_FMAXF
 # define fmaxf(_x,_y) ((_x)>(_y)?(_x):(_y))
 #endif
+
+static void quit(int _x) {
+#ifdef WIN_UNICODE
+  uninit_console_utf8();
+#endif
+  exit(_x);
+}
 
 /* This implements a 16 bit quantization with full triangular dither
    and IIR noise shaping. The noise shaping filters were designed by
@@ -281,7 +290,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       if (audio_fd<0)
       {
          perror("Cannot open /dev/dsp");
-         exit(1);
+         quit(1);
       }
 
       format=AFMT_S16_NE;
@@ -289,7 +298,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       {
          perror("SNDCTL_DSP_SETFMT");
          close(audio_fd);
-         exit(1);
+         quit(1);
       }
 
       stereo=0;
@@ -299,7 +308,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       {
          perror("SNDCTL_DSP_STEREO");
          close(audio_fd);
-         exit(1);
+         quit(1);
       }
       if (stereo!=0)
       {
@@ -312,13 +321,13 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       {
          perror("SNDCTL_DSP_SPEED");
          close(audio_fd);
-         exit(1);
+         quit(1);
       }
       fout = fdopen(audio_fd, "w");
       if(!fout)
       {
         perror("Cannot open output");
-        exit(1);
+        quit(1);
       }
 #elif defined HAVE_LIBSNDIO
       struct sio_par par;
@@ -327,7 +336,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       if (!hdl)
       {
          fprintf(stderr, "Cannot open sndio device\n");
-         exit(1);
+         quit(1);
       }
 
       sio_initpar(&par);
@@ -339,12 +348,12 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
         par.sig != 1 || par.bits != 16 || par.rate != rate) {
           fprintf(stderr, "could not set sndio parameters\n");
-          exit(1);
+          quit(1);
       }
       *channels = par.pchan;
       if (!sio_start(hdl)) {
           fprintf(stderr, "could not start sndio\n");
-          exit(1);
+          quit(1);
       }
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
@@ -354,7 +363,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       if (audio_fd<0)
       {
          perror("Cannot open /dev/audio");
-         exit(1);
+         quit(1);
       }
 
       AUDIO_INITINFO(&info);
@@ -369,13 +378,13 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       if (ioctl(audio_fd, AUDIO_SETINFO, &info) < 0)
       {
          perror ("AUDIO_SETINFO");
-         exit(1);
+         quit(1);
       }
       fout = fdopen(audio_fd, "w");
       if(!fout)
       {
         perror("Cannot open output");
-        exit(1);
+        quit(1);
       }
 #elif defined WIN32 || defined _WIN32
       {
@@ -383,12 +392,12 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
          if (Set_WIN_Params (INVALID_FILEDESC, rate, SAMPLE_SIZE, opus_channels))
          {
             fprintf (stderr, "Can't access %s\n", "WAVE OUT");
-            exit(1);
+            quit(1);
          }
       }
 #else
       fprintf (stderr, "No soundcard support\n");
-      exit(1);
+      quit(1);
 #endif
    } else {
       if (strcmp(outFile,"-")==0)
@@ -404,7 +413,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
          if (!fout)
          {
             perror(outFile);
-            exit(1);
+            quit(1);
          }
          if (*wav_format)
          {
@@ -412,7 +421,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
             if (*wav_format < 0)
             {
                fprintf (stderr, "Error writing WAV header.\n");
-               exit(1);
+               quit(1);
             }
          }
       }
@@ -525,8 +534,8 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
       fprintf(stderr, " (%d channel%s)",*channels,*channels>1?"s":"");
       if(header.version!=1)fprintf(stderr, ", Header v%d",header.version);
       fprintf(stderr, "\n");
-      if (header.gain!=0)printf("Playback gain: %f dB\n", header.gain/256.);
-      if (manual_gain!=0)printf("Manual gain: %f dB\n", manual_gain);
+      if (header.gain!=0)fprintf(stderr,"Playback gain: %f dB\n", header.gain/256.);
+      if (manual_gain!=0)fprintf(stderr,"Manual gain: %f dB\n", manual_gain);
    }
 
    return st;
@@ -600,11 +609,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
    return sampout;
 }
 
-#ifdef WIN_UNICODE
-static int opusdec_main(int argc, char **argv)
-#else
 int main(int argc, char **argv)
-#endif
 {
    int c;
    int option_index = 0;
@@ -639,6 +644,7 @@ int main(int argc, char **argv)
    int close_in=0;
    int eos=0;
    ogg_int64_t audio_size=0;
+   double last_coded_seconds=0;
    float loss_percent=-1;
    float manual_gain=0;
    int channels=-1;
@@ -655,6 +661,16 @@ int main(int argc, char **argv)
    float gain=1;
    int streams=0;
    size_t last_spin=0;
+#ifdef WIN_UNICODE
+   int argc_utf8;
+   char **argv_utf8;
+
+   (void)argc;
+   (void)argv;
+
+   init_console_utf8();
+   init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+#endif
 
    output=0;
    shapemem.a_buf=0;
@@ -665,7 +681,7 @@ int main(int argc, char **argv)
    /*Process options*/
    while(1)
    {
-      c = getopt_long (argc, argv, "hvV",
+      c = getopt_long (argc_utf8, argv_utf8, "hvV",
                        long_options, &option_index);
       if (c==-1)
          break;
@@ -676,18 +692,18 @@ int main(int argc, char **argv)
          if (strcmp(long_options[option_index].name,"help")==0)
          {
             usage();
-            exit(0);
+            quit(0);
          } else if (strcmp(long_options[option_index].name,"quiet")==0)
          {
             quiet = 1;
          } else if (strcmp(long_options[option_index].name,"version")==0)
          {
             version();
-            exit(0);
+            quit(0);
          } else if (strcmp(long_options[option_index].name,"version-short")==0)
          {
             version_short();
-            exit(0);
+            quit(0);
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
             dither=0;
@@ -703,7 +719,7 @@ int main(int argc, char **argv)
             perror(optarg);
             fprintf(stderr,"Could not open save-range file: %s\n",optarg);
             fprintf(stderr,"Must provide a writable file name.\n");
-            exit(1);
+            quit(1);
           }
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
@@ -712,27 +728,27 @@ int main(int argc, char **argv)
          break;
       case 'h':
          usage();
-         exit(0);
+         quit(0);
          break;
       case 'v':
          version();
-         exit(0);
+         quit(0);
          break;
       case '?':
          usage();
-         exit(1);
+         quit(1);
          break;
       }
    }
-   if (argc-optind!=2 && argc-optind!=1)
+   if (argc_utf8-optind!=2 && argc_utf8-optind!=1)
    {
       usage();
-      exit(1);
+      quit(1);
    }
-   inFile=argv[optind];
+   inFile=argv_utf8[optind];
 
-   if (argc-optind==2)
-      outFile=argv[optind+1];
+   if (argc_utf8-optind==2)
+      outFile=argv_utf8[optind+1];
    else
       outFile = "";
    wav_format = strlen(outFile)>=4 && (
@@ -752,7 +768,7 @@ int main(int argc, char **argv)
       if (!fin)
       {
          perror(inFile);
-         exit(1);
+         quit(1);
       }
       close_in=1;
    }
@@ -810,7 +826,7 @@ int main(int argc, char **argv)
             {
                st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, manual_gain, &streams, wav_format, quiet);
                if (!st)
-                  exit(1);
+                  quit(1);
 
                /*Remember how many samples at the front we were told to skip
                  so that we can adjust the timestamp counting.*/
@@ -878,16 +894,15 @@ int main(int argc, char **argv)
 
                if(!quiet){
                   static const char spinner[]="|/-\\";
-                  if(!(last_spin % 128)) {
-                     unsigned int sec, min, hrs;
-                     unsigned int total_secs = (unsigned int)(audio_size / (((ogg_int64_t) channels) * ((ogg_int64_t) rate) * ((ogg_int64_t) 2)));
-                     hrs = total_secs / 3600;
-                     min = (total_secs % 3600) / 60;
-                     sec = (total_secs % 3600) % 60;
-                     fprintf(stderr,"[%c] %02u:%02u:%02u\r", spinner[(last_spin/128) % 4], hrs, min, sec);
+                  double coded_seconds = (double)audio_size/(channels*rate*sizeof(short));
+                  if(coded_seconds>=last_coded_seconds+1){
+                     fprintf(stderr,"\r[%c] %02d:%02d:%02d", spinner[last_spin&3],
+                             (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
+                             (int)(coded_seconds)%60);
                      fflush(stderr);
+                     last_spin++;
+                     last_coded_seconds=coded_seconds;
                   }
-                  last_spin++;
                }
 
                if (ret<0)
@@ -957,7 +972,7 @@ int main(int argc, char **argv)
       }
       if (feof(fin)) {
          if(!quiet) {
-           fprintf(stderr, "Decoding complete.\n");
+           fprintf(stderr, "\rDecoding complete.        \n");
            fflush(stderr);
          }
          break;
@@ -965,7 +980,7 @@ int main(int argc, char **argv)
    }
 
    /*If we were writing wav, go set the duration.*/
-   if (fout && wav_format>=0 && audio_size<0x7FFFFFFF)
+   if (strlen(outFile)!=0 && fout && wav_format>=0 && audio_size<0x7FFFFFFF)
    {
       if (fseek(fout,4,SEEK_SET)==0)
       {
@@ -1008,20 +1023,10 @@ int main(int argc, char **argv)
    if (fout != NULL)
       fclose(fout);
 
+#ifdef WIN_UNICODE
+   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+   uninit_console_utf8();
+#endif
+
    return 0;
 }
-
-#ifdef WIN_UNICODE
-int main( int argc, char **argv )
-{
-  int my_argc;
-  char **my_argv;
-  int exit_code;
-
-  init_commandline_arguments_utf8(&my_argc, &my_argv);
-  exit_code = opusdec_main(my_argc, my_argv);
-  free_commandline_arguments_utf8(&my_argc, &my_argv);
-
-  return exit_code;
-}
-#endif

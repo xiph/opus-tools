@@ -55,6 +55,8 @@
 #else
 # define I64FORMAT "lld"
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
+# define argc_utf8 argc
+# define argv_utf8 argv
 #endif
 
 #include <opus.h>
@@ -74,7 +76,6 @@
 #define VG_UNDEF(x,y)
 #define VG_CHECK(x,y)
 #endif
-
 
 static void comment_init(char **comments, int* length, const char *vendor_string);
 static void comment_add(char **comments, int* length, char *tag, char *val);
@@ -170,11 +171,7 @@ static inline void print_time(double seconds)
   if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
 }
 
-#ifdef WIN_UNICODE
-static int opusenc_main(int argc, char **argv)
-#else
 int main(int argc, char **argv)
-#endif
 {
   static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
   int option_index=0;
@@ -274,6 +271,15 @@ int main(int argc, char **argv)
   opus_int32         lookahead=0;
   unsigned char      mapping[256];
   int                force_narrow=0;
+#ifdef WIN_UNICODE
+   int argc_utf8;
+   char **argv_utf8;
+
+   (void)argc;
+   (void)argv;
+
+   init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+#endif
 
   opt_ctls_ctlval=NULL;
   frange=NULL;
@@ -298,7 +304,7 @@ int main(int argc, char **argv)
   /*Process command-line options*/
   while(1){
     int c;
-    c=getopt_long(argc, argv, "hv",
+    c=getopt_long(argc_utf8, argv_utf8, "hv",
                   long_options, &option_index);
     if(c==-1)
        break;
@@ -455,12 +461,12 @@ int main(int argc, char **argv)
         break;
     }
   }
-  if(argc-optind!=2){
+  if(argc_utf8-optind!=2){
     usage();
     exit(1);
   }
-  inFile=argv[optind];
-  outFile=argv[optind+1];
+  inFile=argv_utf8[optind];
+  outFile=argv_utf8[optind+1];
 
   if(strcmp(inFile, "-")==0){
 #if defined WIN32 || defined _WIN32
@@ -958,6 +964,9 @@ int main(int argc, char **argv)
   if(fin)fclose(fin);
   if(fout)fclose(fout);
   if(frange)fclose(frange);
+#ifdef WIN_UNICODE
+   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+#endif
   return 0;
 }
 
@@ -1032,18 +1041,3 @@ static void comment_add(char **comments, int* length, char *tag, char *val)
 }
 #undef readint
 #undef writeint
-
-#ifdef WIN_UNICODE
-int main( int argc, char **argv )
-{
-  int my_argc;
-  char **my_argv;
-  int exit_code;
-
-  init_commandline_arguments_utf8(&my_argc, &my_argv);
-  exit_code = opusenc_main(my_argc, my_argv);
-  free_commandline_arguments_utf8(&my_argc, &my_argv);
-
-  return exit_code;
-}
-#endif
