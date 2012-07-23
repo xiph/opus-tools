@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <ctype.h> /*tolower()*/
 
 #include <opus.h>
 #include <opus_multistream.h>
@@ -530,8 +531,8 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapp
 
    if (!quiet)
    {
-      fprintf(stderr, "Decoding %d Hz %saudio", *rate, *rate!=(int)header.input_sample_rate?"(forced) ":"");
-      fprintf(stderr, " (%d channel%s)",*channels,*channels>1?"s":"");
+      fprintf(stderr, "Decoding to %d Hz (%d channel%s)", *rate,
+        *channels, *channels>1?"s":"");
       if(header.version!=1)fprintf(stderr, ", Header v%d",header.version);
       fprintf(stderr, "\n");
       if (header.gain!=0)fprintf(stderr,"Playback gain: %f dB\n", header.gain/256.);
@@ -747,13 +748,28 @@ int main(int argc, char **argv)
    }
    inFile=argv_utf8[optind];
 
-   if (argc_utf8-optind==2)
-      outFile=argv_utf8[optind+1];
-   else
-      outFile = "";
-   wav_format = strlen(outFile)>=4 && (
-                                       strcmp(outFile+strlen(outFile)-4,".wav")==0
-                                       || strcmp(outFile+strlen(outFile)-4,".WAV")==0);
+   if (argc_utf8-optind==2){
+     int i;
+     char *ext;
+     outFile=argv_utf8[optind+1];
+     ext=".wav";
+     i=strlen(outFile)-4;
+     wav_format=i>=0;
+     while(wav_format&&ext&&outFile[i]) {
+       wav_format&=tolower(outFile[i++])==*ext++;
+     }
+   }else {
+     outFile="";
+     wav_format=0;
+     /*If playing to audio out, default the rate to 48000
+       instead of the original rate. The original rate is
+       only important for minimizing surprise about the rate
+       of output files and preserving length, which aren't
+       relevant for playback. Many audio devices sound
+       better at 48kHz and not resampling also saves CPU.*/
+     if(rate==0)rate=48000;
+   }
+
    /*Open input file*/
    if (strcmp(inFile, "-")==0)
    {
