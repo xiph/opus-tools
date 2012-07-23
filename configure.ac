@@ -104,6 +104,17 @@ AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software 
   AC_DEFINE([ENABLE_ASSERTIONS], , [Assertions])
 fi])
 
+if test "x$CFLAGS" = "x-g -O2"; then
+saved_CFLAGS="$CFLAGS"
+CFLAGS="-O3 -ffast-math"
+AC_MSG_CHECKING([if ${CC} supports -O3 -ffast-math])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+      [ AC_MSG_RESULT([yes])
+        saved_CFLAGS="-O3 -ffast-math" ],
+        AC_MSG_RESULT([no]))
+CFLAGS="$saved_CFLAGS"
+fi
+
 dnl check for Ogg
 HAVE_OGG=no
 
@@ -172,16 +183,27 @@ if test "x$HAVE_OSS" != "xyes" && test "x$HAVE_SNDIO" != "xyes"; then
 fi
 
 
-dnl Enable stack-protector-all only on x86 where it's well supported.
-dnl on some platforms it causes crashes. Hopefully the OS's default's
-dnl include this on platforms that work but have been missed here.
-
 on_x86=no
 case "$host_cpu" in
 i[[3456]]86 | x86_64)
   on_x86=yes
   ;;
 esac
+
+if test "x$on_x86" = "xyes"; then
+saved_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -msse"
+AC_MSG_CHECKING([if ${CC} supports -msse])
+AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
+      [ AC_MSG_RESULT([yes])
+        SSE="-msse"; ac_build_sse=yes ],
+        AC_MSG_RESULT([no]))
+CFLAGS="$saved_CFLAGS $SSE"
+fi
+
+dnl Enable stack-protector-all only on x86 where it's well supported.
+dnl on some platforms it causes crashes. Hopefully the OS's default's
+dnl include this on platforms that work but have been missed here.
 
 ac_build_stack_protector=no
 if test "x$ac_cv_c_compiler_gnu" = "xyes" && test "x$on_x86" = "xyes"; then

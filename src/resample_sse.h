@@ -41,7 +41,7 @@
 #else
 #include <intrin.h>
 
-static inline int query_cpu_support_sse()
+static inline int query_cpu_support_sse(void)
 {
    static int initialized = 0;
    static int return_value;
