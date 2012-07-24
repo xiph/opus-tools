@@ -11,6 +11,7 @@
 #define USE_ALLOCA            1
 #define FLOATING_POINT        1
 #define SPX_RESAMPLE_EXPORT
+#define __SSE__
 
 #define RANDOM_PREFIX foo
 
