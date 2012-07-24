@@ -298,7 +298,7 @@ int main(int argc, char **argv)
   /*Vendor string should just be the encoder library,
     the ENCODER comment specifies the tool used.*/
   comment_init(&comments, &comments_length, opus_version);
-  snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s\n",PACKAGE,VERSION);
+  snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE,VERSION);
   comment_add(&comments, &comments_length, "ENCODER=", ENCODER_string);
 
   /*Process command-line options*/
