@@ -183,6 +183,7 @@ int main(int argc, char **argv)
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
     {"comp", required_argument, NULL, 0},
+    {"complexity", required_argument, NULL, 0},
     {"framesize", required_argument, NULL, 0},
     {"expect-loss", required_argument, NULL, 0},
     {"downmix-mono",no_argument,NULL, 0},
@@ -371,7 +372,8 @@ int main(int argc, char **argv)
             fprintf(stderr,"Expected loss is a percent and must be 0-100.\n");
             exit(1);
           }
-        }else if(strcmp(long_options[option_index].name,"comp")==0){
+        }else if(strcmp(long_options[option_index].name,"comp")==0 ||
+                 strcmp(long_options[option_index].name,"complexity")==0){
           complexity=atoi(optarg);
           if(complexity>10||complexity<0){
             fprintf(stderr,"Invalid complexity: %s\n",optarg);
@@ -518,7 +520,12 @@ int main(int argc, char **argv)
 
   /*Scale the resampler complexity, but only for 48000 output because
     the near-cutoff behavior matters a lot more at lower rates.*/
-  if(rate!=coding_rate)setup_resample(&inopt,coding_rate==48000?complexity/2:5,coding_rate);
+  if(rate!=coding_rate)setup_resample(&inopt,coding_rate==48000?(complexity+1)/2:5,coding_rate);
+
+  if(rate!=coding_rate&&complexity!=10&&!quiet){
+    fprintf(stderr,"Notice: Using resampling with complexity<10.\n");
+    fprintf(stderr,"Opusenc is fastest with 48, 24, 16, 12, or 8kHz input.\n\n");
+  }
 
   /*OggOpus headers*/ /*FIXME: broke forcemono*/
   header.channels=chan;
