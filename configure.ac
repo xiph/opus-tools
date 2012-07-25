@@ -192,15 +192,15 @@ esac
 
 if test "x$on_x86" = "xyes"; then
 ac_enable_sse="no"
-AC_ARG_ENABLE(sse, AS_HELP_STRING([--enable-sse],[Build binaries that require SSE/SSE2]),
+AC_ARG_ENABLE(sse, AS_HELP_STRING([--enable-sse],[Build binaries that require SSE]),
 [if test "$enableval" = yes; then
   ac_enable_sse="yes"
 saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse -msse2"
-AC_MSG_CHECKING([if ${CC} supports -msse -msse2])
+CFLAGS="$CFLAGS -msse"
+AC_MSG_CHECKING([if ${CC} supports -msse])
 AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
       [ AC_MSG_RESULT([yes])
-        SSE="-msse -msse2"; ac_build_sse=yes ],
+        SSE="-msse"; ac_build_sse=yes ],
         AC_MSG_RESULT([no]))
 CFLAGS="$saved_CFLAGS $SSE"
 fi])

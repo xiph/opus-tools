@@ -22,6 +22,7 @@ noinst_HEADERS = src/arch.h \
                  src/speex_resampler.h \
                  src/stack_alloc.h \
                  win32/unicode_support.h \
+                 src/cpusupport.h \
                  src/wave_out.h \
                  src/wav_io.h
 

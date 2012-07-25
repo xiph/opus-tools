@@ -36,32 +36,12 @@
 
 #include <xmmintrin.h>
 
-#if defined(_M_X64) || defined(__amd64__)
-#define query_cpu_support_sse() 1
-#else
-#include <intrin.h>
-
-static inline int query_cpu_support_sse(void)
-{
-   static int initialized = 0;
-   static int return_value;
-   if (!initialized)
-   {
-      int buffer[4];
-      __cpuid(buffer, 1);
-      return_value = (buffer[3] & (1<<25)) != 0;
-      initialized = 1;
-   }
-   return return_value;
-}
-#endif
-
 #define OVERRIDE_INNER_PRODUCT_SINGLE
 static inline float inner_product_single(const float *a, const float *b, unsigned int len)
 {
    int i;
    float ret;
-   if (query_cpu_support_sse())
+   if (1)
    {
       __m128 sum = _mm_setzero_ps();
       for (i=0;i<len;i+=8)
@@ -85,7 +65,7 @@ static inline float inner_product_single(const float *a, const float *b, unsigne
 static inline float interpolate_product_single(const float *a, const float *b, unsigned int len, const spx_uint32_t oversample, float *frac) {
   int i;
   float ret;
-  if (query_cpu_support_sse())
+  if (1)
   {
     __m128 sum = _mm_setzero_ps();
     __m128 f = _mm_loadu_ps(frac);
@@ -115,7 +95,7 @@ static inline float interpolate_product_single(const float *a, const float *b, u
   return ret;
 }
 
-#ifdef _USE_SSE2
+#ifdef __SSE2__
 #include <emmintrin.h>
 #define OVERRIDE_INNER_PRODUCT_DOUBLE
 

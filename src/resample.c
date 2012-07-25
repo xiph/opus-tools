@@ -98,7 +98,7 @@ static void speex_free (void *ptr) {free(ptr);}
 #endif
 
 #if defined(FLOATING_POINT) && defined(__SSE__)
-#include "resample_sse.h"
+# include "resample_sse.h"
 #endif
 
 /* Numer of elements to allocate on the stack */
