@@ -107,10 +107,10 @@ fi])
 if test "x$CFLAGS" = "x-g -O2"; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="-O3 -ffast-math"
-AC_MSG_CHECKING([if ${CC} supports -O3 -ffast-math])
+AC_MSG_CHECKING([if ${CC} supports -O3 -g -ffast-math])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
       [ AC_MSG_RESULT([yes])
-        saved_CFLAGS="-O3 -ffast-math" ],
+        saved_CFLAGS="-O3 -g -ffast-math" ],
         AC_MSG_RESULT([no]))
 CFLAGS="$saved_CFLAGS"
 fi
@@ -191,14 +191,19 @@ i[[3456]]86 | x86_64)
 esac
 
 if test "x$on_x86" = "xyes"; then
+ac_enable_sse="no"
+AC_ARG_ENABLE(sse, AS_HELP_STRING([--enable-sse],[Build binaries that require SSE/SSE2]),
+[if test "$enableval" = yes; then
+  ac_enable_sse="yes"
 saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse"
-AC_MSG_CHECKING([if ${CC} supports -msse])
+CFLAGS="$CFLAGS -msse -msse2"
+AC_MSG_CHECKING([if ${CC} supports -msse -msse2])
 AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
       [ AC_MSG_RESULT([yes])
-        SSE="-msse"; ac_build_sse=yes ],
+        SSE="-msse -msse2"; ac_build_sse=yes ],
         AC_MSG_RESULT([no]))
 CFLAGS="$saved_CFLAGS $SSE"
+fi])
 fi
 
 dnl Enable stack-protector-all only on x86 where it's well supported.
