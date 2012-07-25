@@ -61,6 +61,8 @@
 # include "config.h"
 #endif
 
+#define RESAMPLE_HUGEMEM 1
+
 #ifdef OUTSIDE_SPEEX
 #include <stdlib.h>
 static void *speex_alloc (int size) {return calloc(size,1);}
@@ -567,8 +569,8 @@ static void update_filter(SpeexResamplerState *st)
       st->cutoff = quality_map[st->quality].downsample_bandwidth * st->den_rate / st->num_rate;
       /* FIXME: divide the numerator and denominator by a certain amount if they're too large */
       st->filt_len = st->filt_len*st->num_rate / st->den_rate;
-      /* Round down to make sure we have a multiple of 4 */
-      st->filt_len &= (~0x3);
+      /* Round up to make sure we have a multiple of 8 */
+      st->filt_len = ((st->filt_len-1)&(~0x7))+8;
       if (2*st->den_rate < st->num_rate)
          st->oversample >>= 1;
       if (4*st->den_rate < st->num_rate)
@@ -583,9 +585,13 @@ static void update_filter(SpeexResamplerState *st)
       /* up-sampling */
       st->cutoff = quality_map[st->quality].upsample_bandwidth;
    }
-   
+
+#ifdef RESAMPLE_HUGEMEM
+   if (st->den_rate <= 16*(st->oversample+8))
+#else
    /* Choose the resampling type that requires the least amount of memory */
-   if (st->den_rate <= st->oversample)
+   if (st->den_rate <= (st->oversample+8))
+#endif
    {
       spx_uint32_t i;
       if (!st->sinc_table)
