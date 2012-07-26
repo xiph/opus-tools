@@ -917,6 +917,7 @@ int main(int argc, char **argv)
           estbitrate=(total_bytes*8.0/coded_seconds)*tweight+
                       bitrate*(1.-tweight);
         }else estbitrate=nbBytes*8*((double)coding_rate/frame_size);
+        fprintf(stderr,"\r");
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
         if(inopt.total_samples_per_channel>0 && inopt.total_samples_per_channel<nb_encoded){
           snprintf(sbuf,54,"\r[%c] %02d%% ",spinner[last_spin&3],
@@ -926,7 +927,7 @@ int main(int argc, char **argv)
         }
         last_spin_len=strlen(sbuf);
         snprintf(sbuf+last_spin_len,54-last_spin_len,
-          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s\r",
+          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s",
           (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
           (int)(coded_seconds)%60,(int)(coded_seconds*100)%100,
           coded_seconds/wall_time,
