@@ -881,7 +881,7 @@ int main(int argc, char **argv)
 
     /*If the stream is over or we're sure that the delayed flush will fire,
       go ahead and flush now to avoid adding delay.*/
-    while((op.e_o_s||(enc_granulepos+frame_size-last_granulepos>max_ogg_delay)||
+    while((op.e_o_s||(enc_granulepos+(frame_size*48000/coding_rate)-last_granulepos>max_ogg_delay)||
            (last_segments>=255))?
 #ifdef OLD_LIBOGG
     /*Libogg > 1.2.2 allows us to achieve lower overhead by

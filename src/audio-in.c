@@ -890,17 +890,18 @@ static long read_resampled(void *d, float *buffer, int samples)
       int i;
       int reading, ret;
       unsigned in_len, out_len;
-      reading=1024-*inbuf;
+      out_len=samples-out_samples;
+      reading=rs->bufsize-*inbuf;
+      if(reading>1024)reading=1024;
       ret=rs->real_reader(rs->real_readdata, pcmbuf+*inbuf*rs->channels, reading);
       *inbuf+=ret;
       in_len=*inbuf;
-      out_len=samples-out_samples;
       speex_resampler_process_interleaved_float(rs->resampler, pcmbuf, &in_len, buffer+out_samples*rs->channels, &out_len);
+      out_samples+=out_len;
       if(ret==0&&in_len==0){
         for(i=out_samples*rs->channels;i<samples*rs->channels;i++)buffer[i]=0;
         return out_samples;
       }
-      out_samples+=out_len;
       for(i=0;i<rs->channels*(*inbuf-(long int)in_len);i++)pcmbuf[i]=pcmbuf[i+rs->channels*in_len];
       *inbuf-=in_len;
     }
@@ -911,7 +912,7 @@ int setup_resample(oe_enc_opt *opt, int complexity, long outfreq) {
     resampler *rs = calloc(1, sizeof(resampler));
     int err;
 
-    rs->bufsize = 2048; /* Shrug */
+    rs->bufsize = 5760*2; /* Have at least two output frames worth, just in case of ugly ratios */
     rs->bufpos = 0;
 
     rs->real_reader = opt->read_samples;
