@@ -279,7 +279,7 @@ int main(int argc, char **argv)
 #endif
 
    if(query_cpu_support()){
-     fprintf(stderr,"\n\n** WARNING: This program with compiled with SSE%s\n",query_cpu_support()>1?"2":"");
+     fprintf(stderr,"\n\n** WARNING: This program was compiled with SSE%s\n",query_cpu_support()>1?"2":"");
      fprintf(stderr,"            but this CPU claims to lack these instructions. **\n\n");
    }
 
