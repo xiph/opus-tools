@@ -185,6 +185,8 @@ static inline void shape_dither_toshort(shapestate *_ss, short *_o, float *_i, i
   int mute=_ss->mute;
   b_buf=_ss->b_buf;
   a_buf=_ss->a_buf;
+  /*In order to avoid replacing digital silence with quiet dither noise
+    we mute if the output has been silent for a while*/
   if(mute>64)
     memset(a_buf,0,sizeof(float)*_CC*4);
   for(i=0;i<_n;i++)
@@ -471,7 +473,12 @@ void version_short(void)
    printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
 }
 
-static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate, int *mapping_family, int *channels, int *preskip, float *gain, float manual_gain, int *streams, int wav_format, int quiet)
+/*Process an Opus header and setup the opus decoder based on it.
+  It takes several pointers for header values which are needed
+  elsewhere in the code.*/
+static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate,
+       int *mapping_family, int *channels, int *preskip, float *gain,
+       float manual_gain, int *streams, int wav_format, int quiet)
 {
    int err;
    OpusMSDecoder *st;
@@ -756,7 +763,9 @@ int main(int argc, char **argv)
    }
    inFile=argv_utf8[optind];
 
+   /*Output to a file or playback?*/
    if (argc_utf8-optind==2){
+     /*If we're outputting to a file, should we apply a wav header?*/
      int i;
      char *ext;
      outFile=argv_utf8[optind+1];
@@ -797,7 +806,15 @@ int main(int argc, char **argv)
       close_in=1;
    }
 
-   /*Init Ogg data struct*/
+   /* .opus files use the Ogg container to provide framing and timekeeping.
+    * http://tools.ietf.org/html/draft-terriberry-oggopus
+    * The easiest way to decode the Ogg container is to use libogg, so
+    *  thats what we do here.
+    * Using libogg is fairly straight forward-- you take your stream of bytes
+    *  and feed them to ogg_sync_ and it periodically returns Ogg pages, you
+    *  check if the pages belong to the stream you're decoding then you give
+    *  them to libogg and it gives you packets. You decode the packets. The
+    *  pages also provide timing information.*/
    ogg_sync_init(&oy);
 
    /*Main decoding loop*/
@@ -893,6 +910,7 @@ int main(int argc, char **argv)
                /*End of stream condition*/
                if (op.e_o_s && os.serialno == opus_serialno)eos=1; /* don't care for anything except opus eos */
 
+               /*Are we simulating loss for this packet?*/
                if (!lost){
                   /*Decode Opus packet*/
                   ret = opus_multistream_decode_float(st, (unsigned char*)op.packet, op.bytes, output, MAX_FRAME_SIZE, 0);
@@ -917,6 +935,7 @@ int main(int argc, char **argv)
                }
 
                if(!quiet){
+                  /*Display a progress spinner while decoding.*/
                   static const char spinner[]="|/-\\";
                   double coded_seconds = (double)audio_size/(channels*rate*sizeof(short));
                   if(coded_seconds>=last_coded_seconds+1){
@@ -929,6 +948,7 @@ int main(int argc, char **argv)
                   }
                }
 
+               /*If the decoder returned less than zero, we have an error.*/
                if (ret<0)
                {
                   fprintf (stderr, "Decoding error: %s\n", opus_strerror(ret));
@@ -1024,6 +1044,7 @@ int main(int argc, char **argv)
       }
    }
 
+   /*Did we make it to the end without recovering ANY opus logical streams?*/
    if(!total_links)fprintf (stderr, "This doesn't look like a Opus file\n");
 
    if (stream_init)
