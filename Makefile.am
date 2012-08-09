@@ -26,7 +26,18 @@ noinst_HEADERS = src/arch.h \
                  src/wave_out.h \
                  src/wav_io.h
 
-EXTRA_DIST = Makefile.unix
+EXTRA_DIST = Makefile.unix \
+             opus-tools.sln \
+             src/opusdec.vcxproj.filters \
+             src/opusinfo.vcxproj.filters \
+             src/opusenc.vcxproj.filters \
+             src/opusinfo.vcxproj \
+             src/opusenc.vcxproj \
+             src/opusdec.vcxproj \
+             win32/genversion.bat \
+             win32/unicode_support.h \
+             win32/config.h \
+             win32/unicode_support.c
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
