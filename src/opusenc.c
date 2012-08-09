@@ -262,7 +262,7 @@ int main(int argc, char **argv)
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
-  int                signal=OPUS_AUTO;
+  int                signaltype=OPUS_AUTO;
   int                expect_loss=0;
   int                complexity=10;
   int                downmix=0;
@@ -364,9 +364,9 @@ int main(int argc, char **argv)
           inopt.rawmode=1;
           inopt.endianness=atoi(optarg);
         }else if(strcmp(long_options[option_index].name,"music")==0){
-          signal=OPUS_SIGNAL_MUSIC;
+          signaltype=OPUS_SIGNAL_MUSIC;
         }else if(strcmp(long_options[option_index].name,"speech")==0){
-          signal=OPUS_SIGNAL_VOICE;
+          signaltype=OPUS_SIGNAL_VOICE;
         }else if(strcmp(long_options[option_index].name,"downmix-mono")==0){
           downmix=1;
         }else if(strcmp(long_options[option_index].name,"downmix-stereo")==0){
@@ -579,7 +579,7 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signal));
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signaltype));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_SET_SIGNAL returned: %s\n",opus_strerror(ret));
     exit(1);
