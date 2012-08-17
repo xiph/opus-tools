@@ -92,7 +92,7 @@ ogg_packet *op_opustags()
   le32(data + 8, strlen(vendor));
   memcpy(data + 12, vendor, strlen(vendor));
   le32(data + 12 + strlen(vendor), 0);
-  
+
   op->packet = data;
   op->bytes = size;
   op->b_o_s = 0;
@@ -137,7 +137,7 @@ int ogg_write(state *params)
   if (!params || !params->stream || !params->out) {
     return -1;
   }
-  
+
   while (ogg_stream_pageout(params->stream, &page)) {
     fwrite(page.header, 1, page.header_len, params->out);
     fwrite(page.body, 1, page.body_len, params->out);
@@ -154,7 +154,7 @@ int ogg_flush(state *params)
   if (!params || !params->stream || !params->out) {
     return -1;
   }
-  
+
   while (ogg_stream_flush(params->stream, &page)) {
     fwrite(page.header, 1, page.header_len, params->out);
     fwrite(page.body, 1, page.body_len, params->out);
@@ -163,101 +163,166 @@ int ogg_flush(state *params)
   return 0;
 }
 
+typedef struct {
+  unsigned char src[6], dst[6]; /* ethernet MACs */
+  int type;
+} eth_header;
+
+typedef struct {
+  int version;
+  int header_size;
+  unsigned char src[4], dst[4]; /* ipv4 addrs */
+  int protocol;
+} ip_header;
+
+typedef struct {
+  int src, dst; /* ports */
+  int size, checksum;
+} udp_header;
+
+typedef struct {
+  int version;
+  int type;
+  int pad, ext, cc, mark;
+  int seq, time;
+  int ssrc;
+  int header_size;
+  int payload_size;
+} rtp_header;
+
 /* pcap 'got_packet' callback */
 void write_packet(u_char *args, const struct pcap_pkthdr *header,
                   const u_char *packet)
 {
   state *params = (state *)args;
-  int ip_header_size;
-  int rtp_header_size;
+  eth_header eth;
+  ip_header ip;
+  udp_header udp;
+  rtp_header rtp;
 
   fprintf(stderr, "Got %d byte packet (%d bytes captured)\n",
-          header->len, header->caplen); 
+          header->len, header->caplen);
 
   /* eth header is always 14 bytes */
   if (header->caplen < 14) {
     fprintf(stderr, "Packet too short for eth\n");
     return;
   }
+  memcpy(eth.src, packet, 6);
+  memcpy(eth.dst, packet + 6, 6);
+  eth.type = packet[12] << 8 | packet[13];
+
   fprintf(stderr, "  src mac %02x:%02x:%02x:%02x:%02x:%02x\n",
-          packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
-  fprintf(stderr, " dest mac %02x:%02x:%02x:%02x:%02x:%02x\n",
-          packet[6], packet[7], packet[8], packet[9], packet[10], packet[11]);
-  fprintf(stderr, "  eth type 0x%04x\n", packet[12] << 8 | packet[13]);
+          eth.src[0], eth.src[1], eth.src[2],
+          eth.src[3], eth.src[4], eth.src[5]);
+  fprintf(stderr, "  dst mac %02x:%02x:%02x:%02x:%02x:%02x\n",
+          eth.dst[0], eth.dst[1], eth.dst[2],
+          eth.dst[3], eth.dst[4], eth.dst[5]);
+  fprintf(stderr, "  eth type 0x%04x\n", eth.type);
 
   /* ipv4 header */
   if (header->caplen < 14 + 20) {
     fprintf(stderr, "Packet too short for ipv4\n");
     return;
   }
-  fprintf(stderr, " IP version %d\n", (packet[14+0] >> 4) & 0x0f);
-  ip_header_size = (packet[14+0] & 0x0f) * 4;
-  fprintf(stderr, "  header length %d\n", ip_header_size);
+  ip.version = (packet[14+0] >> 4) & 0x0f;
+  ip.header_size = 4 * (packet[14+0] & 0x0f);
+  ip.protocol = packet[14 + 9];
+  memcpy(ip.src, packet + 14 + 12, 4);
+  memcpy(ip.dst, packet + 12 + 16, 4);
+
+  fprintf(stderr, " IP version %d\n", ip.version);
+  fprintf(stderr, "  header length %d\n", ip.header_size);
   fprintf(stderr, "   src addr %d.%d.%d.%d\n",
-          packet[14+12+0], packet[14+12+1], packet[14+12+2], packet[14+12+3]);
-  fprintf(stderr, "  dest addr %d.%d.%d.%d\n",
-          packet[14+16+0], packet[14+16+1], packet[14+16+2], packet[14+16+3]);
-  fprintf(stderr, "  protocol %d\n", packet[14+9]);
-  if (header->caplen < 14 + ip_header_size) {
+          ip.src[0], ip.src[1], ip.src[2], ip.src[3]);
+  fprintf(stderr, "   dst addr %d.%d.%d.%d\n",
+          ip.dst[0], ip.dst[1], ip.dst[2], ip.dst[3]);
+  fprintf(stderr, "  protocol %d\n", ip.protocol);
+  if (header->caplen < 14 + ip.header_size) {
     fprintf(stderr, "Packet too short for ipv4 with options\n");
     return;
   }
 
-  if (header->caplen < 14 + ip_header_size + 8) {
+  if (header->caplen < 14 + ip.header_size + 8) {
     fprintf(stderr, "Packet too short for udp\n");
     return;
   }
-  fprintf(stderr, "   src port %d\n", packet[14+ip_header_size] << 8 |
-                                      packet[14+ip_header_size + 1]);
-  fprintf(stderr, "  dest port %d\n", packet[14+ip_header_size + 2] << 8 |
-                                      packet[14+ip_header_size + 3]);
-  fprintf(stderr, " udp length %d\n", packet[14+ip_header_size + 4] << 8 |
-                                      packet[14+ip_header_size + 5]);
+  udp.src = packet[14+ip.header_size] << 8 |
+            packet[14+ip.header_size + 1];
+  udp.dst = packet[14+ip.header_size + 2] << 8 |
+            packet[14+ip.header_size + 3];
+  udp.size = packet[14+ip.header_size + 4] << 8 |
+             packet[14+ip.header_size + 5];
+  udp.checksum = packet[14+ip.header_size + 6] << 8 |
+                 packet[14+ip.header_size + 7];
 
-  if (header->caplen < 14 + ip_header_size + 8 + 12) {
+  fprintf(stderr, "   src port %d\n", udp.src);
+  fprintf(stderr, "   dst port %d\n", udp.dst);
+  fprintf(stderr, " udp length %d\n", udp.size);
+  fprintf(stderr, "   checksum %d\n", udp.checksum);
+
+  if (header->caplen < 14 + ip.header_size + 8 + 12) {
     fprintf(stderr, "Packet too short for rtp\n");
     return;
   }
-  fprintf(stderr, "  rtp version %d\n",
-                  (packet[14+ip_header_size + 8 + 0] >> 6) & 3);
-  fprintf(stderr, "      padding %d\n",
-                  (packet[14+ip_header_size + 8 + 0] >> 5) & 1);
-  fprintf(stderr, "    extension %d\n",
-                  (packet[14+ip_header_size + 8 + 0] >> 4) & 1);
-  rtp_header_size = 12 + 4*((packet[14+ip_header_size + 8 + 0]) & 7);
-  fprintf(stderr, "   CSRC count %d\n",
-                  (packet[14+ip_header_size + 8 + 0]) & 7);
-  fprintf(stderr, "       marker %d\n",
-                  (packet[14+ip_header_size + 8 + 1] >> 7) & 1);
-  fprintf(stderr, " payload type %d\n",
-                  (packet[14+ip_header_size + 8 + 1]) & 127);
-  int seq = packet[14+ip_header_size + 8 + 2] << 8 |
-            packet[14+ip_header_size + 8 + 3];
-  fprintf(stderr, "  sequence no %d\n", seq);
+  rtp.version = (packet[14+ip.header_size+8 + 0] >> 6) & 3;
+  rtp.pad = (packet[14+ip.header_size+8] >> 5) & 1;
+  rtp.ext = (packet[14+ip.header_size+8] >> 4) & 1;
+  rtp.cc = packet[14+ip.header_size+8] & 7;
+  rtp.header_size = 12 + 4 * rtp.cc;
+  rtp.payload_size = udp.size - rtp.header_size;
 
-  if (header->caplen < 14 + ip_header_size + 8 + rtp_header_size) {
+  rtp.mark = (packet[14+ip.header_size+8 + 1] >> 7) & 1;
+  rtp.type = (packet[14+ip.header_size+8 + 1]) & 127;
+  rtp.seq = packet[14+ip.header_size+8 + 2] << 8 |
+            packet[14+ip.header_size+8 + 3];
+  rtp.time = packet[14+ip.header_size+8 + 4] << 24 |
+             packet[14+ip.header_size+8 + 5] << 16 |
+             packet[14+ip.header_size+8 + 6] << 8 |
+             packet[14+ip.header_size+8 + 7];
+  rtp.ssrc = packet[14+ip.header_size+8 + 8] << 24 |
+             packet[14+ip.header_size+8 + 9] << 16 |
+             packet[14+ip.header_size+8 + 10] << 8 |
+             packet[14+ip.header_size+8 + 11];
+
+  fprintf(stderr, "  rtp version %d\n", rtp.version);
+  fprintf(stderr, " payload type %d\n", rtp.type);
+  fprintf(stderr, "         SSRC 0x%08x\n", rtp.ssrc);
+  fprintf(stderr, "  sequence no %d\n", rtp.seq);
+  fprintf(stderr, "    timestamp %d\n", rtp.time);
+  fprintf(stderr, "      padding %d\n", rtp.pad);
+  fprintf(stderr, "    extension %d\n", rtp.ext);
+  fprintf(stderr, "   CSRC count %d\n", rtp.cc);
+  fprintf(stderr, "       marker %d\n", rtp.mark);
+
+  if (header->caplen < 14 + ip.header_size + 8 + rtp.header_size) {
     fprintf(stderr, "skipping short packet\n");
     return;
   }
 
-  if (seq < params->seq) {
+  if (rtp.seq < params->seq) {
     fprintf(stderr, "skipping out-of-sequence packet\n");
     return;
   }
-  params->seq = seq;
+  params->seq = rtp.seq;
+
+  if (rtp.type != 109) {
+    fprintf(stderr, "skipping non-opus packet\n");
+    return;
+  }
 
   /* write the payload to our opus file */
-  int size = header->caplen - 14 - ip_header_size - 8 - rtp_header_size;
-  unsigned char *data = packet + 14 + ip_header_size + 8 + rtp_header_size;
+  int size = header->caplen - 14 - ip.header_size - 8 - rtp.header_size;
+  unsigned char *data = packet + 14+ip.header_size+8 + rtp.header_size;
   fprintf(stderr, " payload data %d bytes\n",
-                  header->len - 14 - ip_header_size - 8 - rtp_header_size); 
-  if ( (packet[14+ip_header_size + 8 + 1] & 127) != 109) {
+                  header->len - 14 - ip.header_size - 8 - rtp.header_size);
+  if ( (packet[14+ip.header_size + 8 + 1] & 127) != 109) {
     fprintf(stderr, "skipping non-opus packet\n");
     return;
   }
   ogg_packet *op = op_from_pkt(data, size);
-  op->granulepos = 960*seq;
-  ogg_stream_packetin(params->stream, op); 
+  op->granulepos = 960*rtp.seq;
+  ogg_stream_packetin(params->stream, op);
   free(op);
   ogg_write(params);
 }
@@ -270,7 +335,6 @@ int main(int argc, char *argv[])
   int port = 55555;
   char errbuf[PCAP_ERRBUF_SIZE];
   ogg_packet *op;
-  int i;
 
   /* set up */
   pcap = pcap_open_live(dev, 9600, 0, 1000, errbuf);
@@ -312,13 +376,6 @@ int main(int argc, char *argv[])
   /* start capture loop */
   fprintf(stderr, "Capturing packets\n");
   pcap_loop(pcap, 300, write_packet, (u_char *)params);
-
-  /* write packets */
-  int num_packets = 0;
-  unsigned char **packets;
-  int *sizes;
-  for (i = 0; i < num_packets; i++) {
-   }
 
   /* write outstanding data */
   ogg_flush(params);
