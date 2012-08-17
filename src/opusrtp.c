@@ -231,6 +231,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   memcpy(ip.src, packet + 14 + 12, 4);
   memcpy(ip.dst, packet + 12 + 16, 4);
 
+#if 0
   fprintf(stderr, " IP version %d\n", ip.version);
   fprintf(stderr, "  header length %d\n", ip.header_size);
   fprintf(stderr, "   src addr %d.%d.%d.%d\n",
@@ -238,6 +239,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   fprintf(stderr, "   dst addr %d.%d.%d.%d\n",
           ip.dst[0], ip.dst[1], ip.dst[2], ip.dst[3]);
   fprintf(stderr, "  protocol %d\n", ip.protocol);
+#endif
   if (header->caplen < 14 + ip.header_size) {
     fprintf(stderr, "Packet too short for ipv4 with options\n");
     return;
@@ -255,11 +257,12 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
              packet[14+ip.header_size + 5];
   udp.checksum = packet[14+ip.header_size + 6] << 8 |
                  packet[14+ip.header_size + 7];
-
+#if 0
   fprintf(stderr, "   src port %d\n", udp.src);
   fprintf(stderr, "   dst port %d\n", udp.dst);
   fprintf(stderr, " udp length %d\n", udp.size);
   fprintf(stderr, "   checksum %d\n", udp.checksum);
+#endif
 
   if (header->caplen < 14 + ip.header_size + 8 + 12) {
     fprintf(stderr, "Packet too short for rtp\n");
@@ -290,10 +293,12 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   fprintf(stderr, "         SSRC 0x%08x\n", rtp.ssrc);
   fprintf(stderr, "  sequence no %d\n", rtp.seq);
   fprintf(stderr, "    timestamp %d\n", rtp.time);
+#if 0
   fprintf(stderr, "      padding %d\n", rtp.pad);
   fprintf(stderr, "    extension %d\n", rtp.ext);
   fprintf(stderr, "   CSRC count %d\n", rtp.cc);
   fprintf(stderr, "       marker %d\n", rtp.mark);
+#endif
 
   if (header->caplen < 14 + ip.header_size + 8 + rtp.header_size) {
     fprintf(stderr, "skipping short packet\n");
