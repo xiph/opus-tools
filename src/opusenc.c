@@ -124,8 +124,6 @@ void usage(void)
   printf("  filename.opus     compressed file\n");
   printf("  -                 stdout\n");
   printf("\nEncoding options:\n");
-  printf(" --speech           Optimize for speech\n");
-  printf(" --music            Optimize for music\n");
   printf(" --bitrate n.nnn    Encoding bitrate in kbit/sec (6-256 per channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
@@ -202,8 +200,6 @@ int main(int argc, char **argv)
     {"raw-endianness", required_argument, NULL, 0},
     {"ignorelength", no_argument, NULL, 0},
     {"rate", required_argument, NULL, 0},
-    {"music", no_argument, NULL, 0},
-    {"speech", no_argument, NULL, 0},
     {"version", no_argument, NULL, 0},
     {"version-short", no_argument, NULL, 0},
     {"comment", required_argument, NULL, 0},
@@ -262,7 +258,6 @@ int main(int argc, char **argv)
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
-  int                signaltype=OPUS_AUTO;
   int                expect_loss=0;
   int                complexity=10;
   int                downmix=0;
@@ -363,10 +358,6 @@ int main(int argc, char **argv)
         }else if(strcmp(long_options[option_index].name,"raw-endianness")==0){
           inopt.rawmode=1;
           inopt.endianness=atoi(optarg);
-        }else if(strcmp(long_options[option_index].name,"music")==0){
-          signaltype=OPUS_SIGNAL_MUSIC;
-        }else if(strcmp(long_options[option_index].name,"speech")==0){
-          signaltype=OPUS_SIGNAL_VOICE;
         }else if(strcmp(long_options[option_index].name,"downmix-mono")==0){
           downmix=1;
         }else if(strcmp(long_options[option_index].name,"downmix-stereo")==0){
@@ -576,12 +567,6 @@ int main(int argc, char **argv)
      mapping, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
   if(ret!=OPUS_OK){
     fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
-    exit(1);
-  }
-
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_SIGNAL(signaltype));
-  if(ret!=OPUS_OK){
-    fprintf(stderr,"Error OPUS_SET_SIGNAL returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 

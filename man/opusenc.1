@@ -13,10 +13,6 @@ opusenc \- encode audio into the Opus format
 ] [
 .B -h
 ] [
-.B --speech
-] [
-.B --music
-] [
 .B --bitrate
 .I kbit/sec
 ] [
@@ -99,6 +95,8 @@ Optimize for speech
 Optimize for music
 .IP "--bitrate N.nnn"
 Encoding bitrate in kbit/sec (6-256 per channel)
+.br
+Default is 64kbps per mono stream, 96kbps per coupled pair.
 .IP "--vbr"
 Use variable bitrate encoding (default)
 .IP "--cvbr"
