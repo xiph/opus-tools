@@ -8,7 +8,7 @@ INCLUDES = -I$(top_srcdir)/src -I$(top_srcdir)/win32
 
 AM_CFLAGS = $(OGG_CFLAGS) $(Opus_CFLAGS) -DOPUSTOOLS -D_FORTIFY_SOURCE=2 -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
 
-bin_PROGRAMS = opusenc opusdec opusinfo
+bin_PROGRAMS = opusenc opusdec opusinfo opusrtp
 
 noinst_HEADERS = src/arch.h \
                  src/diag_range.h \
@@ -52,5 +52,8 @@ opusdec_MANS = man/opusdec.1
 opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c win32/unicode_support.c
 opusinfo_LDADD = $(OGG_LIBS)
 opusinfo_MANS = man/opusinfo.1
+
+opusrtp_SOURCES = src/opusrtp.c
+opusrtp_LDADD = @LIBPCAP@ $(OGG_LIBS)
 
 #TESTS = FIXME
