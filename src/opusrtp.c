@@ -114,7 +114,7 @@ ogg_packet *op_from_pkt(unsigned char *pkt, int len)
   op->packet = pkt;
   op->bytes = len;
   op->b_o_s = 0;
-  op->e_o_s = 1;
+  op->e_o_s = 0;
 
   return op;
 }
