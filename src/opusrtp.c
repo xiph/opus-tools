@@ -36,7 +36,7 @@ void le16(unsigned char *p, int v)
 }
 
 /* manufacture a generic OpusHead packet */
-ogg_packet *op_opushead()
+ogg_packet *op_opushead(void)
 {
   int size = 19;
   unsigned char *data = malloc(size);
@@ -71,7 +71,7 @@ ogg_packet *op_opushead()
 
 
 /* manufacture a generic OpusTags packet */
-ogg_packet *op_opustags()
+ogg_packet *op_opustags(void)
 {
   char *identifier = "OpusTags";
   char *vendor = "opus rtp packet dump";
