@@ -133,14 +133,23 @@ void op_free(ogg_packet *op) {
 int ogg_write(state *params)
 {
   ogg_page page;
+  size_t written;
 
   if (!params || !params->stream || !params->out) {
     return -1;
   }
 
   while (ogg_stream_pageout(params->stream, &page)) {
-    fwrite(page.header, 1, page.header_len, params->out);
-    fwrite(page.body, 1, page.body_len, params->out);
+    written = fwrite(page.header, 1, page.header_len, params->out);
+    if (written != page.header_len) {
+      fprintf(stderr, "Error writing Ogg page header\n");
+      return -2;
+    }
+    written = fwrite(page.body, 1, page.body_len, params->out);
+    if (written != page.body_len) {
+      fprintf(stderr, "Error writing Ogg page body\n");
+      return -3;
+    }
   }
 
   return 0;
@@ -150,14 +159,23 @@ int ogg_write(state *params)
 int ogg_flush(state *params)
 {
   ogg_page page;
+  size_t written;
 
   if (!params || !params->stream || !params->out) {
     return -1;
   }
 
   while (ogg_stream_flush(params->stream, &page)) {
-    fwrite(page.header, 1, page.header_len, params->out);
-    fwrite(page.body, 1, page.body_len, params->out);
+    written = fwrite(page.header, 1, page.header_len, params->out);
+    if (written != page.header_len) {
+      fprintf(stderr, "Error writing Ogg page header\n");
+      return -2;
+    }
+    written = fwrite(page.body, 1, page.body_len, params->out);
+    if (written != page.body_len) {
+      fprintf(stderr, "Error writing Ogg page body\n");
+      return -3;
+    }
   }
 
   return 0;
