@@ -184,7 +184,7 @@ fi
 
 dnl check for pcap
 AC_CHECK_LIB([pcap], [pcap_open_live], [
-  AC_DEFINE([HAVE_PCAP], 1, [Define in building with libpcap support])
+  AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
   LIBPCAP="-lpcap"
 ])
 AC_SUBST(LIBPCAP)
