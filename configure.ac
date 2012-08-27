@@ -182,6 +182,12 @@ if test "x$HAVE_OSS" != "xyes" && test "x$HAVE_SNDIO" != "xyes"; then
   AC_MSG_WARN([Audio support not found -- no direct audio output in opusdec])
 fi
 
+dnl check for pcap
+AC_CHECK_LIB([pcap], [pcap_open_live], [
+  AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
+  LIBPCAP="-lpcap"
+])
+AC_SUBST(LIBPCAP)
 
 on_x86=no
 case "$host_cpu" in
