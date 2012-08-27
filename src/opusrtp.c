@@ -328,6 +328,7 @@ int parse_rtp_header(const unsigned char *packet, int size, rtp_header *rtp)
   return 0;
 }
 
+#ifdef HAVE_PCAP
 /* pcap 'got_packet' callback */
 void write_packet(u_char *args, const struct pcap_pkthdr *header,
                   const u_char *data)
@@ -424,19 +425,22 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
 }
 
-int main(int argc, char *argv[])
+/* use libpcap to capture packets and write them to a file */
+int sniff(char *device)
 {
   state *params;
   pcap_t *pcap;
-  char *dev = "lo";
-  int port = 55555;
   char errbuf[PCAP_ERRBUF_SIZE];
   ogg_packet *op;
 
+  if (!device) {
+    device = "lo";
+  }
+
   /* set up */
-  pcap = pcap_open_live(dev, 9600, 0, 1000, errbuf);
+  pcap = pcap_open_live(device, 9600, 0, 1000, errbuf);
   if (pcap == NULL) {
-    fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
+    fprintf(stderr, "Couldn't open device %s: %s\n", device, errbuf);
     return(2);
   }
   params = malloc(sizeof(state));
@@ -469,7 +473,6 @@ int main(int argc, char *argv[])
   op_free(op);
   ogg_flush(params);
 
-
   /* start capture loop */
   fprintf(stderr, "Capturing packets\n");
   pcap_loop(pcap, 300, write_packet, (u_char *)params);
@@ -482,6 +485,16 @@ int main(int argc, char *argv[])
   ogg_stream_destroy(params->stream);
   free(params);
   pcap_close(pcap);
+
+  return 0;
+}
+#endif /* HAVE_PCAP */
+
+int main(int argc, char *argv[])
+{
+#ifdef HAVE_PCAP
+  sniff("lo");
+#endif
 
   return 0;
 }
