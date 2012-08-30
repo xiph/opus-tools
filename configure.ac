@@ -148,20 +148,20 @@ fi
 dnl check for Opus
 HAVE_OPUS=no
 
-dnl first check through pkg-config since it's more flexible
-
-dnl check for pkg-config itself so we don't try the m4 macro without pkg-config
-AC_CHECK_PROG(HAVE_PKG_CONFIG, pkg-config, yes)
 if test "x$HAVE_PKG_CONFIG" = "xyes"
 then
   PKG_CHECK_MODULES(Opus, opus >= 0.9.10, HAVE_OPUS=yes, HAVE_OPUS=no)
 fi
 if test "x$HAVE_OPUS" = "xno"
 then
-  AC_MSG_ERROR([
+  dnl fall back to the old school test
+  XIPH_PATH_OPUS(, AC_MSG_ERROR([
     Opus is required to build this package!
     please see http://opus-codec.org/ for how to
-    obtain a copy.])
+    obtain a copy.
+  ]))
+  CFLAGS="$CFLAGS $OPUS_CFLAGS"
+  LIBS="$LIBS $OPUS_LIBS"
 fi
 
 dnl check for OSS
