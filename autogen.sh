@@ -4,6 +4,8 @@
 
 package="opus-tools"
 
+ACLOCAL_FLAGS="-I."
+
 olddir=`pwd`
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
