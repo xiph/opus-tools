@@ -4,7 +4,7 @@
 
 package="opus-tools"
 
-ACLOCAL_FLAGS="-I."
+ACLOCAL_FLAGS="-I m4"
 
 olddir=`pwd`
 srcdir=`dirname $0`
