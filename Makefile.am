@@ -8,7 +8,8 @@ INCLUDES = -I$(top_srcdir)/src -I$(top_srcdir)/win32
 
 AM_CFLAGS = $(OGG_CFLAGS) $(Opus_CFLAGS) -DOPUSTOOLS -D_FORTIFY_SOURCE=2 -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
 
-bin_PROGRAMS = opusenc opusdec opusinfo opusrtp
+bin_PROGRAMS = opusenc opusdec opusinfo
+noinst_PROGRAMS = opusrtp
 
 noinst_HEADERS = src/arch.h \
                  src/diag_range.h \
