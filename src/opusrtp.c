@@ -109,7 +109,7 @@ ogg_packet *op_opustags(void)
   return op;
 }
 
-ogg_packet *op_from_pkt(unsigned char *pkt, int len)
+ogg_packet *op_from_pkt(const unsigned char *pkt, int len)
 {
   ogg_packet *op = malloc(sizeof(*op));
   if (!op) {
@@ -117,7 +117,7 @@ ogg_packet *op_from_pkt(unsigned char *pkt, int len)
     return NULL;
   }
 
-  op->packet = pkt;
+  op->packet = (unsigned char *)pkt;
   op->bytes = len;
   op->b_o_s = 0;
   op->e_o_s = 0;
