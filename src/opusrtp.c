@@ -39,6 +39,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <getopt.h>
 
 #ifdef HAVE_PCAP
 #include <pcap.h>
@@ -518,11 +520,64 @@ int sniff(char *device)
 }
 #endif /* HAVE_PCAP */
 
+void opustools_version(void)
+{
+  printf("opusrtp %s %s\n", PACKAGE, VERSION);
+  printf("Copyright (C) 2012 Xiph.Org Foundation\n");
+}
+
+void usage(char *exe)
+{
+  printf("Usage: %s [--sniff]\n", exe);
+  printf("\n");
+  printf("Receives Opus audio RTP streams.\n");
+  printf("\nGeneral Options:\n");
+  printf(" -h, --help           This help\n");
+  printf(" -V, --version        Version information\n");
+  printf(" -q, --quiet          Suppress status output\n");
+  printf(" --sniff              Sniff and record Opus RTP streams\n");
+}
+
 int main(int argc, char *argv[])
 {
+  int option, i;
+  struct option long_options[] = {
+    {"help", no_argument, NULL, 'h'},
+    {"version", no_argument, NULL, 'V'},
+    {"quiet", no_argument, NULL, 'q'},
+    {"sniff", no_argument, NULL, 0},
+    {0, 0, 0, 0}
+  };
+
+  /* process command line arguments */
+  while ((option = getopt_long(argc, argv, "hVq", long_options, &i)) != -1) {
+    switch (option) {
+      case 0:
+        if (!strcmp(long_options[i].name, "sniff")) {
 #ifdef HAVE_PCAP
-  sniff("lo");
+          sniff("lo");
+#else
+          fprintf(stderr, "pcap support disabled, sorry.\n");
 #endif
+        } else {
+          fprintf(stderr, "Unknown option - try %s --help.\n", argv[0]);
+          return -1;
+        }
+        break;
+      case 'V':
+        opustools_version();
+        return 0;
+      case 'q':
+        break;
+      case 'h':
+        usage(argv[0]);
+        return 0;
+      case '?':
+      default:
+        usage(argv[0]);
+        return 1;
+    }
+  }
 
   return 0;
 }
