@@ -34,6 +34,13 @@
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
+#else
+# ifndef PACKAGE
+#  define PACKAGE "opus-tools"
+# endif
+# ifndef VERSION
+#  define VERSION "unknown"
+# endif
 #endif
 
 #include <stdio.h>
