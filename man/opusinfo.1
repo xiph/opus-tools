@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii opusinfo.1
 .\"
-.TH opusinfo 1 2012-05-28 "Xiph.Org Foundation" "opus-tools"
+.TH opusinfo 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
 
 .SH NAME
 opusinfo \- gives information about Opus files and does extensive validity checking
@@ -10,8 +10,10 @@ opusinfo \- gives information about Opus files and does extensive validity check
 .B opusinfo
 [
 .B -q
-] [
+|
 .B -v
+] [
+.B -V
 ] [
 .B -h
 ]
@@ -47,6 +49,8 @@ Quiet mode. This may be specified multiple times. Doing so once will remove
 the detailed informative messages; twice will remove warnings as well.
 .IP -v
 Verbose mode. At the current time, this does not do anything.
+.IP -V
+Print program version info and exit.
 
 .SH NOTES
 

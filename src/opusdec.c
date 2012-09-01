@@ -456,7 +456,7 @@ void usage(void)
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
    printf (" -h, --help            This help\n");
-   printf (" -v, --version         Version information\n");
+   printf (" -V, --version         Version information\n");
    printf (" --quiet               Quiet mode\n");
    printf ("\n");
 }
@@ -697,7 +697,7 @@ int main(int argc, char **argv)
    /*Process options*/
    while(1)
    {
-      c = getopt_long (argc_utf8, argv_utf8, "hvV",
+      c = getopt_long (argc_utf8, argv_utf8, "hV",
                        long_options, &option_index);
       if (c==-1)
          break;
@@ -746,7 +746,7 @@ int main(int argc, char **argv)
          usage();
          quit(0);
          break;
-      case 'v':
+      case 'V':
          version();
          quit(0);
          break;

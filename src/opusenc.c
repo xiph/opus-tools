@@ -113,7 +113,7 @@ void usage(void)
   printf("Encodes input_file using Opus. It can read the WAV, AIFF, or raw files.\n");
   printf("\nGeneral options:\n");
   printf(" -h, --help         This help\n");
-  printf(" -v, --version      Version information\n");
+  printf(" -V, --version      Version information\n");
   printf(" --quiet            Quiet mode\n");
   printf("\n");
   printf("input_file can be:\n");
@@ -308,7 +308,7 @@ int main(int argc, char **argv)
   /*Process command-line options*/
   while(1){
     int c;
-    c=getopt_long(argc_utf8, argv_utf8, "hv",
+    c=getopt_long(argc_utf8, argv_utf8, "hV",
                   long_options, &option_index);
     if(c==-1)
        break;
@@ -452,7 +452,7 @@ int main(int argc, char **argv)
         usage();
         exit(0);
         break;
-      case 'v':
+      case 'V':
         opustoolsversion(opus_version);
         exit(0);
         break;
