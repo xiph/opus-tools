@@ -305,6 +305,17 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
          quit(1);
       }
 
+      if (*channels > 2)
+      {
+        /* There doesn't seem to be a way to get or set the channel
+         * matrix with the sys/soundcard api, so we can't support
+         * multichannel. We should fall back to stereo downmix.
+         */
+        fprintf(stderr, "Cannot configure multichannel playback."
+                        " Try decoding to a file instead.\n");
+        close(audio_fd);
+        quit(1);
+      }
       stereo=0;
       if (*channels==2)
          stereo=1;
