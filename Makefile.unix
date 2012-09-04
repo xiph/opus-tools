@@ -19,5 +19,8 @@ opusdec: src/opus_header.o src/wav_io.o src/wave_out.o src/opusdec.o src/resampl
 opusinfo: src/opus_header.o src/opusinfo.o src/info_opus.o
 	$(CC) $(LDFLAGS) src/opus_header.o src/opusinfo.o src/info_opus.o -o opusinfo -logg
 
+opusrtp: src/opusrtp.o
+	$(CC) $(LDFLAGS) src/opusrtp.o -o opusrtp -logg
+
 clean:
 	rm -f src/*.o opusenc opusdec opusinfo
