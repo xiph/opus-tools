@@ -28,6 +28,7 @@ noinst_HEADERS = src/arch.h \
                  src/wav_io.h
 
 EXTRA_DIST = Makefile.unix \
+	     man/opusrtp.1 \
              opus-tools.sln \
              src/opusdec.vcxproj.filters \
              src/opusinfo.vcxproj.filters \
