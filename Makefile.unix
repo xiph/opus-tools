@@ -5,7 +5,8 @@
 CFLAGS:=-DPACKAGE='"opus-tools"' -DVERSION='"0.1.4git"' -DOPUSTOOLS -O2 -g -c -Wall -Wextra -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT $(CFLAGS)
 INCLUDES=-I../opus/include
 
-all: opusenc opusdec opusinfo
+PROGS := opusenc opusdec opusinfo
+all: $(PROGS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
@@ -23,4 +24,4 @@ opusrtp: src/opusrtp.o
 	$(CC) $(LDFLAGS) src/opusrtp.o -o opusrtp -logg
 
 clean:
-	rm -f src/*.o opusenc opusdec opusinfo
+	rm -f src/*.o $(PROGS)
