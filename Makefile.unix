@@ -24,4 +24,4 @@ opusrtp: src/opusrtp.o
 	$(CC) $(LDFLAGS) src/opusrtp.o -o opusrtp -logg
 
 clean:
-	rm -f src/*.o $(PROGS)
+	rm -f src/*.o $(PROGS) opusrtp
