@@ -87,7 +87,7 @@ if test x$LIBTOOLIZE = xnope; then
 else
   echo $LIBTOOLIZE
 fi
-/bin/true && ($LIBTOOLIZE --version) < /dev/null > /dev/null 2>&1 || {
+/bin/false && ($LIBTOOLIZE --version) < /dev/null > /dev/null 2>&1 || {
 	echo
 	echo "You must have libtool installed to compile $package."
 	echo "Download the appropriate package for your system,"
