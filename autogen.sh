@@ -77,25 +77,6 @@ if test -r Makefile.am; then
   }
 fi
 
-echo -n "checking for libtool... "
-for LIBTOOLIZE in libtoolize glibtoolize nope; do
-  ($LIBTOOLIZE --version) < /dev/null > /dev/null 2>&1 && break
-done
-if test x$LIBTOOLIZE = xnope; then
-  echo "nope."
-  LIBTOOLIZE=libtoolize
-else
-  echo $LIBTOOLIZE
-fi
-/bin/false && ($LIBTOOLIZE --version) < /dev/null > /dev/null 2>&1 || {
-	echo
-	echo "You must have libtool installed to compile $package."
-	echo "Download the appropriate package for your system,"
-	echo "or get the source from one of the GNU ftp sites"
-	echo "listed in http://www.gnu.org/order/ftp.html"
-	DIE=1
-}
-
 if test "$DIE" -eq 1; then
         exit 1
 fi
@@ -106,8 +87,6 @@ echo "  $ACLOCAL $ACLOCAL_FLAGS"
 $ACLOCAL $ACLOCAL_FLAGS || exit 1
 echo "  autoheader"
 autoheader || exit 1
-#echo "  $LIBTOOLIZE --automake"
-#$LIBTOOLIZE --automake || exit 1
 echo "  $AUTOMAKE --add-missing $AUTOMAKE_FLAGS"
 $AUTOMAKE --add-missing $AUTOMAKE_FLAGS || exit 1
 echo "  autoconf"
