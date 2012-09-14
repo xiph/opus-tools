@@ -812,6 +812,11 @@ typedef struct {
     float *lpc_out;
 } padder;
 
+/* Read audio data, appending padding to make up any gap
+ * between the available and requested number of samples
+ * with LPC-predicted data to minimize the pertubation of
+ * the valid data that falls in the same frame.
+ */
 static long read_padder(void *data, float *buffer, int samples) {
     padder *d = data;
     long in_samples = d->real_reader(d->real_readdata, buffer, samples);
