@@ -128,7 +128,7 @@ void usage(void)
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
-  printf(" --comp n           Encoding complexity (0-10, default: 10)\n");
+  printf(" --comp n           Encoding complexity (0-10, default: 10 (slowest))\n");
   printf(" --framesize n      Maximum frame size in milliseconds\n");
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
   printf(" --expect-loss      Percentage packet loss to expect (default: 0)\n");
