@@ -430,14 +430,14 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
             perror(outFile);
             quit(1);
          }
-         if (*wav_format)
+      }
+      if (*wav_format)
+      {
+         *wav_format = write_wav_header(fout, rate, mapping_family, *channels);
+         if (*wav_format < 0)
          {
-            *wav_format = write_wav_header(fout, rate, mapping_family, *channels);
-            if (*wav_format < 0)
-            {
-               fprintf (stderr, "Error writing WAV header.\n");
-               quit(1);
-            }
+            fprintf (stderr, "Error writing WAV header.\n");
+            quit(1);
          }
       }
    }
@@ -457,13 +457,14 @@ void usage(void)
    printf ("output_file can be:\n");
    printf ("  filename.wav         Wav file\n");
    printf ("  filename.*           Raw PCM file (any extension other than .wav)\n");
-   printf ("  -                    stdout\n");
+   printf ("  -                    stdout (raw; unless --force-wav)\n");
    printf ("  (nothing)            Will be played to soundcard\n");
    printf ("\n");
    printf ("Options:\n");
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
    printf (" --gain n              Manually adjust gain by n.nn dB (0 default)\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
+   printf (" --force-wav           Force wav header on output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
    printf (" -h, --help            This help\n");
@@ -642,6 +643,7 @@ int main(int argc, char **argv)
    int total_links=0;
    int stream_init = 0;
    int quiet = 0;
+   int forcewav = 0;
    ogg_int64_t page_granule=0;
    ogg_int64_t link_out=0;
    struct option long_options[] =
@@ -653,6 +655,7 @@ int main(int argc, char **argv)
       {"rate", required_argument, NULL, 0},
       {"gain", required_argument, NULL, 0},
       {"no-dither", no_argument, NULL, 0},
+      {"force-wav", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {"save-range", required_argument, NULL, 0},
       {0, 0, 0, 0}
@@ -734,6 +737,9 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
             dither=0;
+         } else if (strcmp(long_options[option_index].name,"force-wav")==0)
+         {
+            forcewav=1;
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
             rate=atoi (optarg);
@@ -786,6 +792,7 @@ int main(int argc, char **argv)
      while(wav_format&&ext&&outFile[i]) {
        wav_format&=tolower(outFile[i++])==*ext++;
      }
+     wav_format|=forcewav;
    }else {
      outFile="";
      wav_format=0;
@@ -1035,7 +1042,7 @@ int main(int argc, char **argv)
    }
 
    /*If we were writing wav, go set the duration.*/
-   if (strlen(outFile)!=0 && fout && wav_format>=0 && audio_size<0x7FFFFFFF)
+   if (strlen(outFile)!=0 && fout && wav_format>0 && audio_size<0x7FFFFFFF)
    {
       if (fseek(fout,4,SEEK_SET)==0)
       {
@@ -1051,7 +1058,7 @@ int main(int argc, char **argv)
             fprintf (stderr, "First seek worked, second didn't\n");
          }
       } else {
-         fprintf (stderr, "Cannot seek on wave file, size will be incorrect\n");
+         fprintf (stderr, "Cannot seek on wav file output, wav size chunk will be incorrect\n");
       }
    }
 
