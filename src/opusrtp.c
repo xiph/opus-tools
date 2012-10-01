@@ -70,13 +70,29 @@ void le32(unsigned char *p, int v)
   p[3] = (v >> 24) & 0xff;
 }
 
-
 /* helper, write a little-endian 16 bit int to memory */
 void le16(unsigned char *p, int v)
 {
   p[0] = v & 0xff;
   p[1] = (v >> 8) & 0xff;
 }
+
+/* helper, write a big-endian 32 bit int to memory */
+void be32(unsigned char *p, int v)
+{
+  p[0] = (v >> 24) & 0xff;
+  p[1] = (v >> 16) & 0xff;
+  p[2] = (v >> 8) & 0xff;
+  p[3] = v & 0xff;
+}
+
+/* helper, write a big-endian 16 bit int to memory */
+void be16(unsigned char *p, int v)
+{
+  p[0] = (v >> 8) & 0xff;
+  p[1] = v & 0xff;
+}
+
 
 /* manufacture a generic OpusHead packet */
 ogg_packet *op_opushead(void)
@@ -360,6 +376,39 @@ int parse_rtp_header(const unsigned char *packet, int size, rtp_header *rtp)
   if (size < rtp->header_size) {
     fprintf(stderr, "Packet too short for RTP header\n");
     return -1;
+  }
+
+  return 0;
+}
+
+int serialize_rtp_header(unsigned char *packet, int size, rtp_header *rtp)
+{
+  int i;
+
+  if (!packet || !rtp) {
+    return -2;
+  }
+  if (size < RTP_HEADER_MIN) {
+    fprintf(stderr, "Packet buffer too short for RTP\n");
+    return -1;
+  }
+  if (size < rtp->header_size) {
+    fprintf(stderr, "Packet buffer too short for declared RTP header size\n");
+    return -3;
+  }
+  packet[0] = ((rtp->version & 3) << 6) |
+              ((rtp->pad & 1) << 5) |
+              ((rtp->ext & 1) << 4) |
+              ((rtp->cc & 7));
+  packet[1] = ((rtp->mark & 1) << 7) |
+              ((rtp->type & 127));
+  be16(packet+2, rtp->seq);
+  be32(packet+4, rtp->time);
+  be32(packet+8, rtp->ssrc);
+  if (rtp->cc && rtp->csrc) {
+    for (i = 0; i < rtp->cc; i++) {
+      be32(packet + 12 + i*4, rtp->csrc[i]);
+    }
   }
 
   return 0;
