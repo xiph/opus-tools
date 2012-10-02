@@ -789,8 +789,10 @@ int main(int argc, char *argv[])
         if (!strcmp(long_options[i].name, "sniff")) {
 #ifdef HAVE_PCAP
           sniff("lo");
+          return 0;
 #else
           fprintf(stderr, "pcap support disabled, sorry.\n");
+          return 1;
 #endif
         } else {
           fprintf(stderr, "Unknown option - try %s --help.\n", argv[0]);
