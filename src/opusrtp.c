@@ -579,6 +579,7 @@ int rtp_test(void)
       rtp.seq++;
       rtp.payload_size = op.bytes;
       send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
+      usleep(20000);
     }
   }
   }
