@@ -60,6 +60,8 @@
 #endif
 #include <ogg/ogg.h>
 
+#define OPUS_PAYLOAD_TYPE 113
+
 /* state struct for passing around our handles */
 typedef struct {
   ogg_stream_state *stream;
@@ -492,7 +494,7 @@ int rtp_test(void)
   }
 
   rtp.version = 0;
-  rtp.type = 113;
+  rtp.type = OPUS_PAYLOAD_TYPE;
   rtp.pad = 0;
   rtp.ext = 0;
   rtp.cc = 0;
@@ -670,7 +672,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
   params->seq = rtp.seq;
 
-  if (rtp.type != 109) {
+  if (rtp.type != OPUS_PAYLOAD_TYPE) {
     fprintf(stderr, "skipping non-opus packet\n");
     return;
   }
