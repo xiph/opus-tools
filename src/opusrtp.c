@@ -507,6 +507,7 @@ int rtp_test(void)
   rtp.payload_size = 0;
 
   const char *filename = "rtpdump.opus";
+  fprintf(stderr, "Sending %s...\n", filename);
   FILE *in = fopen(filename, "rb");
   ogg_sync_state oy;
   ogg_stream_state os;
@@ -567,15 +568,14 @@ int rtp_test(void)
     while (ogg_stream_packetout(&os,&op) == 1) {
       /* skip header packets */
       if (state == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
-        fprintf(stderr, "got OpusHead\n");
         state++;
         continue;
       }
       if (state == 2 && op.bytes >= 16 && !memcmp(op.packet, "OpusTags", 8)) {
-        fprintf(stderr, "got OpusTags\n");
         state++;
         continue;
       }
+      /* update the rtp header and send */
       rtp.time += 960;
       // TODO: rtp.time += count_samples(op.packet, op.bytes);
       rtp.seq++;
