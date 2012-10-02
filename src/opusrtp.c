@@ -492,7 +492,7 @@ int rtp_test(void)
   }
 
   rtp.version = 0;
-  rtp.type = 109;
+  rtp.type = 113;
   rtp.pad = 0;
   rtp.ext = 0;
   rtp.cc = 0;
