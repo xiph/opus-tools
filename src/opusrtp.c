@@ -273,6 +273,11 @@ typedef struct {
   int type;
 } eth_header;
 
+#define LOOP_HEADER_LEN 4
+typedef struct {
+  int family;
+} loop_header;
+
 #define IP_HEADER_MIN 20
 typedef struct {
   int version;
@@ -325,6 +330,21 @@ int parse_eth_header(const unsigned char *packet, int size, eth_header *eth)
   memcpy(eth->src, packet + 0, 6);
   memcpy(eth->dst, packet + 6, 6);
   eth->type = rbe16(packet + 12);
+
+  return 0;
+}
+
+/* used by the darwin loopback interface, at least */
+int parse_loop_header(const unsigned char *packet, int size, loop_header *loop)
+{
+  if (!packet || !loop) {
+    return -2;
+  }
+  if (size < LOOP_HEADER_LEN) {
+    fprintf(stderr, "Packet too short for loopback\n");
+    return -1;
+  }
+  loop->family = rbe32(packet);
 
   return 0;
 }
@@ -602,6 +622,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   const unsigned char *packet;
   int size;
   eth_header eth;
+  loop_header loop;
   ip_header ip;
   udp_header udp;
   rtp_header rtp;
@@ -611,6 +632,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   packet = data;
   size = header->caplen;
 
+#if ETH
   if (parse_eth_header(packet, size, &eth)) {
     fprintf(stderr, "error parsing eth header\n");
     return;
@@ -624,6 +646,15 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
           eth.dst[3], eth.dst[4], eth.dst[5]);
   packet += ETH_HEADER_LEN;
   size -= ETH_HEADER_LEN;
+#elif LOOP
+  if (parse_loop_header(packet, size, &loop)) {
+    fprintf(stderr, "error parsing loopback header\n");
+    return;
+  }
+  fprintf(stderr, "  loopback family %d\n", loop.family);
+  packet += LOOP_HEADER_LEN;
+  size -= LOOP_HEADER_LEN;
+#endif
 
   if (parse_ip_header(packet, size, &ip)) {
     fprintf(stderr, "error parsing ip header\n");
@@ -790,7 +821,7 @@ int main(int argc, char *argv[])
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
 #ifdef HAVE_PCAP
-          sniff("lo");
+          sniff("lo0");
           return 0;
 #else
           fprintf(stderr, "pcap support disabled, sorry.\n");
