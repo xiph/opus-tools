@@ -608,7 +608,8 @@ int rtp_test(void)
   }
   }
 
-  ogg_stream_clear(&os);
+  if (state > 0)
+    ogg_stream_clear(&os);
   ogg_sync_clear(&oy);
   fclose(in);
   return 0;
