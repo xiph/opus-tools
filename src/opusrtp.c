@@ -761,7 +761,6 @@ int sniff(char *device)
     fprintf(stderr, "Couldn't open device %s: %s\n", device, errbuf);
     return(2);
   }
-  fprintf(stderr, "pcap datalink type is %d\n", pcap_datalink(pcap));
   params = malloc(sizeof(state));
   if (!params) {
     fprintf(stderr, "Couldn't allocate param struct.\n");
