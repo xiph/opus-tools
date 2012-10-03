@@ -515,7 +515,7 @@ int rtp_test(void)
     return ret;
   }
 
-  rtp.version = 0;
+  rtp.version = 2;
   rtp.type = OPUS_PAYLOAD_TYPE;
   rtp.pad = 0;
   rtp.ext = 0;
