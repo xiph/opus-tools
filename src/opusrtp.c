@@ -67,6 +67,7 @@ typedef struct {
   ogg_stream_state *stream;
   FILE *out;
   int seq;
+  int linktype;
 } state;
 
 /* helper, write a little-endian 32 bit int to memory */
@@ -633,29 +634,45 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   packet = data;
   size = header->caplen;
 
-#if ETH
-  if (parse_eth_header(packet, size, &eth)) {
-    fprintf(stderr, "error parsing eth header\n");
-    return;
+  /* parse the link-layer header */
+  switch (params->linktype) {
+    case DLT_EN10MB:
+      if (parse_eth_header(packet, size, &eth)) {
+        fprintf(stderr, "error parsing eth header\n");
+        return;
+      }
+      fprintf(stderr, "  eth 0x%04x", eth.type);
+      fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x ->",
+              eth.src[0], eth.src[1], eth.src[2],
+              eth.src[3], eth.src[4], eth.src[5]);
+      fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x\n",
+              eth.dst[0], eth.dst[1], eth.dst[2],
+              eth.dst[3], eth.dst[4], eth.dst[5]);
+      if (eth.type != 0x0800) {
+        fprintf(stderr, "skipping packet: no IPv4\n");
+        return;
+      }
+      packet += ETH_HEADER_LEN;
+      size -= ETH_HEADER_LEN;
+      break;
+    case DLT_NULL:
+      if (parse_loop_header(packet, size, &loop)) {
+        fprintf(stderr, "error parsing loopback header\n");
+        return;
+      }
+      fprintf(stderr, " loopback family %d\n", loop.family);
+      if (loop.family != PF_INET) {
+        fprintf(stderr, "skipping packet: not IP\n");
+        return;
+      }
+      packet += LOOP_HEADER_LEN;
+      size -= LOOP_HEADER_LEN;
+      break;
+    default:
+      fprintf(stderr, "skipping packet: unrecognized linktype %d\n",
+          params->linktype);
+      return;
   }
-  fprintf(stderr, "  eth 0x%04x", eth.type);
-  fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x ->",
-          eth.src[0], eth.src[1], eth.src[2],
-          eth.src[3], eth.src[4], eth.src[5]);
-  fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x\n",
-          eth.dst[0], eth.dst[1], eth.dst[2],
-          eth.dst[3], eth.dst[4], eth.dst[5]);
-  packet += ETH_HEADER_LEN;
-  size -= ETH_HEADER_LEN;
-#elif LOOP
-  if (parse_loop_header(packet, size, &loop)) {
-    fprintf(stderr, "error parsing loopback header\n");
-    return;
-  }
-  fprintf(stderr, "  loopback family %d\n", loop.family);
-  packet += LOOP_HEADER_LEN;
-  size -= LOOP_HEADER_LEN;
-#endif
 
   if (parse_ip_header(packet, size, &ip)) {
     fprintf(stderr, "error parsing ip header\n");
@@ -667,6 +684,10 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   fprintf(stderr, " %d.%d.%d.%d",
           ip.dst[0], ip.dst[1], ip.dst[2], ip.dst[3]);
   fprintf(stderr, " header %d bytes\n", ip.header_size);
+  if (ip.protocol != 17) {
+    fprintf(stderr, "skipping packet: not UDP\n");
+    return;
+  }
   packet += ip.header_size;
   size -= ip.header_size;
 
@@ -740,11 +761,13 @@ int sniff(char *device)
     fprintf(stderr, "Couldn't open device %s: %s\n", device, errbuf);
     return(2);
   }
+  fprintf(stderr, "pcap datalink type is %d\n", pcap_datalink(pcap));
   params = malloc(sizeof(state));
   if (!params) {
     fprintf(stderr, "Couldn't allocate param struct.\n");
     return -1;
   }
+  params->linktype = pcap_datalink(pcap);
   params->stream = malloc(sizeof(ogg_stream_state));
   if (!params->stream) {
     fprintf(stderr, "Couldn't allocate stream struct.\n");
