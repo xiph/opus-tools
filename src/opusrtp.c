@@ -472,20 +472,20 @@ int update_rtp_header(rtp_header *rtp)
 int send_rtp_packet(int fd, struct sockaddr *sin,
     rtp_header *rtp, const unsigned char *opus)
 {
-  long size = rtp->payload_size;
-  unsigned char *packet = malloc(RTP_HEADER_MIN + size);
+  update_rtp_header(rtp);
+  unsigned char *packet = malloc(rtp->header_size + rtp->payload_size);
   int ret;
 
   if (!packet) {
     fprintf(stderr, "Couldn't allocate packet buffer\n");
     return -1;
   }
-  update_rtp_header(rtp);
-  serialize_rtp_header(packet, RTP_HEADER_MIN, rtp);
-  memcpy(packet + RTP_HEADER_MIN, opus, size);
-  fprintf(stderr, "rtp %d %d %d (%ld bytes)\n",
-      rtp->type, rtp->seq, rtp->time, size);
-  ret = sendto(fd, packet, size, 0, sin, sizeof(*sin));
+  serialize_rtp_header(packet, rtp->header_size, rtp);
+  memcpy(packet + rtp->header_size, opus, rtp->payload_size);
+  fprintf(stderr, "rtp %d %d %d (%d bytes)\n",
+      rtp->type, rtp->seq, rtp->time, rtp->payload_size);
+  ret = sendto(fd, packet, rtp->header_size + rtp->payload_size, 0,
+      sin, sizeof(*sin));
   if (ret < 0) {
     fprintf(stderr, "error sending: %s\n", strerror(errno));
   }
