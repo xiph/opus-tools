@@ -344,7 +344,8 @@ int parse_loop_header(const unsigned char *packet, int size, loop_header *loop)
     fprintf(stderr, "Packet too short for loopback\n");
     return -1;
   }
-  loop->family = rbe32(packet);
+  /* protocol is in host byte order */
+  loop->family = *(int*)packet;
 
   return 0;
 }
