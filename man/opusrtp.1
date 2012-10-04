@@ -14,6 +14,10 @@ opusrtp \- encapsulate Opus audio in RTP
 [
 .B --sniff
 ]
+.B file.opus
+[
+.B file2.opus ...
+]
 
 .SH DESCRIPTION
 
@@ -21,9 +25,7 @@ opusrtp \- encapsulate Opus audio in RTP
 Demonstration tool for sending and receiving Opus audio data in RTP,
 used for interactive applications on the internet.
 
-Currently the
-.B --sniff
-mode is all that's implemented.
+By default, Opus audio from each given file is sent as an RTP stream.
 
 .SH "OPTIONS"
 .IP "-h, --help"

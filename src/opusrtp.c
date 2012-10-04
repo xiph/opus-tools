@@ -506,7 +506,7 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
   return ret;
 }
 
-int rtp_test(void)
+int rtp_send_file(const char *filename)
 {
   rtp_header rtp;
   int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -540,7 +540,6 @@ int rtp_test(void)
   rtp.header_size = 0;
   rtp.payload_size = 0;
 
-  const char *filename = "rtpdump.opus";
   fprintf(stderr, "Sending %s...\n", filename);
   FILE *in = fopen(filename, "rb");
   ogg_sync_state oy;
@@ -835,14 +834,16 @@ void opustools_version(void)
 
 void usage(char *exe)
 {
-  printf("Usage: %s [--sniff]\n", exe);
+  printf("Usage: %s [--sniff] <file.opus> [<file2.opus>]\n", exe);
   printf("\n");
-  printf("Receives Opus audio RTP streams.\n");
+  printf("Sends and receives Opus audio RTP streams.\n");
   printf("\nGeneral Options:\n");
   printf(" -h, --help           This help\n");
   printf(" -V, --version        Version information\n");
   printf(" -q, --quiet          Suppress status output\n");
   printf(" --sniff              Sniff and record Opus RTP streams\n");
+  printf("\n");
+  printf("By default, the given file(s) will be sent over RTP.\n");
 }
 
 int main(int argc, char *argv[])
@@ -887,8 +888,12 @@ int main(int argc, char *argv[])
         return 1;
     }
   }
+  argc -= i;
+  argv += i;
 
-  rtp_test();
+  for (i = 1; i < argc; i++) {
+    rtp_send_file(argv[i]);
+  }
 
   return 0;
 }
