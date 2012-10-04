@@ -21,7 +21,7 @@ opusinfo: src/opus_header.o src/opusinfo.o src/info_opus.o
 	$(CC) $(LDFLAGS) src/opus_header.o src/opusinfo.o src/info_opus.o -o opusinfo -logg
 
 opusrtp: src/opusrtp.o
-	$(CC) $(LDFLAGS) src/opusrtp.o -o opusrtp -logg
+	$(CC) $(LDFLAGS) src/opusrtp.o -o opusrtp ../opus/.libs/libopus.a -logg
 
 clean:
 	rm -f src/*.o $(PROGS) opusrtp

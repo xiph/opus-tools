@@ -58,6 +58,7 @@
 #ifdef HAVE_PCAP
 #include <pcap.h>
 #endif
+#include <opus.h>
 #include <ogg/ogg.h>
 
 #define OPUS_PAYLOAD_TYPE 113
@@ -67,6 +68,7 @@ typedef struct {
   ogg_stream_state *stream;
   FILE *out;
   int seq;
+  ogg_int64_t granulepos;
   int linktype;
 } state;
 
@@ -215,6 +217,16 @@ int is_opus(ogg_page *og)
   return 0;
 }
 
+/* calculate the number of samples in an opus packet */
+int opus_samples(const unsigned char *packet, int size)
+{
+  /* number of samples per frame at 48 kHz */
+  int samples = opus_packet_get_samples_per_frame(packet, 48000);
+  /* number "frames" in this packet */
+  int frames = opus_packet_get_nb_frames(packet, size);
+
+  return samples*frames;
+}
 
 /* helper, write out available ogg pages */
 int ogg_write(state *params)
@@ -588,6 +600,7 @@ int rtp_test(void)
     }
     /* read and process available packets */
     while (ogg_stream_packetout(&os,&op) == 1) {
+      int samples;
       /* skip header packets */
       if (state == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
         state++;
@@ -597,13 +610,14 @@ int rtp_test(void)
         state++;
         continue;
       }
+      /* get packet duration */
+      samples = opus_samples(op.packet, op.bytes);
       /* update the rtp header and send */
-      rtp.time += 960;
-      // TODO: rtp.time += count_samples(op.packet, op.bytes);
       rtp.seq++;
+      rtp.time += samples;
       rtp.payload_size = op.bytes;
       send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
-      usleep(20000);
+      usleep(samples*1000/48);
     }
   }
   }
@@ -733,7 +747,9 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
 
   /* write the payload to our opus file */
   ogg_packet *op = op_from_pkt(packet, size);
-  op->granulepos = 960*rtp.seq; // FIXME: get this from the toc byte
+  op->packetno = rtp.seq;
+  params->granulepos += opus_samples(packet, size);
+  op->granulepos = params->granulepos;
   ogg_stream_packetin(params->stream, op);
   free(op);
   ogg_write(params);
@@ -783,6 +799,7 @@ int sniff(char *device)
     return -2;
   }
   params->seq = 0;
+  params->granulepos = 0;
 
   /* write stream headers */
   op = op_opushead();
