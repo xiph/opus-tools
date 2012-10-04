@@ -494,8 +494,6 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
   }
   serialize_rtp_header(packet, rtp->header_size, rtp);
   memcpy(packet + rtp->header_size, opus, rtp->payload_size);
-  fprintf(stderr, "rtp %d %d %d (%d bytes)\n",
-      rtp->type, rtp->seq, rtp->time, rtp->payload_size);
   ret = sendto(fd, packet, rtp->header_size + rtp->payload_size, 0,
       sin, sizeof(*sin));
   if (ret < 0) {
@@ -615,6 +613,8 @@ int rtp_send_file(const char *filename)
       rtp.seq++;
       rtp.time += samples;
       rtp.payload_size = op.bytes;
+      fprintf(stderr, "rtp %d %d %d %3d ms %5d bytes\n",
+          rtp.type, rtp.seq, rtp.time, samples/48, rtp.payload_size);
       send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
       usleep(samples*1000/48);
     }
