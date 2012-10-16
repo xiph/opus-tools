@@ -544,7 +544,7 @@ int rtp_send_file(const char *filename)
   ogg_stream_state os;
   ogg_page og;
   ogg_packet op;
-  int state = 0;
+  int headers = 0;
   char *in_data;
   const long in_size = 8192;
   size_t in_read;
@@ -571,7 +571,7 @@ int rtp_send_file(const char *filename)
     return ret;
   }
   while (ogg_sync_pageout(&oy, &og) == 1) {
-    if (state == 0) {
+    if (headers == 0) {
       if (is_opus(&og)) {
         /* this is the start of an Opus stream */
         ret = ogg_stream_init(&os, ogg_page_serialno(&og));
@@ -579,7 +579,7 @@ int rtp_send_file(const char *filename)
           fprintf(stderr, "ogg_stream_init failed\n");
           return ret;
         }
-        state++;
+        headers++;
       } else if (!ogg_page_bos(&og)) {
         /* We're past the header and haven't found an Opus stream.
          * Time to give up. */
@@ -599,12 +599,12 @@ int rtp_send_file(const char *filename)
     while (ogg_stream_packetout(&os,&op) == 1) {
       int samples;
       /* skip header packets */
-      if (state == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
-        state++;
+      if (headers == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
+        headers++;
         continue;
       }
-      if (state == 2 && op.bytes >= 16 && !memcmp(op.packet, "OpusTags", 8)) {
-        state++;
+      if (headers == 2 && op.bytes >= 16 && !memcmp(op.packet, "OpusTags", 8)) {
+        headers++;
         continue;
       }
       /* get packet duration */
@@ -621,7 +621,7 @@ int rtp_send_file(const char *filename)
   }
   }
 
-  if (state > 0)
+  if (headers > 0)
     ogg_stream_clear(&os);
   ogg_sync_clear(&oy);
   fclose(in);
