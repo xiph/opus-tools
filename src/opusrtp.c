@@ -61,7 +61,7 @@
 #include <opus.h>
 #include <ogg/ogg.h>
 
-#define OPUS_PAYLOAD_TYPE 113
+#define OPUS_PAYLOAD_TYPE 120
 
 /* state struct for passing around our handles */
 typedef struct {
