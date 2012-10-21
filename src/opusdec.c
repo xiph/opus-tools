@@ -887,6 +887,16 @@ int main(int argc, char **argv)
                if (!st)
                   quit(1);
 
+               if(ogg_stream_packetout(&os, &op)!=0)
+               {
+                  /*The format specifies that the initial header and tags packets are on their
+                    own pages. To aid implementors in discovering that their files are wrong
+                    we reject them explicitly here. In some player designs files like this would
+                    fail even without an explicit test.*/
+                  fprintf(stderr, "Extra packets on initial header page. Invalid stream.\n");
+                  quit(1);
+               }
+
                /*Remember how many samples at the front we were told to skip
                  so that we can adjust the timestamp counting.*/
                gran_offset=preskip;
@@ -917,6 +927,11 @@ int main(int argc, char **argv)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
+               if(ogg_stream_packetout(&os, &op)!=0)
+               {
+                  fprintf(stderr, "Extra packets on initial tags page. Invalid stream.\n");
+                  quit(1);
+               }
             } else {
                int ret;
                opus_int64 maxout;
