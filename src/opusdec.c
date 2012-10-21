@@ -887,7 +887,7 @@ int main(int argc, char **argv)
                if (!st)
                   quit(1);
 
-               if(ogg_stream_packetout(&os, &op)!=0)
+               if(ogg_stream_packetout(&os, &op)!=0 || og.header[og.header_len-1]==255)
                {
                   /*The format specifies that the initial header and tags packets are on their
                     own pages. To aid implementors in discovering that their files are wrong
@@ -927,7 +927,7 @@ int main(int argc, char **argv)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
-               if(ogg_stream_packetout(&os, &op)!=0)
+               if(ogg_stream_packetout(&os, &op)!=0 || og.header[og.header_len-1]==255)
                {
                   fprintf(stderr, "Extra packets on initial tags page. Invalid stream.\n");
                   quit(1);
