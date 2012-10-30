@@ -888,10 +888,8 @@ int main(int argc, char *argv[])
         return 1;
     }
   }
-  argc -= i;
-  argv += i;
 
-  for (i = 1; i < argc; i++) {
+  for (i = optind; i < argc; i++) {
     rtp_send_file(argv[i]);
   }
 
