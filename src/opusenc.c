@@ -584,7 +584,11 @@ int main(int argc, char **argv)
     }
   }
 
-  bitrate=bitrate>0?bitrate:64000*header.nb_streams+32000*header.nb_coupled;
+  if(bitrate<0){
+    /*Lower default rate for sampling rates [8000-44100) by a factor of (rate+16k)/(64k)*/
+    bitrate=((64000*header.nb_streams+32000*header.nb_coupled)*
+             (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
+  }
 
   if(bitrate>(1024000*chan)||bitrate<500){
     fprintf(stderr,"Error: Bitrate %d bits/sec is insane.\nDid you mistake bits for kilobits?\n",bitrate);
@@ -932,7 +936,7 @@ int main(int argc, char **argv)
   if(!quiet){
     double coded_seconds=nb_encoded/(double)coding_rate;
     double wall_time=(stop_time-start_time)+1e-6;
-    fprintf(stderr,"Encoding complete\n");
+    fprintf(stderr,"Encoding complete                                    \n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"    Encoded:");
     print_time(coded_seconds);
