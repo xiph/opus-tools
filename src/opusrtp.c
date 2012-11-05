@@ -49,11 +49,13 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#ifndef _WIN32
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#endif
 
 #ifdef HAVE_PCAP
 #include <pcap.h>
@@ -491,6 +493,7 @@ int update_rtp_header(rtp_header *rtp)
   return 0;
 }
 
+#ifndef _WIN32
 int send_rtp_packet(int fd, struct sockaddr *sin,
     rtp_header *rtp, const unsigned char *opus)
 {
@@ -637,6 +640,14 @@ int rtp_send_file(const char *filename)
   fclose(in);
   return 0;
 }
+#else /* _WIN32 */
+int rtp_send_file(const char *filename)
+{
+  fprintf(stderr, "Cannot send '%s'. Socket support not available.\n",
+      filename);
+  return -2;
+}
+#endif
 
 
 #ifdef HAVE_PCAP
