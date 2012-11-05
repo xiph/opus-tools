@@ -335,13 +335,10 @@ static int rbe32(const unsigned char *p)
 static int rne32(const unsigned char *p)
 {
   /* On x86 we could just cast, but that might not meet
-   * arm's alignment requirements. */
-  union {
-    unsigned char c[4];
-    int d;
-  } m;
-  memcpy(m.c, p, 4);
-  return m.d;
+   * arm alignment requirements. */
+  int d = 0;
+  memcpy(&d, p, 4);
+  return d;
 }
 
 int parse_eth_header(const unsigned char *packet, int size, eth_header *eth)
@@ -370,7 +367,7 @@ int parse_loop_header(const unsigned char *packet, int size, loop_header *loop)
     fprintf(stderr, "Packet too short for loopback\n");
     return -1;
   }
-  /* protocol is in host byte order */
+  /* protocol is in host byte order on osx. may be big endian on openbsd? */
   loop->family = rne32(packet);
 
   return 0;
