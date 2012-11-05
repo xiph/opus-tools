@@ -331,6 +331,19 @@ static int rbe32(const unsigned char *p)
   return v;
 }
 
+/* helper, read a native-endian 32 bit int from memory */
+static int rne32(const unsigned char *p)
+{
+  /* On x86 we could just cast, but that might not meet
+   * arm's alignment requirements. */
+  union {
+    unsigned char c[4];
+    int d;
+  } m;
+  memcpy(m.c, p, 4);
+  return m.d;
+}
+
 int parse_eth_header(const unsigned char *packet, int size, eth_header *eth)
 {
   if (!packet || !eth) {
@@ -358,7 +371,7 @@ int parse_loop_header(const unsigned char *packet, int size, loop_header *loop)
     return -1;
   }
   /* protocol is in host byte order */
-  loop->family = *(int*)packet;
+  loop->family = rne32(packet);
 
   return 0;
 }
