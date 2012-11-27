@@ -32,6 +32,16 @@
 # include <config.h>
 #endif
 
+#if !defined(_LARGEFILE_SOURCE)
+# define _LARGEFILE_SOURCE
+#endif
+#if !defined(_LARGEFILE64_SOURCE)
+# define _LARGEFILE64_SOURCE
+#endif
+#if !defined(_FILE_OFFSET_BITS)
+# define _FILE_OFFSET_BITS 64
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -596,8 +606,21 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
             }
             else
             {
-                opt->total_samples_per_channel = (ftell(in) - pos)/
-                    (format.channels*samplesize);
+#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+                opt->total_samples_per_channel = _ftelli64(in);
+#elif defined HAVE_FSEEKO
+                opt->total_samples_per_channel = ftello(in);
+#else
+                opt->total_samples_per_channel = ftell(in);
+#endif
+                if(opt->total_samples_per_channel>pos)
+                {
+                   opt->total_samples_per_channel = (opt->total_samples_per_channel-pos)/(format.channels*samplesize);
+                }
+                else
+                {
+                   opt->total_samples_per_channel=0;
+                }
                 fseek(in,pos, SEEK_SET);
             }
         }
