@@ -44,8 +44,6 @@ opusenc \- encode audio into the Opus format
 .B --set-ctl-int
 .I ctl=value
 ] [
-.B --uncoupled
-] [
 .B --comment
 .I tag=value
 ] [
@@ -126,8 +124,6 @@ Pass the encoder control x with value y (advanced)
 Preface with s: to direct the ctl to multistream s
 .br
 This may be used multiple times
-.IP "--uncoupled"
-Use one mono stream per channel
 .IP "--comment tag=value"
 Add an extra comment.  This may be used multiple times, and all
 instances will be added to each of the input files specified. The argument

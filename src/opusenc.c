@@ -141,7 +141,6 @@ void usage(void)
   printf(" --set-ctl-int x=y  Pass the encoder control x with value y (advanced)\n");
   printf("                      Preface with s: to direct the ctl to multistream s\n");
   printf("                      This may be used multiple times\n");
-  printf(" --uncoupled        Use one mono stream per channel\n");
   printf("\nMetadata options:\n");
   printf(" --comment          Add the given string as an extra comment\n");
   printf("                      This may be used multiple times\n");
