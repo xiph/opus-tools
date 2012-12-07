@@ -36,9 +36,12 @@ EXTRA_DIST = Makefile.unix \
              src/opusinfo.vcxproj \
              src/opusenc.vcxproj \
              src/opusdec.vcxproj \
+             include/getopt.h \
+             share/getopt.c \
+             share/getopt1.c \
              win32/genversion.bat \
-             win32/unicode_support.h \
              win32/config.h \
+             win32/unicode_support.h \
              win32/unicode_support.c \
              win32/version.h
 
