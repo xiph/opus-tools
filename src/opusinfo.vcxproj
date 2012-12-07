@@ -89,22 +89,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
     <LibraryPath>..\..\opus\Debug;..\..\libogg\win32\VS2010\Win32\Debug;$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusinfo\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
     <LibraryPath>..\..\opus\x64\Debug;..\..\libogg\win32\VS2010\x64\Debug;$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusinfo\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>true</LinkIncremental>
     <LibraryPath>..\..\opus\Release;..\..\libogg\win32\VS2010\Win32\Release;$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusinfo\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>true</LinkIncremental>
     <LibraryPath>..\..\opus\x64\Release;..\..\libogg\win32\VS2010\x64\Release;$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusinfo\</IntDir>
   </PropertyGroup>
