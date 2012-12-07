@@ -39,7 +39,8 @@ EXTRA_DIST = Makefile.unix \
              win32/genversion.bat \
              win32/unicode_support.h \
              win32/config.h \
-             win32/unicode_support.c
+             win32/unicode_support.c \
+             win32/version.h
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
