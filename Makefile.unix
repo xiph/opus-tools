@@ -33,4 +33,4 @@ opusinfo: src/opus_header.o src/opusinfo.o src/info_opus.o $(COMMON_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@ -logg $(LIBS)
 
 opusrtp: src/opusrtp.o
-	$(CC) $(LDFLAGS) $^ -o $@ ../opus/.libs/libopus.a -logg
+	$(CC) $(LDFLAGS) $^ -o $@ ../opus/.libs/libopus.a -logg -lm
