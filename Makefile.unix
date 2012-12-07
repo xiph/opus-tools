@@ -2,7 +2,7 @@
 #Run ./configure to run autotools/autoconf.
 #This makefile exists as a fallback where autotools isn't working.
 #CC=gcc
-CFLAGS := -DPACKAGE='"opus-tools"' -DVERSION='"0.1.5git"' -DOPUSTOOLS -O2 -g -c -Wall -Wextra -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT $(CFLAGS)
+CFLAGS := -DPACKAGE='"opus-tools"' -DVERSION='"0.1.6"' -DOPUSTOOLS -O2 -g -c -Wall -Wextra -DHAVE_GETOPT_H -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT $(CFLAGS)
 INCLUDES := -I../opus/include
 
 ifneq (,$(findstring mingw,$(CC)))
