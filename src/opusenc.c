@@ -79,7 +79,6 @@
 #endif
 
 static void comment_init(char **comments, int* length, const char *vendor_string);
-static void comment_add(char **comments, int* length, char *tag, char *val);
 
 /*Write an Ogg page to a file pointer*/
 static inline int oe_write_page(ogg_page *page, FILE *fp)
@@ -204,6 +203,7 @@ int main(int argc, char **argv)
     {"comment", required_argument, NULL, 0},
     {"artist", required_argument, NULL, 0},
     {"title", required_argument, NULL, 0},
+    {"discard-comments", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
   int i, ret;
@@ -230,9 +230,7 @@ int main(int argc, char **argv)
   int                last_segments=0;
   int                eos=0;
   OpusHeader         header;
-  int                comments_length;
   char               ENCODER_string[64];
-  char               *comments;
   /*Counters*/
   opus_int64         nb_encoded=0;
   opus_int64         bytes_written=0;
@@ -290,19 +288,22 @@ int main(int argc, char **argv)
   in_format=NULL;
   inopt.channels=chan;
   inopt.rate=coding_rate=rate;
+  /* 0 dB gain is recommended unless you know what you're doing */
+  inopt.gain=0;
   inopt.samplesize=16;
   inopt.endianness=0;
   inopt.rawmode=0;
   inopt.ignorelength=0;
+  inopt.copy_comments=1;
 
   for(i=0;i<256;i++)mapping[i]=i;
 
   opus_version=opus_get_version_string();
   /*Vendor string should just be the encoder library,
     the ENCODER comment specifies the tool used.*/
-  comment_init(&comments, &comments_length, opus_version);
+  comment_init(&inopt.comments, &inopt.comments_length, opus_version);
   snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE,VERSION);
-  comment_add(&comments, &comments_length, "ENCODER=", ENCODER_string);
+  comment_add(&inopt.comments, &inopt.comments_length, "ENCODER=", ENCODER_string);
 
   /*Process command-line options*/
   while(1){
@@ -440,11 +441,13 @@ int main(int argc, char **argv)
             fprintf(stderr, "Comments must be of the form name=value\n");
             exit(1);
           }
-          comment_add(&comments, &comments_length, NULL, optarg);
+          comment_add(&inopt.comments, &inopt.comments_length, NULL, optarg);
         }else if(strcmp(long_options[option_index].name,"artist")==0){
-          comment_add(&comments, &comments_length, "artist=", optarg);
+          comment_add(&inopt.comments, &inopt.comments_length, "artist=", optarg);
         } else if(strcmp(long_options[option_index].name,"title")==0){
-          comment_add(&comments, &comments_length, "title=", optarg);
+          comment_add(&inopt.comments, &inopt.comments_length, "title=", optarg);
+        } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
+          inopt.copy_comments=0;
         }
         break;
       case 'h':
@@ -548,9 +551,8 @@ int main(int argc, char **argv)
   }
   header.channel_mapping=header.channels>8?255:header.nb_streams>1;
   if(header.channel_mapping>0)for(i=0;i<header.channels;i++)header.stream_map[i]=mapping[i];
-  /* 0 dB gain is the recommended unless you know what you're doing */
-  header.gain=0;
   header.input_sample_rate=rate;
+  header.gain=inopt.gain;
 
   min_bytes=max_frame_bytes=(1275*3+7)*header.nb_streams;
   packet=malloc(sizeof(unsigned char)*max_frame_bytes);
@@ -740,8 +742,8 @@ int main(int argc, char **argv)
       pages_out++;
     }
 
-    op.packet=(unsigned char *)comments;
-    op.bytes=comments_length;
+    op.packet=(unsigned char *)inopt.comments;
+    op.bytes=inopt.comments_length;
     op.b_o_s=0;
     op.e_o_s=0;
     op.granulepos=0;
@@ -761,7 +763,7 @@ int main(int argc, char **argv)
     pages_out++;
   }
 
-  free(comments);
+  free(inopt.comments);
 
   input=malloc(sizeof(float)*frame_size*chan);
   if(input==NULL){
@@ -1021,7 +1023,7 @@ static void comment_init(char **comments, int* length, const char *vendor_string
   *comments=p;
 }
 
-static void comment_add(char **comments, int* length, char *tag, char *val)
+void comment_add(char **comments, int* length, char *tag, char *val)
 {
   char* p=*comments;
   int vendor_length=readint(p, 8);

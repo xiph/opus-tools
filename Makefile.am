@@ -13,6 +13,7 @@ noinst_PROGRAMS = opusrtp
 
 noinst_HEADERS = src/arch.h \
                  src/diag_range.h \
+                 src/flac.h \
                  src/info_opus.h \
                  src/lpc.h \
                  src/opusenc.h \
@@ -28,7 +29,7 @@ noinst_HEADERS = src/arch.h \
                  src/wav_io.h
 
 EXTRA_DIST = Makefile.unix \
-	     man/opusrtp.1 \
+             man/opusrtp.1 \
              opus-tools.sln \
              src/opusdec.vcxproj.filters \
              src/opusinfo.vcxproj.filters \
@@ -47,7 +48,7 @@ EXTRA_DIST = Makefile.unix \
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
-opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c src/lpc.c win32/unicode_support.c
+opusenc_SOURCES = src/opus_header.c src/opusenc.c src/resample.c src/audio-in.c src/diag_range.c src/flac.c src/lpc.c win32/unicode_support.c
 opusenc_LDADD = $(OGG_LIBS) $(Opus_LIBS) -lm
 opusenc_MANS = man/opusenc.1
 

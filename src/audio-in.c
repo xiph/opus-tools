@@ -74,10 +74,7 @@
 #include "speex_resampler.h"
 #include "lpc.h"
 #include "opus_header.h"
-
-#ifdef HAVE_LIBFLAC
 #include "flac.h"
-#endif
 
 /* Macros to read header data */
 #define READ_U32_LE(buf) \
@@ -96,10 +93,8 @@
 input_format formats[] = {
     {wav_id, 12, wav_open, wav_close, "wav", N_("WAV file reader")},
     {aiff_id, 12, aiff_open, wav_close, "aiff", N_("AIFF/AIFC file reader")},
-#ifdef HAVE_LIBFLAC
     {flac_id,     4, flac_open, flac_close, "flac", N_("FLAC file reader")},
-    {oggflac_id, 32, flac_open, flac_close, "ogg", N_("Ogg FLAC file reader")},
-#endif
+    {oggflac_id, 33, flac_open, flac_close, "ogg", N_("Ogg FLAC file reader")},
     {NULL, 0, NULL, NULL, NULL, NULL}
 };
 

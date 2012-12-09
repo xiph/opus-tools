@@ -104,6 +104,12 @@ AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software 
   AC_DEFINE([ENABLE_ASSERTIONS], , [Assertions])
 fi])
 
+ac_enable_flac="yes"
+AC_ARG_ENABLE(flac, [  --disable-flac          disable FLAC support],
+[if test "$enableval" != "yes"; then
+  ac_enable_flac="no"
+fi])
+
 if test "x$CFLAGS" = "x-g -O2"; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="-O3 -ffast-math"
@@ -180,6 +186,48 @@ fi
 
 if test "x$HAVE_OSS" != "xyes" && test "x$HAVE_SNDIO" != "xyes"; then
   AC_MSG_WARN([Audio support not found -- no direct audio output in opusdec])
+fi
+
+dnl check for flac
+if test "x$ac_enable_flac" = "xyes" ; then
+  HAVE_FLAC=no
+  if test "x$HAVE_PKG_CONFIG" = "xyes"
+  then
+    PKG_CHECK_MODULES(FLAC, flac >= 1.1.3, HAVE_FLAC=yes, HAVE_FLAC=no)
+  fi
+  if test "x$HAVE_FLAC" = "xno"
+  then
+    dnl fall back to AC_CHECK_LIB
+    AC_CHECK_LIB(m,log,FLAC_LIBS="-lm")
+    AC_CHECK_LIB(FLAC, [FLAC__stream_decoder_process_single],
+      [
+        HAVE_FLAC="yes"
+        FLAC_LIBS="-lFLAC $FLAC_LIBS"
+      ],
+      [
+        AC_MSG_ERROR([
+          FLAC is required to build this package!
+          Please install it or configure with --disable-flac.
+        ])
+        HAVE_FLAC="no"
+      ],
+      [$FLAC_LIBS]
+    )
+    AC_CHECK_HEADER(FLAC/stream_decoder.h,,
+      [
+        AC_MSG_ERROR([
+          FLAC headers are required to build this package!
+          Please install the development version of FLAC
+          or configure with --disable-flac.
+        ])
+        HAVE_FLAC="no"
+      ],
+      []
+    )
+  fi
+  CFLAGS="$FLAC_CFLAGS $CFLAGS"
+  LIBS="$FLAC_LIBS $LIBS"
+  AC_DEFINE([HAVE_LIBFLAC], , [FLAC])
 fi
 
 dnl check for pcap
@@ -342,6 +390,7 @@ AC_MSG_RESULT([
     General configuration:
 
       Assertion checking: ............ ${ac_enable_assertions}
+      FLAC input: .................... ${ac_enable_flac}
 
 ------------------------------------------------------------------------
 ])
