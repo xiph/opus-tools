@@ -38,6 +38,9 @@ opusenc \- encode audio into the Opus format
 .B --max-delay
 .I ms
 ] [
+.B --serial
+.I serial number
+] [
 .B --save-range
 .I file
 ] [
@@ -117,6 +120,9 @@ Downmix to mono
 Downmix to stereo (if >2 channels input)
 .IP "--max-delay N"
 Maximum container delay in milliseconds (0-1000, default: 1000)
+.IP "--serial n"
+Forces the stream serial number to a specified value (instead of being random).
+This is used to make the encoder deterministic for testing and is not generally recommended.
 .IP "--save-range file"
 Saves check values for every frame to a file
 .IP "--set-ctl-int x=y"

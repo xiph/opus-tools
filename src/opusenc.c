@@ -109,7 +109,12 @@ void usage(void)
 {
   printf("Usage: opusenc [options] input_file output_file.opus\n");
   printf("\n");
-  printf("Encodes input_file using Opus. It can read the WAV, AIFF, or raw files.\n");
+  printf("Encodes input_file using Opus.\n");
+#if defined(HAVE_LIBFLAC)
+  printf("It can read the WAV, AIFF, FLAC, Ogg/FLAC, or raw files.\n");
+#else
+  printf("It can read the WAV, AIFF, or raw files.\n");
+#endif
   printf("\nGeneral options:\n");
   printf(" -h, --help         This help\n");
   printf(" -V, --version      Version information\n");
@@ -136,6 +141,7 @@ void usage(void)
   printf(" --max-delay n      Maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf("\nDiagnostic options:\n");
+  printf(" --serial n         Forces a specific stream serial number\n");
   printf(" --save-range file  Saves check values for every frame to a file\n");
   printf(" --set-ctl-int x=y  Pass the encoder control x with value y (advanced)\n");
   printf("                      Preface with s: to direct the ctl to multistream s\n");
@@ -262,6 +268,7 @@ int main(int argc, char **argv)
   int                *opt_ctls_ctlval;
   int                opt_ctls=0;
   int                max_ogg_delay=48000; /*48kHz samples*/
+  int                serialno;
   opus_int32         lookahead=0;
   unsigned char      mapping[256];
   int                force_narrow=0;
@@ -295,6 +302,10 @@ int main(int argc, char **argv)
   inopt.rawmode=0;
   inopt.ignorelength=0;
   inopt.copy_comments=1;
+
+  start_time = time(NULL);
+  srand(((getpid()&65535)<<15)^start_time);
+  serialno=rand();
 
   for(i=0;i<256;i++)mapping[i]=i;
 
@@ -398,6 +409,8 @@ int main(int argc, char **argv)
             fprintf(stderr,"max-delay 0-1000 ms.\n");
             exit(1);
           }
+        }else if(strcmp(long_options[option_index].name,"serial")==0){
+          serialno=atoi(optarg);
         }else if(strcmp(long_options[option_index].name,"set-ctl-int")==0){
           int len=strlen(optarg),target;
           char *spos,*tpos;
@@ -712,9 +725,7 @@ int main(int argc, char **argv)
   }
 
   /*Initialize Ogg stream struct*/
-  start_time = time(NULL);
-  srand(((getpid()&65535)<<15)^start_time);
-  if(ogg_stream_init(&os, rand())==-1){
+  if(ogg_stream_init(&os, serialno)==-1){
     fprintf(stderr,"Error: stream init failed\n");
     exit(1);
   }
