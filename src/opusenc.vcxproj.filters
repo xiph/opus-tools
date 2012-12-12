@@ -44,6 +44,9 @@
     <ClCompile Include="..\win32\unicode_support.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="flac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="info_opus.h">
@@ -89,6 +92,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\win32\unicode_support.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="flac.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

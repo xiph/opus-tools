@@ -23,6 +23,7 @@
     <ClCompile Include="..\share\getopt1.c" />
     <ClCompile Include="audio-in.c" />
     <ClCompile Include="diag_range.c" />
+    <ClCompile Include="flac.c" />
     <ClCompile Include="lpc.c" />
     <ClCompile Include="opusenc.c" />
     <ClCompile Include="opus_header.c" />
@@ -35,6 +36,7 @@
     <ClInclude Include="..\win32\config.h" />
     <ClInclude Include="arch.h" />
     <ClInclude Include="diag_range.h" />
+    <ClInclude Include="flac.h" />
     <ClInclude Include="info_opus.h" />
     <ClInclude Include="lpc.h" />
     <ClInclude Include="opusenc.h" />
