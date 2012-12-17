@@ -29,6 +29,10 @@
 #ifndef OPUSTOOLS_CPUSUPPORT_H
 # define OPUSTOOLS_CPUSUPPORT_H
 
+/* We want to warn if we're built with SSE support, but running
+   on a host without those instructions. Therefore we disable
+   the query both if the compiler isn't supporting SSE, and on
+   targets which are guaranteed to have SSE. */
 # if !defined(__SSE__) || defined(_M_X64) || defined(__amd64__)
 #  define query_cpu_support() 0
 # else
