@@ -31,7 +31,7 @@
 
 # if !defined(__SSE__) || defined(_M_X64) || defined(__amd64__)
 #  define query_cpu_support() 0
-#else
+# else
 
 #if defined WIN32 || defined _WIN32
 #include <intrin.h>
