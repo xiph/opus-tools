@@ -19,5 +19,4 @@
 #include "version.h"
 
 
-#endif CONFIG_H
-
+#endif /* CONFIG_H */
