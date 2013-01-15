@@ -314,7 +314,7 @@ int main(int argc, char **argv)
     the ENCODER comment specifies the tool used.*/
   comment_init(&inopt.comments, &inopt.comments_length, opus_version);
   snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE,VERSION);
-  comment_add(&inopt.comments, &inopt.comments_length, "ENCODER=", ENCODER_string);
+  comment_add(&inopt.comments, &inopt.comments_length, "ENCODER", ENCODER_string);
 
   /*Process command-line options*/
   while(1){
@@ -456,9 +456,9 @@ int main(int argc, char **argv)
           }
           comment_add(&inopt.comments, &inopt.comments_length, NULL, optarg);
         }else if(strcmp(long_options[option_index].name,"artist")==0){
-          comment_add(&inopt.comments, &inopt.comments_length, "artist=", optarg);
+          comment_add(&inopt.comments, &inopt.comments_length, "artist", optarg);
         } else if(strcmp(long_options[option_index].name,"title")==0){
-          comment_add(&inopt.comments, &inopt.comments_length, "title=", optarg);
+          comment_add(&inopt.comments, &inopt.comments_length, "title", optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
         }
@@ -1039,7 +1039,7 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   char* p=*comments;
   int vendor_length=readint(p, 8);
   int user_comment_list_length=readint(p, 8+4+vendor_length);
-  int tag_len=(tag?strlen(tag):0);
+  int tag_len=(tag?strlen(tag)+1:0);
   int val_len=strlen(val);
   int len=(*length)+4+tag_len+val_len;
 
@@ -1050,7 +1050,10 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   }
 
   writeint(p, *length, tag_len+val_len);      /* length of comment */
-  if(tag) memcpy(p+*length+4, tag, tag_len);  /* comment */
+  if(tag){
+    memcpy(p+*length+4, tag, tag_len);        /* comment tag */
+    (p+*length+4)[tag_len-1] = '=';           /* separator */
+  }
   memcpy(p+*length+4+tag_len, val, val_len);  /* comment */
   writeint(p, 8+4+vendor_length, user_comment_list_length+1);
   *comments=p;
