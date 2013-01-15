@@ -193,6 +193,7 @@ int main(int argc, char **argv)
     {"downmix-stereo",no_argument,NULL, 0},
     {"no-downmix",no_argument,NULL, 0},
     {"max-delay", required_argument, NULL, 0},
+    {"serial", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
     {"set-ctl-int", required_argument, NULL, 0},
     {"uncoupled", no_argument, NULL, 0},
@@ -213,6 +214,7 @@ int main(int argc, char **argv)
     {0, 0, 0, 0}
   };
   int i, ret;
+  int                cline_size;
   OpusMSEncoder      *st;
   const char         *opus_version;
   unsigned char      *packet;
@@ -236,7 +238,7 @@ int main(int argc, char **argv)
   int                last_segments=0;
   int                eos=0;
   OpusHeader         header;
-  char               ENCODER_string[64];
+  char               ENCODER_string[1024];
   /*Counters*/
   opus_int64         nb_encoded=0;
   opus_int64         bytes_written=0;
@@ -317,8 +319,10 @@ int main(int argc, char **argv)
   comment_add(&inopt.comments, &inopt.comments_length, "ENCODER", ENCODER_string);
 
   /*Process command-line options*/
+  cline_size=0;
   while(1){
     int c;
+    int save_cmd=1;
     c=getopt_long(argc_utf8, argv_utf8, "hV",
                   long_options, &option_index);
     if(c==-1)
@@ -352,9 +356,11 @@ int main(int argc, char **argv)
           inopt.ignorelength=1;
         }else if(strcmp(long_options[option_index].name,"raw")==0){
           inopt.rawmode=1;
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"raw-bits")==0){
           inopt.rawmode=1;
           inopt.samplesize=atoi(optarg);
+          save_cmd=0;
           if(inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24){
             fprintf(stderr,"Invalid bit-depth: %s\n",optarg);
             fprintf(stderr,"--raw-bits must be one of 8,16, or 24\n");
@@ -363,12 +369,15 @@ int main(int argc, char **argv)
         }else if(strcmp(long_options[option_index].name,"raw-rate")==0){
           inopt.rawmode=1;
           inopt.rate=atoi(optarg);
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"raw-chan")==0){
           inopt.rawmode=1;
           inopt.channels=atoi(optarg);
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"raw-endianness")==0){
           inopt.rawmode=1;
           inopt.endianness=atoi(optarg);
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"downmix-mono")==0){
           downmix=1;
         }else if(strcmp(long_options[option_index].name,"downmix-stereo")==0){
@@ -439,6 +448,7 @@ int main(int argc, char **argv)
           opt_ctls++;
         }else if(strcmp(long_options[option_index].name,"save-range")==0){
           frange=fopen_utf8(optarg,"w");
+          save_cmd=0;
           if(frange==NULL){
             perror(optarg);
             fprintf(stderr,"Could not open save-range file: %s\n",optarg);
@@ -449,6 +459,7 @@ int main(int argc, char **argv)
         }else if(strcmp(long_options[option_index].name,"uncoupled")==0){
           uncoupled=1;
         }else if(strcmp(long_options[option_index].name,"comment")==0){
+          save_cmd=0;
           if(!strchr(optarg,'=')){
             fprintf(stderr, "Invalid comment: %s\n", optarg);
             fprintf(stderr, "Comments must be of the form name=value\n");
@@ -456,8 +467,10 @@ int main(int argc, char **argv)
           }
           comment_add(&inopt.comments, &inopt.comments_length, NULL, optarg);
         }else if(strcmp(long_options[option_index].name,"artist")==0){
+          save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "artist", optarg);
         } else if(strcmp(long_options[option_index].name,"title")==0){
+          save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "title", optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
@@ -476,6 +489,22 @@ int main(int argc, char **argv)
         exit(1);
         break;
     }
+    if(save_cmd && cline_size<(int)sizeof(ENCODER_string)){
+      ret=snprintf(&ENCODER_string[cline_size], sizeof(ENCODER_string)-cline_size, "%s--%s",cline_size==0?"":" ",long_options[option_index].name);
+      if(ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)){
+        cline_size=sizeof(ENCODER_string);
+      } else {
+        cline_size+=ret;
+        if(optarg){
+          ret=snprintf(&ENCODER_string[cline_size], sizeof(ENCODER_string)-cline_size, " %s",optarg);
+          if(ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)){
+            cline_size=sizeof(ENCODER_string);
+          } else {
+            cline_size+=ret;
+          }
+        }
+      }
+    }
   }
   if(argc_utf8-optind!=2){
     usage();
@@ -483,6 +512,8 @@ int main(int argc, char **argv)
   }
   inFile=argv_utf8[optind];
   outFile=argv_utf8[optind+1];
+
+  if(cline_size>0)comment_add(&inopt.comments, &inopt.comments_length, "ENCODER_OPTIONS", ENCODER_string);
 
   if(strcmp(inFile, "-")==0){
 #if defined WIN32 || defined _WIN32
