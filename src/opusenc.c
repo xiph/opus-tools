@@ -950,20 +950,20 @@ int main(int argc, char **argv)
     double wall_time=(stop_time-start_time)+1e-6;
     fprintf(stderr,"Encoding complete                                    \n");
     fprintf(stderr,"-----------------------------------------------------\n");
-    fprintf(stderr,"    Encoded:");
+    fprintf(stderr,"       Encoded:");
     print_time(coded_seconds);
-    fprintf(stderr,"\n    Runtime:");
+    fprintf(stderr,"\n       Runtime:");
     print_time(wall_time);
-    fprintf(stderr,"\n             (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"      Wrote: %" I64FORMAT " bytes, %d packets, %" I64FORMAT " pages\n",bytes_written,id+1,pages_out);
-    fprintf(stderr,"    Bitrate: %0.6gkbit/s (without overhead)\n",
+    fprintf(stderr,"\n                (%0.4gx realtime)\n",coded_seconds/wall_time);
+    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %d packets, %" I64FORMAT " pages\n",bytes_written,id+1,pages_out);
+    fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
             total_bytes*8.0/(coded_seconds)/1000.0);
-    fprintf(stderr," Rate range: %0.6gkbit/s to %0.6gkbit/s\n             (%d to %d bytes per packet)\n",
+    fprintf(stderr," Instant rates: %0.6gkbit/s to %0.6gkbit/s\n                (%d to %d bytes per packet)\n",
             min_bytes*8*((double)coding_rate/frame_size/1000.),
             peak_bytes*8*((double)coding_rate/frame_size/1000.),min_bytes,peak_bytes);
-    fprintf(stderr,"   Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)bytes_written*100.);
+    fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)bytes_written*100.);
 #ifdef OLD_LIBOGG
-    if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"   (use libogg 1.3 or later for lower overhead)\n");
+    if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"    (use libogg 1.3 or later for lower overhead)\n");
 #endif
     fprintf(stderr,"\n");
   }
