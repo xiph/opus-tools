@@ -54,7 +54,16 @@ opusenc \- encode audio into the Opus format
 .I author
 ] [
 .B --title
-.I track title
+.I 'track title'
+] [
+.B --album
+.I 'album title'
+] [
+.B --date
+.I YYYY-MM-DD
+] [
+.B --genre
+.I genre
 ] [
 .B --raw
 ] [
@@ -137,11 +146,20 @@ should be in the form "tag=value".
 See the vorbis-comment specification for well known tag names:
 http://www.xiph.org/vorbis/doc/v-comment.html
 .IP "--artist artist"
-Set the artist comment field in the comments to
+Set the artist comment field to
 .I artist
 .IP "--title title"
 Set the track title comment field to
 .I title
+.IP "--album album"
+Set the album or collection title field to
+.I album
+.IP "--date YYYY-MM-DD"
+Set the date comment field to
+.I YYYY-MM-DD
+.IP "--genre genre"
+Set the genre comment field to
+.I genre
 .IP "--raw"
 Raw (headerless) PCM input
 .IP "--raw-bits N"

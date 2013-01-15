@@ -151,6 +151,9 @@ void usage(void)
   printf("                      This may be used multiple times\n");
   printf(" --artist           Author of this track\n");
   printf(" --title            Title for this track\n");
+  printf(" --album            Album or collection this track belongs to\n");
+  printf(" --date             Date for this track\n");
+  printf(" --genre            Genre for this track\n");
   printf("\nInput options:\n");
   printf(" --raw              Raw input\n");
   printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
@@ -210,6 +213,9 @@ int main(int argc, char **argv)
     {"comment", required_argument, NULL, 0},
     {"artist", required_argument, NULL, 0},
     {"title", required_argument, NULL, 0},
+    {"album", required_argument, NULL, 0},
+    {"date", required_argument, NULL, 0},
+    {"genre", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
@@ -472,6 +478,12 @@ int main(int argc, char **argv)
         } else if(strcmp(long_options[option_index].name,"title")==0){
           save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "title", optarg);
+        } else if(strcmp(long_options[option_index].name,"album")==0){
+          comment_add(&inopt.comments, &inopt.comments_length, "album", optarg);
+        } else if(strcmp(long_options[option_index].name,"date")==0){
+          comment_add(&inopt.comments, &inopt.comments_length, "date", optarg);
+        } else if(strcmp(long_options[option_index].name,"genre")==0){
+          comment_add(&inopt.comments, &inopt.comments_length, "genre", optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
         }
