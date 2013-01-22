@@ -479,14 +479,20 @@ int main(int argc, char **argv)
           save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "title", optarg);
         } else if(strcmp(long_options[option_index].name,"album")==0){
+          save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "album", optarg);
         } else if(strcmp(long_options[option_index].name,"date")==0){
+          save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "date", optarg);
         } else if(strcmp(long_options[option_index].name,"genre")==0){
+          save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "genre", optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
         }
+        /*Commands whos arguments would leak file paths or just end up as metadata
+           should have save_cmd=0; to prevent them from being saved in the
+           command-line tag.*/
         break;
       case 'h':
         usage();
