@@ -79,6 +79,7 @@
 #endif
 
 static void comment_init(char **comments, int* length, const char *vendor_string);
+static void comment_pad(char **comments, int* length, int amount);
 
 /*Write an Ogg page to a file pointer*/
 static inline int oe_write_page(ogg_page *page, FILE *fp)
@@ -154,6 +155,7 @@ void usage(void)
   printf(" --album            Album or collection this track belongs to\n");
   printf(" --date             Date for this track\n");
   printf(" --genre            Genre for this track\n");
+  printf(" --padding n        Extra bytes to reserve for metadata (default: 512)\n");
   printf("\nInput options:\n");
   printf(" --raw              Raw input\n");
   printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
@@ -216,6 +218,7 @@ int main(int argc, char **argv)
     {"album", required_argument, NULL, 0},
     {"date", required_argument, NULL, 0},
     {"genre", required_argument, NULL, 0},
+    {"padding", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
@@ -276,6 +279,7 @@ int main(int argc, char **argv)
   int                *opt_ctls_ctlval;
   int                opt_ctls=0;
   int                max_ogg_delay=48000; /*48kHz samples*/
+  int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
   unsigned char      mapping[256];
@@ -487,6 +491,8 @@ int main(int argc, char **argv)
         } else if(strcmp(long_options[option_index].name,"genre")==0){
           save_cmd=0;
           comment_add(&inopt.comments, &inopt.comments_length, "genre", optarg);
+        } else if(strcmp(long_options[option_index].name,"padding")==0){
+          comment_padding=atoi(optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
         }
@@ -802,6 +808,7 @@ int main(int argc, char **argv)
       pages_out++;
     }
 
+    comment_pad(&inopt.comments, &inopt.comments_length, comment_padding);
     op.packet=(unsigned char *)inopt.comments;
     op.bytes=inopt.comments_length;
     op.b_o_s=0;
@@ -1107,6 +1114,26 @@ void comment_add(char **comments, int* length, char *tag, char *val)
   writeint(p, 8+4+vendor_length, user_comment_list_length+1);
   *comments=p;
   *length=len;
+}
+
+static void comment_pad(char **comments, int* length, int amount)
+{
+  if(amount>0){
+    int i;
+    int newlen;
+    char* p=*comments;
+    /*Make sure there is at least amount worth of padding free, and
+       round up to the maximum that fits in the current ogg segments.*/
+    newlen=(*length+amount+255)/255*255-1;
+    p=realloc(p,newlen);
+    if(p==NULL){
+      fprintf(stderr,"realloc failed in comment_pad()\n");
+      exit(1);
+    }
+    for(i=*length;i<newlen;i++)p[i]=0;
+    *comments=p;
+    *length=newlen;
+  }
 }
 #undef readint
 #undef writeint
