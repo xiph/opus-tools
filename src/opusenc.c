@@ -156,6 +156,7 @@ void usage(void)
   printf(" --date             Date for this track\n");
   printf(" --genre            Genre for this track\n");
   printf(" --padding n        Extra bytes to reserve for metadata (default: 512)\n");
+  printf(" --discard-comments Don't keep metadata when transcoding\n");
   printf("\nInput options:\n");
   printf(" --raw              Raw input\n");
   printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
