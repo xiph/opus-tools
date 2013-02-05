@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <locale.h>
 #include "flac.h"
 #include "opus_header.h"
 
@@ -103,6 +104,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         double gain;
         int saw_album_gain;
         int saw_track_gain;
+        char *saved_locale;
         if(!inopt->copy_comments)break;
         num_comments=metadata->data.vorbis_comment.num_comments;
         comments=metadata->data.vorbis_comment.comments;
@@ -110,6 +112,8 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         album_gain=track_gain=0;
         /*The default reference loudness for ReplayGain is 89.0 dB*/
         reference_loudness=89;
+        /*The code below uses strtod for the gain tags, so make sure the locale is C*/
+        saved_locale=setlocale(LC_NUMERIC,"C");
         for(i=0;i<num_comments;i++){
           char *entry;
           char *end;
@@ -158,6 +162,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           }
           comment_add(&inopt->comments,&inopt->comments_length,NULL,entry);
         }
+        setlocale(LC_NUMERIC,saved_locale);
         /*Set the header gain to the album gain after converting to the R128
           reference level.*/
         if(saw_album_gain){
