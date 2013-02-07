@@ -198,7 +198,7 @@ if test "x$ac_enable_flac" = "xyes" ; then
   if test "x$HAVE_FLAC" = "xno"
   then
     dnl fall back to AC_CHECK_LIB
-    AC_CHECK_LIB(m,log,FLAC_LIBS="-lm")
+    AC_CHECK_LIB(m,log,FLAC_LIBS="$FLAC_LIBS -lm")
     AC_CHECK_LIB(FLAC, [FLAC__stream_decoder_init_ogg_stream],
       [
         HAVE_FLAC="yes"
@@ -222,7 +222,7 @@ if test "x$ac_enable_flac" = "xyes" ; then
         ])
         HAVE_FLAC="no"
       ],
-      []
+      [$FLAC_CFLAGS]
     )
   fi
   CFLAGS="$FLAC_CFLAGS $CFLAGS"
