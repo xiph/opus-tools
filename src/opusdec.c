@@ -677,6 +677,7 @@ int main(int argc, char **argv)
    int preskip=0;
    int gran_offset=0;
    int has_opus_stream=0;
+   int has_tags_packet=0;
    ogg_int32_t opus_serialno;
    int dither=1;
    shapestate shapemem;
@@ -866,16 +867,32 @@ int main(int argc, char **argv)
             /*OggOpus streams are identified by a magic string in the initial
               stream header.*/
             if (op.b_o_s && op.bytes>=8 && !memcmp(op.packet, "OpusHead", 8)) {
+               if(has_opus_stream && has_tags_packet)
+               {
+                 /*If we're seeing another BOS OpusHead now it means
+                   the stream is chained without an EOS.*/
+                 has_opus_stream=0;
+                 if(st)opus_multistream_decoder_destroy(st);
+                 st=NULL;
+                 fprintf(stderr,"\nWarning: stream %" I64FORMAT " ended without EOS and a new stream began.\n",(long long)os.serialno);
+               }
                if(!has_opus_stream)
                {
+                 if(packet_count>0 && opus_serialno==os.serialno)
+                 {
+                   fprintf(stderr,"\nError: Apparent chaining without changing serial number (%" I64FORMAT "==%" I64FORMAT ").\n",
+                     (long long)opus_serialno,(long long)os.serialno);
+                   quit(1);
+                 }
                  opus_serialno = os.serialno;
                  has_opus_stream = 1;
+                 has_tags_packet = 0;
                  link_out = 0;
                  packet_count = 0;
                  eos = 0;
                  total_links++;
                } else {
-                 fprintf(stderr,"Warning: ignoring opus stream %" I64FORMAT "\n",(long long)os.serialno);
+                 fprintf(stderr,"\nWarning: ignoring opus stream %" I64FORMAT "\n",(long long)os.serialno);
                }
             }
             if (!has_opus_stream || os.serialno != opus_serialno)
@@ -914,7 +931,7 @@ int main(int argc, char **argv)
                  as described in the OggOpus spec.  But for commandline tools
                  like opusdec it can be desirable to exactly preserve the original
                  sampling rate and duration, so we have a resampler here.*/
-               if (rate != 48000)
+               if (rate != 48000 && resampler==NULL)
                {
                   int err;
                   resampler = speex_resampler_init(channels, 48000, rate, 5, &err);
@@ -927,6 +944,7 @@ int main(int argc, char **argv)
             {
                if (!quiet)
                   print_comments((char*)op.packet, op.bytes);
+               has_tags_packet=1;
                if(ogg_stream_packetout(&os, &op)!=0 || og.header[og.header_len-1]==255)
                {
                   fprintf(stderr, "Extra packets on initial tags page. Invalid stream.\n");
