@@ -199,14 +199,14 @@ if test "x$ac_enable_flac" = "xyes" ; then
   then
     dnl fall back to AC_CHECK_LIB
     AC_CHECK_LIB(m,log,FLAC_LIBS="-lm")
-    AC_CHECK_LIB(FLAC, [FLAC__stream_decoder_process_single],
+    AC_CHECK_LIB(FLAC, [FLAC__stream_decoder_init_ogg_stream],
       [
         HAVE_FLAC="yes"
         FLAC_LIBS="-lFLAC $FLAC_LIBS"
       ],
       [
         AC_MSG_ERROR([
-          FLAC is required to build this package!
+          FLAC 1.1.3 or later is required to build this package!
           Please install it or configure with --disable-flac.
         ])
         HAVE_FLAC="no"
