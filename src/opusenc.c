@@ -247,6 +247,7 @@ int main(int argc, char **argv)
   ogg_int32_t        id=-1;
   int                last_segments=0;
   int                eos=0;
+  int                input_fill;
   OpusHeader         header;
   char               ENCODER_string[1024];
   /*Counters*/
@@ -328,6 +329,10 @@ int main(int argc, char **argv)
   comment_init(&inopt.comments, &inopt.comments_length, opus_version);
   snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE,VERSION);
   comment_add(&inopt.comments, &inopt.comments_length, "ENCODER", ENCODER_string);
+
+#ifdef OPUS_SET_EXPERT_VARIABLE_DURATION
+  frame_size=2880;
+#endif
 
   /*Process command-line options*/
   cline_size=0;
@@ -706,6 +711,14 @@ int main(int argc, char **argv)
   }
 #endif
 
+#ifdef OPUS_SET_EXPERT_VARIABLE_DURATION
+  i=1;
+  ret=opus_multistream_encoder_ctl(st, OPUS_SET_EXPERT_VARIABLE_DURATION(i));
+  if(1/*ret!=OPUS_OK*/){
+    fprintf(stderr,"Warning OPUS_SET_EXPERT_VARIABLE_DURATION returned: %s\n",opus_strerror(ret));
+  }
+#endif
+
   /*This should be the last set of CTLs, except the lookahead get, so it can override the defaults.*/
   for(i=0;i<opt_ctls;i++){
     int target=opt_ctls_ctlval[i*3];
@@ -838,6 +851,7 @@ int main(int argc, char **argv)
     fprintf(stderr,"Error: couldn't allocate sample buffer.\n");
     exit(1);
   }
+  input_fill=0;
 
   /*Main encoding loop (one frame per iteration)*/
   eos=0;
@@ -847,9 +861,10 @@ int main(int argc, char **argv)
     id++;
 
     if(nb_samples<0){
-      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
+      nb_samples = inopt.read_samples(inopt.readdata,&input[input_fill*chan],frame_size-input_fill);
       total_samples+=nb_samples;
-      if(nb_samples<frame_size)op.e_o_s=1;
+      input_fill+=nb_samples;
+      if(input_fill<frame_size)op.e_o_s=1;
       else op.e_o_s=0;
     }
     op.e_o_s|=eos;
@@ -861,7 +876,7 @@ int main(int argc, char **argv)
     cur_frame_size=frame_size;
 
     /*No fancy end padding, just fill with zeros for now.*/
-    if(nb_samples<cur_frame_size)for(i=nb_samples*chan;i<cur_frame_size*chan;i++)input[i]=0;
+    if(input_fill<cur_frame_size)for(i=input_fill*chan;i<cur_frame_size*chan;i++)input[i]=0;
 
     /*Encode current frame*/
     VG_UNDEF(packet,max_frame_bytes);
@@ -872,7 +887,14 @@ int main(int argc, char **argv)
       break;
     }
     VG_CHECK(packet,nbBytes);
+#ifdef OPUS_SET_EXPERT_VARIABLE_DURATION
+    cur_frame_size=opus_packet_get_nb_samples(packet,nbBytes,coding_rate);
+    memmove(input,&input[cur_frame_size*chan],sizeof(float)*chan*(frame_size-cur_frame_size));
+#else
     VG_UNDEF(input,sizeof(float)*chan*cur_frame_size);
+#endif
+    input_fill-=cur_frame_size;
+    if(op.e_o_s&&input_fill>0){op.e_o_s=0;eos=1;}
     nb_encoded+=cur_frame_size;
     enc_granulepos+=cur_frame_size*48000/coding_rate;
     total_bytes+=nbBytes;
@@ -916,10 +938,11 @@ int main(int argc, char **argv)
       to get cropped off. The downside of late reading is added delay.
       If your ogg_delay is 120ms or less we'll assume you want the
       low delay behavior.*/
-    if((!op.e_o_s)&&max_ogg_delay>5760){
-      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
+    if(!op.e_o_s&&!eos&&max_ogg_delay>5760){
+      nb_samples = inopt.read_samples(inopt.readdata,&input[input_fill*chan],frame_size-input_fill);
+      input_fill+=nb_samples;
       total_samples+=nb_samples;
-      if(nb_samples<frame_size)eos=1;
+      if(input_fill<frame_size)eos=1;
       if(nb_samples==0)op.e_o_s=1;
     } else nb_samples=-1;
 
@@ -939,7 +962,7 @@ int main(int argc, char **argv)
 
     /*If the stream is over or we're sure that the delayed flush will fire,
       go ahead and flush now to avoid adding delay.*/
-    while((op.e_o_s||(enc_granulepos+(frame_size*48000/coding_rate)-last_granulepos>max_ogg_delay)||
+    while((op.e_o_s||(enc_granulepos+(cur_frame_size*48000/coding_rate)-last_granulepos>max_ogg_delay)||
            (last_segments>=255))?
 #ifdef OLD_LIBOGG
     /*Libogg > 1.2.2 allows us to achieve lower overhead by
@@ -974,7 +997,7 @@ int main(int argc, char **argv)
           double tweight=1./(1+exp(-((coded_seconds/10.)-3.)));
           estbitrate=(total_bytes*8.0/coded_seconds)*tweight+
                       bitrate*(1.-tweight);
-        }else estbitrate=nbBytes*8*((double)coding_rate/frame_size);
+        }else estbitrate=nbBytes*8*((double)coding_rate/cur_frame_size);
         fprintf(stderr,"\r");
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
         if(inopt.total_samples_per_channel>0 && inopt.total_samples_per_channel<nb_encoded){
