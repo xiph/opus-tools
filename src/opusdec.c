@@ -1,6 +1,6 @@
 /* Copyright (c) 2002-2007 Jean-Marc Valin
    Copyright (c) 2008 CSIRO
-   Copyright (c) 2007-2012 Xiph.Org Foundation
+   Copyright (c) 2007-2013 Xiph.Org Foundation
    File: opusdec.c
 
    Redistribution and use in source and binary forms, with or without
@@ -476,13 +476,13 @@ void usage(void)
 void version(void)
 {
    printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
-   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
+   printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
 {
    printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
-   printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
+   printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 /*Process an Opus header and setup the opus decoder based on it.

@@ -1,6 +1,6 @@
 /* Copyright (C)2002-2011 Jean-Marc Valin
-   Copyright (C)2007-2012 Xiph.Org Foundation
-   Copyright (C)2008-2012 Gregory Maxwell
+   Copyright (C)2007-2013 Xiph.Org Foundation
+   Copyright (C)2008-2013 Gregory Maxwell
    File: opusenc.c
 
    Redistribution and use in source and binary forms, with or without
@@ -97,13 +97,13 @@ static inline int oe_write_page(ogg_page *page, FILE *fp)
 void opustoolsversion(const char *opusversion)
 {
   printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
-  printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
+  printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 void opustoolsversion_short(const char *opusversion)
 {
   printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
-  printf("Copyright (C) 2008-2012 Xiph.Org Foundation\n");
+  printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 void usage(void)
