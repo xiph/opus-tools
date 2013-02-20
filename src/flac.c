@@ -56,7 +56,7 @@ static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder,
 
 /*A version of strncasecmp() that is guaranteed to only ignore the case of
   ASCII characters.*/
-int flac_strncasecmp(const char *_a,const char *_b,int _n){
+static int flac_strncasecmp(const char *_a,const char *_b,int _n){
   int i;
   for(i=0;i<_n;i++){
     int a;
@@ -233,7 +233,7 @@ static FLAC__StreamDecoderWriteStatus write_callback(
 }
 
 /*Dummy error callback (required by libFLAC).*/
-void error_callback(const FLAC__StreamDecoder *decoder,
+static void error_callback(const FLAC__StreamDecoder *decoder,
    FLAC__StreamDecoderErrorStatus status,void *client_data){
   (void)decoder;
   (void)status;
@@ -261,7 +261,7 @@ int oggflac_id(unsigned char *buf,int len){
 }
 
 /*Read more data for the encoder.*/
-long flac_read(void *client_data,float *buffer,int samples){
+static long flac_read(void *client_data,float *buffer,int samples){
   flacfile *flac;
   int channels;
   float *block_buf;
