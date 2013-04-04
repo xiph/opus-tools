@@ -201,7 +201,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           track_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
           sprintf(track_gain_buf,"%i",track_gain_val);
           comment_add(&inopt->comments,&inopt->comments_length,
-             "R128_TRACK_GAIN=",track_gain_buf);
+             "R128_TRACK_GAIN",track_gain_buf);
         }
       }
       break;
