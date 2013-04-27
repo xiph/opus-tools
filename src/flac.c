@@ -31,6 +31,7 @@
 #include <locale.h>
 #include "flac.h"
 #include "opus_header.h"
+#include "picture.h"
 
 #if defined(HAVE_LIBFLAC)
 
@@ -76,31 +77,6 @@ static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder,
   (void)decoder;
   flac=(flacfile *)client_data;
   return feof(flac->f)?true:false;
-}
-
-/*A version of strncasecmp() that is guaranteed to only ignore the case of
-  ASCII characters.*/
-static int flac_strncasecmp(const char *_a,const char *_b,int _n){
-  int i;
-  for(i=0;i<_n;i++){
-    int a;
-    int b;
-    int d;
-    a=_a[i];
-    b=_b[i];
-    if(a>='a'&&a<='z')a-='a'-'A';
-    if(b>='a'&&b<='z')b-='a'-'A';
-    d=a-b;
-    if(d)return d;
-  }
-  return 0;
-}
-
-static void pack_u32be(char buf[4], FLAC__uint32 val){
-  buf[0]=(char)(val>>24);
-  buf[1]=(char)(val>>16);
-  buf[2]=(char)(val>>8);
-  buf[3]=(char)val;
 }
 
 /*Callback to process a metadata packet.*/
@@ -151,7 +127,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           entry=(char *)comments[i].entry;
           /*Check for ReplayGain tags.
             Parse the ones we have R128 equivalents for, and skip the others.*/
-          if(flac_strncasecmp(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
+          if(oi_strncasecmp(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
             gain=strtod(entry+30,&end);
             if(end<=entry+30){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -159,7 +135,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             else reference_loudness=gain;
             continue;
           }
-          if(flac_strncasecmp(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
+          if(oi_strncasecmp(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
             gain=strtod(entry+22,&end);
             if(end<=entry+22){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -170,7 +146,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             }
             continue;
           }
-          if(flac_strncasecmp(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
+          if(oi_strncasecmp(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
             gain=strtod(entry+22,&end);
             if(end<entry+22){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -181,8 +157,8 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             }
             continue;
           }
-          if(flac_strncasecmp(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
-             ||flac_strncasecmp(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
+          if(oi_strncasecmp(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
+             ||oi_strncasecmp(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
             continue;
           }
           if(!strchr(entry,'=')){
@@ -227,25 +203,25 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
          +metadata->data.picture.data_length;
         buf=(char *)malloc(buf_sz);
         offs=0;
-        pack_u32be(buf+offs,metadata->data.picture.type);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.type);
         offs+=4;
-        pack_u32be(buf+offs,(FLAC__uint32)mime_type_length);
+        WRITE_U32_BE(buf+offs,(FLAC__uint32)mime_type_length);
         offs+=4;
         memcpy(buf,metadata->data.picture.mime_type,mime_type_length);
         offs+=mime_type_length;
-        pack_u32be(buf+offs,(FLAC__uint32)description_length);
+        WRITE_U32_BE(buf+offs,(FLAC__uint32)description_length);
         offs+=4;
         memcpy(buf,metadata->data.picture.description,description_length);
         offs+=description_length;
-        pack_u32be(buf+offs,metadata->data.picture.width);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.width);
         offs+=4;
-        pack_u32be(buf+offs,metadata->data.picture.height);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.height);
         offs+=4;
-        pack_u32be(buf+offs,metadata->data.picture.depth);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.depth);
         offs+=4;
-        pack_u32be(buf+offs,metadata->data.picture.colors);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.colors);
         offs+=4;
-        pack_u32be(buf+offs,metadata->data.picture.data_length);
+        WRITE_U32_BE(buf+offs,metadata->data.picture.data_length);
         offs+=4;
         memcpy(buf+offs,metadata->data.picture.data,
            metadata->data.picture.data_length);
