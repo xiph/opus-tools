@@ -24,6 +24,7 @@ typedef struct _stream_processor {
     int isnew;
     long seqno;
     int lostseq;
+    int seen_file_icons;
 
     int start;
     int end;

@@ -97,6 +97,47 @@ void oi_error(char *format, ...)
     va_end(ap);
 }
 
+/*A version of strncasecmp() that is guaranteed to only ignore the case of
+   ASCII characters.*/
+static int oi_strncasecmp(const char *a, const char *b, int n){
+    int i;
+    for (i = 0; i < n; i++) {
+        int aval;
+        int bval;
+        int diff;
+        aval = a[i];
+        bval = b[i];
+        if(aval >= 'a' && aval <= 'z') {
+            aval -= 'a'-'A';
+        }
+        if(bval >= 'a' && bval <= 'z') {
+            bval -= 'a'-'A';
+        }
+        diff = aval-bval;
+        if(diff) {
+            return diff;
+        }
+    }
+    return 0;
+}
+
+#define READ_U32_BE(buf) \
+    (((buf)[0]<<24)|((buf)[1]<<16)|((buf)[2]<<8)|((buf)[3]&0xff))
+
+static int is_jpeg(const unsigned char *buf, size_t length){
+    return length >= 11 && memcmp(buf, "\xFF\xD8\xFF\xE0", 4) == 0
+          && (buf[4]<<8|buf[5]) >= 16 && memcmp(buf+6, "JFIF", 5) == 0;
+}
+
+static int is_png(const unsigned char *buf, size_t length){
+    return length >= 8 && memcmp(buf, "\x89PNG\x0D\x0A\x1A\x0A", 8) == 0;
+}
+
+static int is_gif(const unsigned char *buf, size_t length){
+    return length >= 6
+          && (memcmp(buf, "GIF87a", 6) == 0 || memcmp(buf, "GIF89a", 6) == 0);
+}
+
 void check_xiph_comment(stream_processor *stream, int i, const char *comment,
     int comment_length)
 {
@@ -125,7 +166,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
     }
 
     if(broken)
-	return;
+        return;
 
     val = (unsigned char *)comment;
 
@@ -248,6 +289,273 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          }
 
          j += bytes;
+     }
+
+     if(sep - comment == 22
+           && oi_strncasecmp(comment, "METADATA_BLOCK_PICTURE", 22) == 0) {
+         ogg_uint32_t   picture_type;
+         ogg_uint32_t   mime_type_length;
+         ogg_uint32_t   description_length;
+         ogg_uint32_t   width;
+         ogg_uint32_t   height;
+         ogg_uint32_t   depth;
+         ogg_uint32_t   colors;
+         ogg_uint32_t   image_length;
+         unsigned char *data;
+         int            data_sz;
+         int            len;
+         int            is_url;
+         len=comment_length - (sep+1-comment);
+         /*Decode the Base64 encoded data.*/
+         if(len&3) {
+             oi_warn(_("WARNING: Illegal Base64 length in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): %i is not "
+                   "divisible by 4\n"), i, stream->num, len);
+         }
+         len>>=2;
+         data_sz=3*len;
+         if(data_sz > 0) {
+             if(comment[comment_length - 1] == '=') {
+                 data_sz--;
+             }
+             if(comment[comment_length - 2] == '=') {
+                 data_sz--;
+             }
+         }
+         data=(unsigned char *)malloc(data_sz*sizeof(*data));
+         for (j = 0; j < len; j++) {
+             ogg_uint32_t value;
+             int          k;
+             value = 0;
+             for (k = 1; k <= 4; k++) {
+                 unsigned c;
+                 unsigned d;
+                 c = (unsigned char)sep[4*j+k];
+                 if(c == '+') {
+                     d = 62;
+                 }
+                 else if(c == '/') {
+                     d = 63;
+                 }
+                 else if(c >= '0' && c <= '9') {
+                     d = 52+c-'0';
+                 }
+                 else if(c >= 'a' && c <= 'z') {
+                     d = 26+c-'a';
+                 }
+                 else if(c >= 'A' && c <= 'Z') {
+                     d = c-'A';
+                 }
+                 else if(c == '=') {
+                     if(3*j+k-1 < data_sz) {
+                         oi_warn(_("WARNING: Terminating '=' in illegal "
+                               "position in Base64 encoded "
+                               "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                               "%i characters before the end.\n"), i,
+                               stream->num, data_sz - (3*j+k-1));
+                         free(data);
+                         return;
+                     }
+                     d = 0;
+                 }
+                 else {
+                     oi_warn(_("WARNING: Illegal Base64 character in "
+                           "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                           "'%c'\n"), i, stream->num, (char)c);
+                     free(data);
+                     return;
+                 }
+                 value = value << 6 | d;
+             }
+             data[3*j] = (unsigned char)(value>>16);
+             if(3*j+1 < data_sz) {
+                 data[3*j+1] = (unsigned char)(value>>8);
+                 if(3*j+2 < data_sz) {
+                     data[3*j+2] = (unsigned char)value;
+                 }
+             }
+         }
+         /*Now validate the METADATA_BLOCK_PICTURE structure.*/
+         if(data_sz < 32) {
+             oi_warn(_("WARNING: Not enough data for "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "expected at least 32 bytes, got %i\n"), i, stream->num,
+                   data_sz);
+             free(data);
+             return;
+         }
+         j = 0;
+         picture_type = READ_U32_BE(data+j);
+         if(picture_type > 20) {
+             oi_warn(_("WARNING: Unknown picture type in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "%li\n"), i, stream->num, (long)picture_type);
+             free(data);
+             return;
+         }
+         if(picture_type >= 1 && picture_type <= 2) {
+             if(stream->seen_file_icons & picture_type) {
+                 oi_warn(_("WARNING: Duplicate picture type in "
+                       "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                       " %s\n"), i, stream->num, picture_type == 1 ?
+                       _("only one picture of type 1 (32x32 icon) allowed") :
+                       _("only one picture of type 2 (icon) allowed"));
+                 free(data);
+                 return;
+             }
+             stream->seen_file_icons |= picture_type;
+         }
+         j += 4;
+         mime_type_length = READ_U32_BE(data+j);
+         if(mime_type_length > (size_t)data_sz-32) {
+             oi_warn(_("WARNING: Invalid mime type length in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "%lu bytes when %i are available\n"), i, stream->num,
+                   (long)mime_type_length, data_sz-32);
+             free(data);
+             return;
+         }
+         for (j += 4; j < 8+(int)mime_type_length; j++) {
+             if(data[j] < 0x20 || data[j] > 0x7E) {
+                 oi_warn(_("WARNING: Invalid character in mime type of "
+                       "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                       "0x%02X\n"), i, stream->num, data[j]);
+                 free(data);
+                 return;
+             }
+         }
+         description_length = READ_U32_BE(data+j);
+         if(description_length > (size_t)data_sz-mime_type_length-32) {
+             oi_warn(_("WARNING: Invalid description length in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "%lu bytes when %i are available\n"), i, stream->num,
+                   (long)description_length, data_sz-mime_type_length-32);
+             free(data);
+             return;
+         }
+         /*TODO: Validate that description is UTF-8.*/
+         j += 4+description_length;
+         width = READ_U32_BE(data+j);
+         j += 4;
+         height = READ_U32_BE(data+j);
+         j += 4;
+         depth = READ_U32_BE(data+j);
+         j += 4;
+         colors = READ_U32_BE(data+j);
+         j += 4;
+         /*This isn't triggered if colors == 0, since that can be a valid
+           value.*/
+         if((width == 0 || height == 0 || depth == 0)
+               && (width != 0 || height != 0 || depth != 0 || colors != 0)) {
+             oi_warn(_("WARNING: Invalid picture parameters in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "width (%i), height (%i), depth (%i), and colors (%i) MUST "
+                   "either be set to valid values or all set to 0\n"), i,
+                   stream->num, (int)width, (int)height, (int)depth,
+                   (int)colors);
+             free(data);
+             return;
+         }
+         image_length = READ_U32_BE(data+j);
+         j += 4;
+         /*This one should match exactly.*/
+         if(image_length != (size_t)data_sz-j) {
+             oi_warn(_("WARNING: Invalid image data size in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "%lu bytes when %i are available\n"), i, stream->num,
+                   (long)image_length, data_sz-j);
+             free(data);
+             return;
+         }
+         is_url = 0;
+         if(mime_type_length == 10
+               && oi_strncasecmp((const char*)data+8, "image/jpeg",
+                     mime_type_length) == 0) {
+             if(!is_jpeg(data+j, image_length)) {
+                 oi_warn(_("WARNING: Invalid image data in "
+                       "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                       "mime type is %.*s but image does not appear to be "
+                       "JPEG\n"), i, stream->num, mime_type_length, data+8);
+                 free(data);
+                 return;
+             }
+         }
+         else if(mime_type_length == 9
+               && oi_strncasecmp((const char *)data+8, "image/png",
+                     mime_type_length) == 0) {
+             if(!is_png(data+j, image_length)) {
+                 oi_warn(_("WARNING: Invalid image data in "
+                       "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                       "mime type is %.*s but image does not appear to be "
+                       "PNG\n"), i, stream->num, mime_type_length, data+8);
+                 free(data);
+                 return;
+             }
+         }
+         else if(mime_type_length == 9
+               && oi_strncasecmp((const char *)data+8, "image/gif",
+                     mime_type_length) == 0) {
+             if(!is_gif(data+j, image_length)) {
+                 oi_warn(_("WARNING: Invalid image data in "
+                       "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                       "mime type is %.*s but image does not appear to be "
+                       "PNG\n"), i, stream->num, mime_type_length, data+8);
+                 free(data);
+                 return;
+             }
+         }
+         else if(mime_type_length == 3
+               && strncmp((const char *)data+8, "-->", mime_type_length) == 0) {
+             is_url = 1;
+             /*TODO: validate URL.*/
+         }
+         else if(mime_type_length > 0 && (mime_type_length != 6 ||
+               oi_strncasecmp((const char *)data+8, "image/",
+                     mime_type_length) != 0)) {
+             oi_warn(_("WARNING: Unknown mime type in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "\"%.*s\" may not be well-supported\n"), i, stream->num,
+                   mime_type_length, data+8);
+         }
+         /*TODO: Extract width/height/depth/colors from image and compare to
+           encoded values. See code in opusenc.c*/
+         if(picture_type == 1
+               && (width != 0 && (width != 32 || height != 32))) {
+             oi_warn(_("WARNING: Invalid picture in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "picture of type 1 (32x32 icon) MUST be a 32x32 PNG, but "
+                   "the image has dimensions %ux%u\n"), i, stream->num,
+                   (unsigned)width, (unsigned)height);
+             free(data);
+             return;
+         }
+         if(picture_type == 1 && !is_url && !is_png(data+j, image_length)) {
+             oi_warn(_("WARNING: Invalid picture in "
+                   "METADATA_BLOCK_PICTURE comment %d (stream %d): "
+                   "picture of type 1 (32x32 icon) MUST be a 32x32 PNG, but "
+                   "the image does not appear to be a PNG\n"), i, stream->num);
+             free(data);
+             return;
+         }
+         /*Print the contents of the block using the same format as the
+           SPECIFICATION argument to opusenc/flac/etc. (except without an image
+           filename, since we don't know the original).*/
+         oi_info("\t%.*s%u|%.*s|%.*s|%ux%ux%u",
+               sep+1-comment, comment, (unsigned)picture_type,
+               mime_type_length, data+8,
+               description_length, data+12+mime_type_length,
+               (unsigned)width, (unsigned)height, (unsigned)depth);
+         if(colors) {
+             oi_info("/%u", (unsigned)colors);
+         }
+         if(is_url) {
+             oi_info("|%.*s\n", image_length, data+j);
+         }
+         else {
+             oi_info("|<%u bytes of image data>\n",(unsigned)image_length);
+         }
+         free(data);
+         return;
      }
 
      if(!broken) {
@@ -375,6 +683,7 @@ static stream_processor *find_stream_processor(stream_set *set, ogg_page *page)
     stream->isnew = 1;
     stream->isillegal = invalid;
     stream->constraint_violated = constraint;
+    stream->seen_file_icons = 0;
 
     {
         int res;
