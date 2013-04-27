@@ -96,6 +96,13 @@ static int flac_strncasecmp(const char *_a,const char *_b,int _n){
   return 0;
 }
 
+static void pack_u32be(char buf[4], FLAC__uint32 val){
+  buf[0]=(char)(val>>24);
+  buf[1]=(char)(val>>16);
+  buf[2]=(char)(val>>8);
+  buf[3]=(char)val;
+}
+
 /*Callback to process a metadata packet.*/
 static void metadata_callback(const FLAC__StreamDecoder *decoder,
    const FLAC__StreamMetadata *metadata,void *client_data){
@@ -203,6 +210,52 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           comment_add(&inopt->comments,&inopt->comments_length,
              "R128_TRACK_GAIN",track_gain_buf);
         }
+      }
+      break;
+    case FLAC__METADATA_TYPE_PICTURE:
+      {
+        char  *buf;
+        char  *b64;
+        size_t mime_type_length;
+        size_t description_length;
+        size_t buf_sz;
+        size_t b64_sz;
+        size_t offs;
+        mime_type_length=strlen(metadata->data.picture.mime_type);
+        description_length=strlen((char *)metadata->data.picture.description);
+        buf_sz=32+mime_type_length+description_length
+         +metadata->data.picture.data_length;
+        buf=(char *)malloc(buf_sz);
+        offs=0;
+        pack_u32be(buf+offs,metadata->data.picture.type);
+        offs+=4;
+        pack_u32be(buf+offs,(FLAC__uint32)mime_type_length);
+        offs+=4;
+        memcpy(buf,metadata->data.picture.mime_type,mime_type_length);
+        offs+=mime_type_length;
+        pack_u32be(buf+offs,(FLAC__uint32)description_length);
+        offs+=4;
+        memcpy(buf,metadata->data.picture.description,description_length);
+        offs+=description_length;
+        pack_u32be(buf+offs,metadata->data.picture.width);
+        offs+=4;
+        pack_u32be(buf+offs,metadata->data.picture.height);
+        offs+=4;
+        pack_u32be(buf+offs,metadata->data.picture.depth);
+        offs+=4;
+        pack_u32be(buf+offs,metadata->data.picture.colors);
+        offs+=4;
+        pack_u32be(buf+offs,metadata->data.picture.data_length);
+        offs+=4;
+        memcpy(buf+offs,metadata->data.picture.data,
+           metadata->data.picture.data_length);
+        b64_sz=BASE64_LENGTH(buf_sz)+1;
+        b64=(char *)malloc(b64_sz);
+        base64_encode(b64,buf,buf_sz);
+        free(buf);
+        comment_add(&inopt->comments,&inopt->comments_length,
+           "METADATA_BLOCK_PICTURE",b64);
+        free(b64);
       }
       break;
     default:
@@ -331,9 +384,11 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
   flac=malloc(sizeof(*flac));
   flac->decoder=FLAC__stream_decoder_new();
   FLAC__stream_decoder_set_md5_checking(flac->decoder,false);
-  /*We get STREAMINFO packets by default, but not VORBIS_COMMENT.*/
+  /*We get STREAMINFO packets by default, but not VORBIS_COMMENT or PICTURE.*/
   FLAC__stream_decoder_set_metadata_respond(flac->decoder,
      FLAC__METADATA_TYPE_VORBIS_COMMENT);
+  FLAC__stream_decoder_set_metadata_respond(flac->decoder,
+     FLAC__METADATA_TYPE_PICTURE);
   flac->inopt=opt;
   flac->f=in;
   flac->oldbuf=malloc(buflen*sizeof(*flac->oldbuf));

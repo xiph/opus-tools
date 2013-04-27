@@ -104,4 +104,8 @@ void clear_resample(oe_enc_opt *opt);
 long wav_read(void *, float *buffer, int samples);
 long wav_ieee_read(void *, float *buffer, int samples);
 
+#define BASE64_LENGTH(len) (((len)+2)/3*4)
+
+void base64_encode(char *dst, const char *src, int len);
+
 #endif /* __OPUSENC_H */
