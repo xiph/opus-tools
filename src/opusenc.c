@@ -349,8 +349,6 @@ int main(int argc, char **argv)
   int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
-  unsigned char      mapping[256];
-  int                force_narrow=0;
 #ifdef WIN_UNICODE
    int argc_utf8;
    char **argv_utf8;
@@ -385,8 +383,6 @@ int main(int argc, char **argv)
   start_time = time(NULL);
   srand(((getpid()&65535)<<15)^start_time);
   serialno=rand();
-
-  for(i=0;i<256;i++)mapping[i]=i;
 
   opus_version=opus_get_version_string();
   /*Vendor string should just be the encoder library,
@@ -644,8 +640,8 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(32000*inopt.channels)){
-    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 32kbit/sec/channel, downmixing.\n");
+  if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)){
+    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 16kbit/sec/channel, downmixing.\n");
     downmix=inopt.channels>8?1:2;
   }
 
@@ -678,59 +674,25 @@ int main(int argc, char **argv)
 
   /*OggOpus headers*/ /*FIXME: broke forcemono*/
   header.channels=chan;
-  header.nb_streams=header.channels;
-  header.nb_coupled=0;
-  if(header.channels<=8&&!uncoupled){
-    static const unsigned char opusenc_streams[8][10]={
-      /*Coupled, NB_bitmap, mapping...*/
-      /*1*/ {0,   0, 0},
-      /*2*/ {1,   0, 0,1},
-      /*3*/ {1,   0, 0,2,1},
-      /*4*/ {2,   0, 0,1,2,3},
-      /*5*/ {2,   0, 0,4,1,2,3},
-      /*6*/ {2,1<<3, 0,4,1,2,3,5},
-      /*7*/ {2,1<<4, 0,4,1,2,3,5,6},
-      /*6*/ {3,1<<4, 0,6,1,2,3,4,5,7}
-    };
-    for(i=0;i<header.channels;i++)mapping[i]=opusenc_streams[header.channels-1][i+2];
-    force_narrow=opusenc_streams[header.channels-1][1];
-    header.nb_coupled=opusenc_streams[header.channels-1][0];
-    header.nb_streams=header.channels-header.nb_coupled;
-  }
-  header.channel_mapping=header.channels>8?255:header.nb_streams>1;
-  if(header.channel_mapping>0)for(i=0;i<header.channels;i++)header.stream_map[i]=mapping[i];
+  header.channel_mapping=header.channels>8?255:chan>2;
   header.input_sample_rate=rate;
   header.gain=inopt.gain;
+
+  /*Initialize OPUS encoder*/
+  /*Framesizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
+    to save the extra 2.5ms of codec lookahead when we'll be using only small frames.*/
+  st=opus_multistream_surround_encoder_create(coding_rate, chan, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
+     header.stream_map, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
+  if(ret!=OPUS_OK){
+    fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
+    exit(1);
+  }
 
   min_bytes=max_frame_bytes=(1275*3+7)*header.nb_streams;
   packet=malloc(sizeof(unsigned char)*max_frame_bytes);
   if(packet==NULL){
     fprintf(stderr,"Error allocating packet buffer.\n");
     exit(1);
-  }
-
-  /*Initialize OPUS encoder*/
-  /*Framesizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
-    to save the extra 2.5ms of codec lookahead when we'll be using only small frames.*/
-  st=opus_multistream_encoder_create(coding_rate, chan, header.nb_streams, header.nb_coupled,
-     mapping, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
-  if(ret!=OPUS_OK){
-    fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
-    exit(1);
-  }
-
-  if(force_narrow!=0){
-    for(i=0;i<header.nb_streams;i++){
-      if(force_narrow&(1<<i)){
-        OpusEncoder *oe;
-        opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
-        ret=opus_encoder_ctl(oe, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_NARROWBAND));
-        if(ret!=OPUS_OK){
-          fprintf(stderr,"Error OPUS_SET_MAX_BANDWIDTH on stream %d returned: %s\n",i,opus_strerror(ret));
-          exit(1);
-        }
-      }
-    }
   }
 
   if(bitrate<0){
