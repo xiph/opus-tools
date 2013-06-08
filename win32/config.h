@@ -7,7 +7,6 @@
 #define inline __inline
 #define alloca _alloca
 #define getpid _getpid
-#define HAVE_GETOPT_H         1
 #define USE_ALLOCA            1
 #define FLOATING_POINT        1
 #define SPX_RESAMPLE_EXPORT
