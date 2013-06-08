@@ -18,7 +18,7 @@ all: $(PROGS)
 clean:
 	rm -f src/*.o win32/*.o $(PROGS) opusrtp
 
-.PHONEY: all clean
+.PHONY: all clean
 
 
 VERSIONED_OBJS = src/opusenc.o src/opusdec.o src/opusinfo.o src/opusrtp.o
