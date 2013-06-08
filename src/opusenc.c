@@ -97,14 +97,13 @@ static inline int oe_write_page(ogg_page *page, FILE *fp)
 
 void opustoolsversion(const char *opusversion)
 {
-  printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
+  printf("opusenc %s %s (using %s)\n",PACKAGE_NAME,PACKAGE_VERSION,opusversion);
   printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 void opustoolsversion_short(const char *opusversion)
 {
-  printf("opusenc %s %s (using %s)\n",PACKAGE,VERSION,opusversion);
-  printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
+  opustoolsversion(opusversion);
 }
 
 void usage(void)
@@ -393,7 +392,7 @@ int main(int argc, char **argv)
   /*Vendor string should just be the encoder library,
     the ENCODER comment specifies the tool used.*/
   comment_init(&inopt.comments, &inopt.comments_length, opus_version);
-  snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE,VERSION);
+  snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE_NAME,PACKAGE_VERSION);
   comment_add(&inopt.comments, &inopt.comments_length, "ENCODER", ENCODER_string);
 
   /*Process command-line options*/

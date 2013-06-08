@@ -14,7 +14,7 @@
 
 #define RANDOM_PREFIX foo
 
-#define PACKAGE "opus-tools"
+#define PACKAGE_NAME "opus-tools"
 #include "version.h"
 
 

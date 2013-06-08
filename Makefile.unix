@@ -1,6 +1,9 @@
 #Opus-tools should be built with autotools, not this makefile.
 #Run ./configure to run autotools/autoconf.
 #This makefile exists as a fallback where autotools isn't working.
+
+-include package_version
+
 #CC=gcc
 CFLAGS := -O2 -g -c -Wall -Wextra $(CFLAGS)
 INCLUDES := -I../opus/include -I/usr/include/FLAC
@@ -23,7 +26,8 @@ clean:
 
 VERSIONED_OBJS = src/opusenc.o src/opusdec.o src/opusinfo.o src/opusrtp.o
 
-$(VERSIONED_OBJS): CFLAGS += -DPACKAGE_NAME='"opus-tools"' -DPACKAGE_VERSION='"0.1.6git"'
+$(VERSIONED_OBJS): CFLAGS += -DPACKAGE_NAME='"opus-tools"' -DPACKAGE_VERSION='$(PACKAGE_VERSION)'
+$(VERSIONED_OBJS): package_version
 
 RESAMPLER_CPPFLAGS = -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
 
@@ -46,3 +50,14 @@ opusinfo: src/opus_header.o src/opusinfo.o src/info_opus.o src/picture.o $(COMMO
 
 opusrtp: src/opusrtp.o
 	$(CC) $(LDFLAGS) $^ -o $@ ../opus/.libs/libopus.a -logg -lm
+
+
+package_version: force
+	@if [ -x ./update_version ]; then \
+		./update_version || true; \
+	elif [ ! -e ./package_version ]; then \
+		echo 'PACKAGE_VERSION="unknown"' > ./package_version; \
+	fi
+
+force:
+

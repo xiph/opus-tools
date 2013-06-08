@@ -924,7 +924,7 @@ static void process_file(char *filename) {
 }
 
 static void version (void) {
-    printf (_("opusinfo from %s %s\n"), PACKAGE, VERSION);
+    printf (_("opusinfo from %s %s\n"), PACKAGE_NAME, PACKAGE_VERSION);
 }
 
 static void usage(void) {

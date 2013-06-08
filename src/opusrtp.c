@@ -842,7 +842,7 @@ int sniff(char *device)
 
 void opustools_version(void)
 {
-  printf("opusrtp %s %s\n", PACKAGE, VERSION);
+  printf("opusrtp %s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
   printf("Copyright (C) 2012 Xiph.Org Foundation\n");
 }
 

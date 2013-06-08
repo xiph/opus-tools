@@ -61,7 +61,7 @@ static WAVEHDR*          PlayedWaveHeaders [MAX_WAVEBLOCKS];
 static int
 Box ( const char* msg )
 {
-	MessageBox ( NULL, msg, " "PACKAGE" "VERSION": Error Message . . .", MB_OK | MB_ICONEXCLAMATION );
+	MessageBox ( NULL, msg, " "PACKAGE_NAME" "PACKAGE_VERSION": Error Message . . .", MB_OK | MB_ICONEXCLAMATION );
 	return -1;
 }
 

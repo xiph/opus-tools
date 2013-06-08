@@ -1,32 +1,24 @@
 dnl Process this file with autoconf to produce a configure script. -*-m4-*-
 
-AC_INIT(src/opusenc.c)
+dnl The package_version file will be automatically synced to the git revision
+dnl by the update_version script when configured in the repository, but will
+dnl remain constant in tarball releases unless it is manually edited.
+m4_define([CURRENT_VERSION],
+          m4_esyscmd([ if test -e package_version || ./update_version; then
+                           . ./package_version
+                           printf "$PACKAGE_VERSION"
+                       else
+                           printf "unknown"
+                       fi ]))
 
-AC_CONFIG_HEADERS([config.h])
+AC_INIT([opus-tools],[CURRENT_VERSION],[opus@xiph.org])
+AC_CONFIG_SRCDIR([src/opusenc.c])
+AC_CONFIG_MACRO_DIR([m4])
 
 dnl enable silent rules on automake 1.11 and later
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-OPUSTOOLS_MAJOR_VERSION=0
-OPUSTOOLS_MINOR_VERSION=1
-OPUSTOOLS_MICRO_VERSION=6
-OPUSTOOLS_EXTRA_VERSION=git
-
-OPUSTOOLS_VERSION="$OPUSTOOLS_MAJOR_VERSION.$OPUSTOOLS_MINOR_VERSION.$OPUSTOOLS_MICRO_VERSION$OPUSTOOLS_EXTRA_VERSION"
-AC_MSG_CHECKING([git revision])
-GIT_VERSION=$(git describe --tags --match 'v*' 2>/dev/null | sed 's/^v//')
-if test -z "$GIT_VERSION"; then
-  AC_MSG_RESULT([no])
-else
-  AC_MSG_RESULT([$GIT_VERSION])
-  OPUSTOOLS_VERSION="$GIT_VERSION"
-fi
-
-# For automake.
-VERSION=$OPUSTOOLS_VERSION
-PACKAGE=opus-tools
-
-AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AM_INIT_AUTOMAKE([1.11 foreign no-define])
 AM_MAINTAINER_MODE([enable])
 
 AC_CANONICAL_HOST
@@ -91,11 +83,6 @@ fi
 AC_SUBST([LIBM])
 
 AC_CHECK_LIB(winmm, main)
-
-AC_DEFINE_UNQUOTED(OPUSTOOLS_MAJOR_VERSION, ${OPUSTOOLS_MAJOR_VERSION}, [Version major])
-AC_DEFINE_UNQUOTED(OPUSTOOLS_MINOR_VERSION, ${OPUSTOOLS_MINOR_VERSION}, [Version minor])
-AC_DEFINE_UNQUOTED(OPUSTOOLS_MICRO_VERSION, ${OPUSTOOLS_MICRO_VERSION}, [Version micro])
-AC_DEFINE_UNQUOTED(OPUSTOOLS_EXTRA_VERSION, "${OPUSTOOLS_EXTRA_VERSION}", [Version extra])
 
 ac_enable_assertions="no"
 AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software error checking],
@@ -374,11 +361,13 @@ fi
 AC_SUBST(SIZE16)
 AC_SUBST(SIZE32)
 
-AC_OUTPUT([Makefile])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_HEADERS([config.h])
+AC_OUTPUT
 
-AC_MSG_RESULT([
+AC_MSG_NOTICE([
 ------------------------------------------------------------------------
-  $PACKAGE $VERSION:  Automatic configuration OK.
+  $PACKAGE_NAME $PACKAGE_VERSION:  Automatic configuration OK.
 
     Compiler support:
 
@@ -393,7 +382,7 @@ AC_MSG_RESULT([
       FLAC input: .................... ${ac_enable_flac}
 
 ------------------------------------------------------------------------
+
+ Type "make; make install" to compile and install
 ])
 
-echo "Type \"make; make install\" to compile and install";
-echo "Type \"make check\" to run the test suite";

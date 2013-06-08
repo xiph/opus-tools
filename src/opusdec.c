@@ -471,14 +471,13 @@ void usage(void)
 
 void version(void)
 {
-   printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
+   printf("opusdec %s %s (using %s)\n",PACKAGE_NAME,PACKAGE_VERSION,opus_get_version_string());
    printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
 {
-   printf("opusdec %s %s (using %s)\n",PACKAGE,VERSION,opus_get_version_string());
-   printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
+   version();
 }
 
 /*Process an Opus header and setup the opus decoder based on it.

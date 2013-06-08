@@ -23,6 +23,7 @@ Makefile
 config.h
 config.log
 config.status
+package_version
 stamp-h1
 opusenc
 opusdec
