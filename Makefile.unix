@@ -2,7 +2,7 @@
 #Run ./configure to run autotools/autoconf.
 #This makefile exists as a fallback where autotools isn't working.
 #CC=gcc
-CFLAGS := -DPACKAGE='"opus-tools"' -DVERSION='"0.1.6git"' -DOPUSTOOLS -O2 -g -c -Wall -Wextra -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT $(CFLAGS)
+CFLAGS := -O2 -g -c -Wall -Wextra $(CFLAGS)
 INCLUDES := -I../opus/include -I/usr/include/FLAC
 
 ifneq (,$(findstring mingw,$(CC)))
@@ -19,6 +19,18 @@ clean:
 	rm -f src/*.o win32/*.o $(PROGS) opusrtp
 
 .PHONEY: all clean
+
+
+VERSIONED_OBJS = src/opusenc.o src/opusdec.o src/opusinfo.o src/opusrtp.o
+
+$(VERSIONED_OBJS): CFLAGS += -DPACKAGE_NAME='"opus-tools"' -DPACKAGE_VERSION='"0.1.6git"'
+
+RESAMPLER_CPPFLAGS = -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
+
+src/opusdec.o src/resample.o src/audio-in.o: CFLAGS += $(RESAMPLER_CPPFLAGS)
+
+src/info_opus.o: CFLAGS += -DOPUSTOOLS
+
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
