@@ -327,40 +327,6 @@ AC_CHECK_FUNCS([fminf])
 AC_CHECK_FUNCS([fmaxf])
 AC_CHECK_FUNCS([__malloc_hook])
 
-AC_CHECK_SIZEOF(short)
-AC_CHECK_SIZEOF(int)
-AC_CHECK_SIZEOF(long)
-AC_CHECK_SIZEOF(long long)
-
-if test x$has_char16 = "xyes" ; then
-        case 1 in
-                $ac_cv_sizeof_short) SIZE16="short";;
-                $ac_cv_sizeof_int) SIZE16="int";;
-        esac
-else
-        case 2 in
-                $ac_cv_sizeof_short) SIZE16="short";;
-                $ac_cv_sizeof_int) SIZE16="int";;
-        esac
-fi
-
-if test x$has_char16 = "xyes" ; then
-        case 2 in
-                $ac_cv_sizeof_int) SIZE32="int";;
-                $ac_cv_sizeof_long) SIZE32="long";;
-                $ac_cv_sizeof_short) SIZE32="short";;
-        esac
-else
-        case 4 in
-                $ac_cv_sizeof_int) SIZE32="int";;
-                $ac_cv_sizeof_long) SIZE32="long";;
-                $ac_cv_sizeof_short) SIZE32="short";;
-        esac
-fi
-
-AC_SUBST(SIZE16)
-AC_SUBST(SIZE32)
-
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_HEADERS([config.h])
 AC_OUTPUT
