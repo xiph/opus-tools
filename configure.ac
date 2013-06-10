@@ -76,28 +76,20 @@ has_var_arrays=no
 )
 AC_MSG_RESULT($has_var_arrays)
 
-AC_CHECK_FUNC(exp,[fp_libm_not_needed=yes;LIBM=],[fp_libm_not_needed=dunno])
-if test x"$fp_libm_not_needed" = xdunno; then
-  AC_CHECK_LIB([m], [exp], [LIBS="-lm $LIBS"; LIBM="-lm"],[LIBM=])
-fi
+AC_CHECK_FUNC([exp],,[AC_CHECK_LIB([m],[exp],[LIBM="-lm"])])
 AC_SUBST([LIBM])
 
 AC_CHECK_LIB(winmm, main)
 
-ac_enable_assertions="no"
-AC_ARG_ENABLE(assertions, [  --enable-assertions     enable additional software error checking],
-[if test "$enableval" = yes; then
-  ac_enable_assertions="yes"
-  AC_DEFINE([ENABLE_ASSERTIONS], , [Assertions])
-fi])
+AC_ARG_ENABLE([assertions],
+    [AS_HELP_STRING([--enable-assertions],[enable additional software error checking])],,
+    [enable_assertions=no])
 
-ac_enable_flac="yes"
-AC_ARG_ENABLE(flac, [  --disable-flac          disable FLAC support],
-[if test "$enableval" != "yes"; then
-  ac_enable_flac="no"
-fi])
+AS_IF([test "$enable_assertions" = "yes"], [
+  AC_DEFINE([ENABLE_ASSERTIONS], [1], [Assertions])
+])
 
-if test "x$CFLAGS" = "x-g -O2"; then
+if test "$CFLAGS" = "-g -O2"; then
 saved_CFLAGS="$CFLAGS"
 CFLAGS="-O3 -ffast-math"
 AC_MSG_CHECKING([if ${CC} supports -O3 -g -ffast-math])
@@ -108,45 +100,35 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
 CFLAGS="$saved_CFLAGS"
 fi
 
-dnl check for Ogg
-HAVE_OGG=no
-
-dnl first check through pkg-config since it's more flexible
-
 dnl check for pkg-config itself so we don't try the m4 macro without pkg-config
 AC_CHECK_PROG(HAVE_PKG_CONFIG, pkg-config, yes)
-if test "x$HAVE_PKG_CONFIG" = "xyes"
-then
-  PKG_CHECK_MODULES(OGG, ogg >= 1.3, HAVE_OGG=yes, HAVE_OGG=no)
-fi
-if test "x$HAVE_OGG" = "xno"
-then
+
+dnl check for Ogg
+AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
+  dnl first try via pkg-config
+ [PKG_CHECK_MODULES([OGG],[ogg >= 1.3])],
+ [
   dnl fall back to the old school test
   XIPH_PATH_OGG(, AC_MSG_ERROR([
     libogg is required to build this package!
     please see http://www.xiph.org/ for how to
     obtain a copy.
   ]))
-  cflags_save=$CFLAGS
-  libs_save=$LIBS
+  saved_CFLAGS="$CFLAGS"
+  saved_LIBS="$LIBS"
   CFLAGS="$CFLAGS $OGG_CFLAGS"
   LIBS="$LIBS $OGG_LIBS"
-  AC_CHECK_FUNC(ogg_stream_flush_fill, , [
+  AC_CHECK_FUNC([ogg_stream_flush_fill],,[
     AC_MSG_ERROR([newer libogg version (1.3 or later) required])
   ])
-  CFLAGS=$cflags_save
-  LIBS=$libs_save
-fi
+  CFLAGS="$saved_CFLAGS"
+  LIBS="$saved_LIBS"
+ ])
 
 dnl check for Opus
-HAVE_OPUS=no
-
-if test "x$HAVE_PKG_CONFIG" = "xyes"
-then
-  PKG_CHECK_MODULES(Opus, opus >= 0.9.10, HAVE_OPUS=yes, HAVE_OPUS=no)
-fi
-if test "x$HAVE_OPUS" = "xno"
-then
+AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
+ [PKG_CHECK_MODULES([OPUS],[opus >= 0.9.10])],
+ [
   dnl fall back to the old school test
   XIPH_PATH_OPUS(, AC_MSG_ERROR([
     Opus is required to build this package!
@@ -155,7 +137,7 @@ then
   ]))
   CFLAGS="$CFLAGS $OPUS_CFLAGS"
   LIBS="$LIBS $OPUS_LIBS"
-fi
+ ])
 
 dnl check for OSS
 HAVE_OSS=no
@@ -165,57 +147,49 @@ AC_CHECK_HEADERS([sys/soundcard.h soundcard.h machine/soundcard.h],[
 ])
 
 dnl check for sndio
-HAVE_SNDIO=no
 AC_CHECK_LIB([sndio], [sio_open])
-if test "x$ac_cv_lib_sndio_sio_open" = "xyes"; then
-  HAVE_SNDIO=yes
-fi
 
-if test "x$HAVE_OSS" != "xyes" && test "x$HAVE_SNDIO" != "xyes"; then
+if test "$HAVE_OSS" != "yes" && test "$ac_cv_lib_sndio_sio_open" != "yes"; then
   AC_MSG_WARN([Audio support not found -- no direct audio output in opusdec])
 fi
 
 dnl check for flac
-if test "x$ac_enable_flac" = "xyes" ; then
-  HAVE_FLAC=no
-  if test "x$HAVE_PKG_CONFIG" = "xyes"
-  then
-    PKG_CHECK_MODULES(FLAC, flac >= 1.1.3, HAVE_FLAC=yes, HAVE_FLAC=no)
-  fi
-  if test "x$HAVE_FLAC" = "xno"
-  then
+AC_ARG_WITH([flac],
+    [AS_HELP_STRING([--without-flac],[disable FLAC support])],,
+    [with_flac=yes])
+
+AS_IF([test "$with_flac" = "yes"],
+ [
+  AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
+   [PKG_CHECK_MODULES([FLAC],[flac >= 1.1.3])],
+   [
     dnl fall back to AC_CHECK_LIB
-    AC_CHECK_LIB(m,log,FLAC_LIBS="$FLAC_LIBS -lm")
-    AC_CHECK_LIB(FLAC, [FLAC__stream_decoder_init_ogg_stream],
+    AC_CHECK_LIB([FLAC],[FLAC__stream_decoder_init_ogg_stream],
       [
-        HAVE_FLAC="yes"
-        FLAC_LIBS="-lFLAC $FLAC_LIBS"
+        FLAC_LIBS="-lFLAC"
       ],
       [
         AC_MSG_ERROR([
           FLAC 1.1.3 or later is required to build this package!
           Please install it or configure with --disable-flac.
         ])
-        HAVE_FLAC="no"
-      ],
-      [$FLAC_LIBS]
+      ]
     )
-    AC_CHECK_HEADER(FLAC/stream_decoder.h,,
+    AC_CHECK_HEADER([FLAC/stream_decoder.h],,
       [
         AC_MSG_ERROR([
           FLAC headers are required to build this package!
           Please install the development version of FLAC
           or configure with --disable-flac.
         ])
-        HAVE_FLAC="no"
-      ],
-      [$FLAC_CFLAGS]
+      ]
     )
-  fi
+   ])
+
   CFLAGS="$FLAC_CFLAGS $CFLAGS"
   LIBS="$FLAC_LIBS $LIBS"
-  AC_DEFINE([HAVE_LIBFLAC], , [FLAC])
-fi
+  AC_DEFINE([HAVE_LIBFLAC],[1],[FLAC])
+ ])
 
 dnl check for pcap
 AC_CHECK_LIB([pcap], [pcap_open_live], [
@@ -231,83 +205,76 @@ i[[3456]]86 | x86_64)
   ;;
 esac
 
-if test "x$on_x86" = "xyes"; then
-ac_enable_sse="no"
-AC_ARG_ENABLE(sse, AS_HELP_STRING([--enable-sse],[Build binaries that require SSE]),
-[if test "$enableval" = yes; then
-  ac_enable_sse="yes"
+dnl check for sse
+AC_ARG_ENABLE([sse],
+    [AS_HELP_STRING([--enable-sse],[Build binaries that require SSE])],,
+    [enable_sse=no])
+
+AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
+ [
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -msse"
 AC_MSG_CHECKING([if ${CC} supports -msse])
 AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
-      [ AC_MSG_RESULT([yes])
-        SSE="-msse"; ac_build_sse=yes ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS $SSE"
-fi])
-fi
+    [ AC_MSG_RESULT([yes]) ],
+    [
+      AC_MSG_RESULT([no])
+      enable_sse=no
+      CFLAGS="$saved_CFLAGS"
+    ])
+ ])
 
 dnl Enable stack-protector-all only on x86 where it's well supported.
 dnl on some platforms it causes crashes. Hopefully the OS's default's
 dnl include this on platforms that work but have been missed here.
+AC_ARG_ENABLE([stack-protector],
+    [AS_HELP_STRING([--disable-stack-protector],[Disable compiler stack hardening])],,
+    [
+      AS_IF([test "$ac_cv_c_compiler_gnu" = "yes" && test "$on_x86" = "yes"],
+            [enable_stack_protector=yes],[enable_stack_protector=no])
+    ])
 
-ac_build_stack_protector=no
-if test "x$ac_cv_c_compiler_gnu" = "xyes" && test "x$on_x86" = "xyes"; then
-AC_ARG_ENABLE(stack-protector,
-     AS_HELP_STRING([--disable-stack-protector],[Disable compiler stack hardening]),
-     [
-       if test "x$enableval" = "xno"; then
-         ac_build_stack_protector=$enableval
-       fi
-     ], [
-       ac_build_stack_protector=yes
-     ])
-if test "x$ac_build_stack_protector" = "xyes"; then
+AS_IF([test "$enable_stack_protector" = "yes"],
+ [
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fstack-protector-all"
 AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
 AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
-      [ AC_MSG_RESULT([yes])
-        STACK_PROTECTOR="-fstack-protector-all"; ac_build_stack_protector=yes ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS $STACK_PROTECTOR"
-fi
-fi
+    [ AC_MSG_RESULT([yes]) ],
+    [
+      AC_MSG_RESULT([no])
+      enable_stack_protector=no
+      CFLAGS="$saved_CFLAGS"
+    ])
+ ])
 
-ac_build_pie=no
-AC_ARG_ENABLE(pie,
-     AS_HELP_STRING([--disable-pie],[Disable PIE/RELRO hardening]),
-     [
-       if test "x$enableval" = "xno"; then
-         ac_build_pie=$enableval
-       fi
-     ], [
-       ac_build_pie=yes
-     ])
-if test "x$ac_build_pie" = "xyes"; then
-save_CFLAGS="$CFLAGS"
-save_LDFLAGS="$LDFLAGS"
-save_LIBS="$LIBS"
-CFLAGS="$CFLAGS -fPIE $Opus_CFLAGS"
+
+AC_ARG_ENABLE([pie],
+    [AS_HELP_STRING([--disable-pie],[Disable PIE/RELRO hardening])],,
+    [enable_pie=yes])
+
+AS_IF([test "$enable_pie" = "yes"],
+ [
+saved_CFLAGS="$CFLAGS"
+saved_LDFLAGS="$LDFLAGS"
+saved_LIBS="$LIBS"
+CFLAGS="$CFLAGS -fPIE"
 LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
-LIBS="$LIBS $Opus_LIBS"
+LIBS="$LIBS $OPUS_LIBS"
 AC_MSG_CHECKING([for PIE support])
 AC_LINK_IFELSE([AC_LANG_SOURCE([
-#include <opus.h>
+#include <opus/opus.h>
 void main () {
   OpusDecoder *dec = opus_decoder_create(48000, 2, 0L);
 }])],
-               [ac_build_pie=yes],
-               [ac_build_pie=no])
-AC_MSG_RESULT([$ac_build_pie])
-if test "x$ac_build_pie" = "xyes"; then
-    PIE_CFLAGS="-fPIE"
-    PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
-fi
-CFLAGS="$save_CFLAGS $PIE_CFLAGS"
-LDFLAGS="$save_LDFLAGS $PIE_LDFLAGS"
-LIBS="$save_LIBS"
-fi
+    [ AC_MSG_RESULT([yes]) ],
+    [ AC_MSG_RESULT([no])
+      enable_pie=no
+      CFLAGS="$saved_CFLAGS"
+      LDFLAGS="$saved_LDFLAGS"
+    ])
+LIBS="$saved_LIBS"
+ ])
 
 CFLAGS="$CFLAGS -W"
 
@@ -315,17 +282,16 @@ saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
 AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
-      [ AC_MSG_RESULT([yes])
-        EXTRA_WARNS="-Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes" ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS $EXTRA_WARNS"
+    [ AC_MSG_RESULT([yes]) ],
+    [ AC_MSG_RESULT([no])
+      CFLAGS="$saved_CFLAGS"
+    ])
 
 AC_FUNC_FSEEKO
 AC_CHECK_FUNCS([lrintf])
 AC_CHECK_FUNCS([lrint])
 AC_CHECK_FUNCS([fminf])
 AC_CHECK_FUNCS([fmaxf])
-AC_CHECK_FUNCS([__malloc_hook])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_HEADERS([config.h])
@@ -339,13 +305,13 @@ AC_MSG_NOTICE([
 
       C99 var arrays: ................ ${has_var_arrays}
       C99 lrintf: .................... ${ac_cv_func_lrintf}
-      Stack protector: ............... ${ac_build_stack_protector}
-      PIE: ........................... ${ac_build_pie}
+      Stack protector: ............... ${enable_stack_protector}
+      PIE: ........................... ${enable_pie}
 
     General configuration:
 
-      Assertion checking: ............ ${ac_enable_assertions}
-      FLAC input: .................... ${ac_enable_flac}
+      Assertion checking: ............ ${enable_assertions}
+      FLAC input: .................... ${with_flac}
 
 ------------------------------------------------------------------------
 
