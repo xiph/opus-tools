@@ -79,9 +79,6 @@ AC_TRY_COMPILE([], [static int x; char a[++x]; a[sizeof a - 1] = 0; int N; retur
     ])
 AC_MSG_RESULT([$has_var_arrays])
 
-AC_CHECK_FUNC([exp],,[AC_CHECK_LIB([m],[exp],[LIBM="-lm"])])
-AC_SUBST([LIBM])
-
 AC_CHECK_LIB([winmm], [main])
 
 AC_ARG_ENABLE([assertions],
@@ -291,10 +288,21 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
     ])
 
 AC_FUNC_FSEEKO
+
+dnl This is a bit of a mess.  Really we should probably use AC_SEARCH_LIBS to
+dnl check for these, since on Linux at least they aren't found unless libm is
+dnl linked, but that may not be true everywhere.  But we also don't want LIBS
+dnl to contain -lm, since not everything we build actually needs that.
+dnl However the only thing that uses them is opusdec, and since it also uses
+dnl the speex resampler, it already needs libm for lots of other things too.
+dnl So check for them with -lm in LIBS, and then clear it after we're done.
+saved_LIBS="$LIBS"
+LIBS="$LIBS -lm"
 AC_CHECK_FUNCS([lrintf])
 AC_CHECK_FUNCS([lrint])
 AC_CHECK_FUNCS([fminf])
 AC_CHECK_FUNCS([fmaxf])
+LIBS="$saved_LIBS"
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_HEADERS([config.h])
