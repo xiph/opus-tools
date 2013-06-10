@@ -48,7 +48,8 @@ AC_CACHE_CHECK([for C/C++ restrict keyword], ac_cv_c_restrict,
      test "$ac_cv_c_restrict" != no && break
    done
   ])
- AH_VERBATIM([restrict],
+
+AH_VERBATIM([restrict],
 [/* Define to the equivalent of the C99 'restrict' keyword, or to
    nothing if this is not supported.  Do not define if restrict is
    supported directly.  */
@@ -62,24 +63,26 @@ AC_CACHE_CHECK([for C/C++ restrict keyword], ac_cv_c_restrict,
 # define _Restrict
 # define __restrict__
 #endif])
- case $ac_cv_c_restrict in
+
+case $ac_cv_c_restrict in
    restrict) ;;
    no) AC_DEFINE([restrict], []) ;;
    *)  AC_DEFINE_UNQUOTED([restrict], [$ac_cv_c_restrict]) ;;
- esac
+esac
 
 AC_MSG_CHECKING(for C99 variable-size arrays)
-AC_TRY_COMPILE( [], [static int x; char a[++x]; a[sizeof a - 1] = 0; int N; return a[0];],
-[has_var_arrays=yes;AC_DEFINE([VAR_ARRAYS], [], [Use C99 variable-size arrays])
-],
-has_var_arrays=no
-)
-AC_MSG_RESULT($has_var_arrays)
+AC_TRY_COMPILE([], [static int x; char a[++x]; a[sizeof a - 1] = 0; int N; return a[0];],
+    [ has_var_arrays=yes
+      AC_DEFINE([VAR_ARRAYS], [1], [Use C99 variable-size arrays])
+    ],[
+      has_var_arrays=no
+    ])
+AC_MSG_RESULT([$has_var_arrays])
 
 AC_CHECK_FUNC([exp],,[AC_CHECK_LIB([m],[exp],[LIBM="-lm"])])
 AC_SUBST([LIBM])
 
-AC_CHECK_LIB(winmm, main)
+AC_CHECK_LIB([winmm], [main])
 
 AC_ARG_ENABLE([assertions],
     [AS_HELP_STRING([--enable-assertions],[enable additional software error checking])],,
@@ -90,14 +93,16 @@ AS_IF([test "$enable_assertions" = "yes"], [
 ])
 
 if test "$CFLAGS" = "-g -O2"; then
-saved_CFLAGS="$CFLAGS"
-CFLAGS="-O3 -ffast-math"
-AC_MSG_CHECKING([if ${CC} supports -O3 -g -ffast-math])
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
-      [ AC_MSG_RESULT([yes])
-        saved_CFLAGS="-O3 -g -ffast-math" ],
-        AC_MSG_RESULT([no]))
-CFLAGS="$saved_CFLAGS"
+    saved_CFLAGS="$CFLAGS"
+    CFLAGS="-O3 -ffast-math"
+    AC_MSG_CHECKING([if ${CC} supports -O3 -g -ffast-math])
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+        [ AC_MSG_RESULT([yes])
+          saved_CFLAGS="-O3 -g -ffast-math"
+        ],[
+          AC_MSG_RESULT([no])
+        ])
+    CFLAGS="$saved_CFLAGS"
 fi
 
 dnl check for pkg-config itself so we don't try the m4 macro without pkg-config
@@ -212,10 +217,10 @@ AC_ARG_ENABLE([sse],
 
 AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
  [
-saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse"
-AC_MSG_CHECKING([if ${CC} supports -msse])
-AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
+  saved_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS -msse"
+  AC_MSG_CHECKING([if ${CC} supports -msse])
+  AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
     [ AC_MSG_RESULT([yes]) ],
     [
       AC_MSG_RESULT([no])
@@ -236,10 +241,10 @@ AC_ARG_ENABLE([stack-protector],
 
 AS_IF([test "$enable_stack_protector" = "yes"],
  [
-saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -fstack-protector-all"
-AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
-AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
+  saved_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS -fstack-protector-all"
+  AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
+  AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
     [ AC_MSG_RESULT([yes]) ],
     [
       AC_MSG_RESULT([no])
@@ -255,25 +260,23 @@ AC_ARG_ENABLE([pie],
 
 AS_IF([test "$enable_pie" = "yes"],
  [
-saved_CFLAGS="$CFLAGS"
-saved_LDFLAGS="$LDFLAGS"
-saved_LIBS="$LIBS"
-CFLAGS="$CFLAGS -fPIE"
-LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
-LIBS="$LIBS $OPUS_LIBS"
-AC_MSG_CHECKING([for PIE support])
-AC_LINK_IFELSE([AC_LANG_SOURCE([
+  saved_CFLAGS="$CFLAGS"
+  saved_LDFLAGS="$LDFLAGS"
+  saved_LIBS="$LIBS"
+  CFLAGS="$CFLAGS -fPIE"
+  LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
+  LIBS="$LIBS $OPUS_LIBS"
+  AC_MSG_CHECKING([for PIE support])
+  AC_LINK_IFELSE([AC_LANG_SOURCE([
 #include <opus/opus.h>
-void main () {
-  OpusDecoder *dec = opus_decoder_create(48000, 2, 0L);
-}])],
+void main () { OpusDecoder *dec = opus_decoder_create(48000, 2, 0L); }])],
     [ AC_MSG_RESULT([yes]) ],
     [ AC_MSG_RESULT([no])
       enable_pie=no
       CFLAGS="$saved_CFLAGS"
       LDFLAGS="$saved_LDFLAGS"
     ])
-LIBS="$saved_LIBS"
+  LIBS="$saved_LIBS"
  ])
 
 CFLAGS="$CFLAGS -W"
