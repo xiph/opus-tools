@@ -301,7 +301,6 @@ dnl So check for them with -lm in LIBS, and then clear it after we're done.
 saved_LIBS="$LIBS"
 LIBS="$LIBS -lm"
 AC_CHECK_FUNCS([lrintf])
-AC_CHECK_FUNCS([lrint])
 AC_CHECK_FUNCS([fminf])
 AC_CHECK_FUNCS([fmaxf])
 LIBS="$saved_LIBS"
