@@ -31,6 +31,8 @@ AC_C_INLINE
 
 #Use a hacked up version of autoconf's AC_C_RESTRICT because it's not
 #strong enough a test to detect old buggy versions of GCC (e.g. 2.95.3)
+#Note: Both this and the test for variable-size arrays below are also
+#      done by AC_PROG_CC_C99, but not thoroughly enough apparently.
 AC_CACHE_CHECK([for C/C++ restrict keyword], ac_cv_c_restrict,
   [ac_cv_c_restrict=no
    # The order here caters to the fact that C++ does not require restrict.
@@ -71,7 +73,8 @@ case $ac_cv_c_restrict in
 esac
 
 AC_MSG_CHECKING(for C99 variable-size arrays)
-AC_TRY_COMPILE([], [static int x; char a[++x]; a[sizeof a - 1] = 0; int N; return a[0];],
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],
+                   [[static int x; char a[++x]; a[sizeof a - 1] = 0; int N; return a[0];]])],
     [ has_var_arrays=yes
       AC_DEFINE([VAR_ARRAYS], [1], [Use C99 variable-size arrays])
     ],[
@@ -93,7 +96,7 @@ if test "$CFLAGS" = "-g -O2"; then
     saved_CFLAGS="$CFLAGS"
     CFLAGS="-O3 -ffast-math"
     AC_MSG_CHECKING([if ${CC} supports -O3 -g -ffast-math])
-    AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
         [ AC_MSG_RESULT([yes])
           saved_CFLAGS="-O3 -g -ffast-math"
         ],[
@@ -217,7 +220,7 @@ AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
   saved_CFLAGS="$CFLAGS"
   CFLAGS="$CFLAGS -msse"
   AC_MSG_CHECKING([if ${CC} supports -msse])
-  AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[char foo;]])],
     [ AC_MSG_RESULT([yes]) ],
     [
       AC_MSG_RESULT([no])
@@ -241,7 +244,7 @@ AS_IF([test "$enable_stack_protector" = "yes"],
   saved_CFLAGS="$CFLAGS"
   CFLAGS="$CFLAGS -fstack-protector-all"
   AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
-  AC_LINK_IFELSE([AC_LANG_SOURCE([void main(void){char foo;}])],
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[char foo;]])],
     [ AC_MSG_RESULT([yes]) ],
     [
       AC_MSG_RESULT([no])
@@ -264,9 +267,8 @@ AS_IF([test "$enable_pie" = "yes"],
   LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
   LIBS="$LIBS $OPUS_LIBS"
   AC_MSG_CHECKING([for PIE support])
-  AC_LINK_IFELSE([AC_LANG_SOURCE([
-#include <opus/opus.h>
-void main () { OpusDecoder *dec = opus_decoder_create(48000, 2, 0L); }])],
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <opus/opus.h>]],
+                                  [[OpusDecoder *dec = opus_decoder_create(48000, 2, 0L)]])],
     [ AC_MSG_RESULT([yes]) ],
     [ AC_MSG_RESULT([no])
       enable_pie=no
@@ -281,7 +283,7 @@ CFLAGS="$CFLAGS -W"
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
 AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes])
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
     [ AC_MSG_RESULT([yes]) ],
     [ AC_MSG_RESULT([no])
       CFLAGS="$saved_CFLAGS"
