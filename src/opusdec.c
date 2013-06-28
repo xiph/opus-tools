@@ -284,7 +284,33 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
    /*Open output file*/
    if (strlen(outFile)==0)
    {
-#if defined HAVE_SYS_SOUNDCARD_H
+#if defined HAVE_LIBSNDIO
+      struct sio_par par;
+
+      hdl = sio_open(NULL, SIO_PLAY, 0);
+      if (!hdl)
+      {
+         fprintf(stderr, "Cannot open sndio device\n");
+         quit(1);
+      }
+
+      sio_initpar(&par);
+      par.sig = 1;
+      par.bits = 16;
+      par.rate = rate;
+      par.pchan = *channels;
+
+      if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
+        par.sig != 1 || par.bits != 16 || par.rate != rate) {
+          fprintf(stderr, "could not set sndio parameters\n");
+          quit(1);
+      }
+      *channels = par.pchan;
+      if (!sio_start(hdl)) {
+          fprintf(stderr, "could not start sndio\n");
+          quit(1);
+      }
+#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
       int audio_fd, format, stereo;
       audio_fd=open("/dev/dsp", O_WRONLY);
       if (audio_fd<0)
@@ -339,32 +365,6 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       {
         perror("Cannot open output");
         quit(1);
-      }
-#elif defined HAVE_LIBSNDIO
-      struct sio_par par;
-
-      hdl = sio_open(NULL, SIO_PLAY, 0);
-      if (!hdl)
-      {
-         fprintf(stderr, "Cannot open sndio device\n");
-         quit(1);
-      }
-
-      sio_initpar(&par);
-      par.sig = 1;
-      par.bits = 16;
-      par.rate = rate;
-      par.pchan = *channels;
-
-      if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
-        par.sig != 1 || par.bits != 16 || par.rate != rate) {
-          fprintf(stderr, "could not set sndio parameters\n");
-          quit(1);
-      }
-      *channels = par.pchan;
-      if (!sio_start(hdl)) {
-          fprintf(stderr, "could not start sndio\n");
-          quit(1);
       }
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
