@@ -55,12 +55,12 @@ resampler_CPPFLAGS = -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_
 
 opusenc_SOURCES = src/opus_header.c src/opusenc.c src/picture.c src/resample.c src/audio-in.c src/diag_range.c src/flac.c src/lpc.c win32/unicode_support.c
 opusenc_CPPFLAGS = $(AM_CPPFLAGS) $(resampler_CPPFLAGS)
-opusenc_LDADD = $(OGG_LIBS) $(OPUS_LIBS) -lm
+opusenc_LDADD = $(OGG_LIBS) $(OPUS_LIBS) $(LIBM)
 opusenc_MANS = man/opusenc.1
 
 opusdec_SOURCES = src/opus_header.c src/wav_io.c src/wave_out.c src/opusdec.c src/resample.c src/diag_range.c win32/unicode_support.c
 opusdec_CPPFLAGS = $(AM_CPPFLAGS) $(resampler_CPPFLAGS)
-opusdec_LDADD = $(OGG_LIBS) $(OPUS_LIBS) -lm
+opusdec_LDADD = $(OGG_LIBS) $(OPUS_LIBS) $(LIBM)
 opusdec_MANS = man/opusdec.1
 
 opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c src/picture.c win32/unicode_support.c
