@@ -5,10 +5,8 @@ AUTOMAKE_OPTIONS = subdir-objects 1.11 dist-zip dist-xz
 
 SUBDIRS = .
 
-INCLUDES = -I$(top_srcdir)/src -I$(top_srcdir)/win32
-
+AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/win32 -D_FORTIFY_SOURCE=2
 AM_CFLAGS = $(OGG_CFLAGS) $(OPUS_CFLAGS)
-AM_CPPFLAGS = -D_FORTIFY_SOURCE=2
 
 bin_PROGRAMS = opusenc opusdec opusinfo
 noinst_PROGRAMS = opusrtp
