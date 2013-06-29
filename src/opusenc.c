@@ -266,7 +266,6 @@ int main(int argc, char **argv)
     {"serial", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
     {"set-ctl-int", required_argument, NULL, 0},
-    {"uncoupled", no_argument, NULL, 0},
     {"help", no_argument, NULL, 0},
     {"raw", no_argument, NULL, 0},
     {"raw-bits", required_argument, NULL, 0},
@@ -341,7 +340,6 @@ int main(int argc, char **argv)
   int                expect_loss=0;
   int                complexity=10;
   int                downmix=0;
-  int                uncoupled=0;
   int                *opt_ctls_ctlval;
   int                opt_ctls=0;
   int                max_ogg_delay=48000; /*48kHz samples*/
@@ -529,8 +527,6 @@ int main(int argc, char **argv)
             exit(1);
           }
           range_file=optarg;
-        }else if(strcmp(long_options[option_index].name,"uncoupled")==0){
-          uncoupled=1;
         }else if(strcmp(long_options[option_index].name,"comment")==0){
           save_cmd=0;
           if(!strchr(optarg,'=')){

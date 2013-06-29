@@ -133,7 +133,7 @@ AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
 
 dnl check for Opus
 AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
- [PKG_CHECK_MODULES([OPUS],[opus >= 0.9.10])],
+ [PKG_CHECK_MODULES([OPUS],[opus >= 1.0.3])],
  [
   dnl fall back to the old school test
   XIPH_PATH_OPUS(, AC_MSG_ERROR([
