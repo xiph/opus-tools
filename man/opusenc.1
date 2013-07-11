@@ -100,15 +100,38 @@ Show command help
 .IP "-V, --version"
 Show the version number
 .IP "--bitrate N.nnn"
-Encoding bitrate in kbit/sec (6-256 per channel)
+Target bitrate in kbit/sec (6-256 per channel)
+
+In VBR mode this specifies the average rate for a large and diverse
+collection of audio. In CVBR and Hard-CBR mode it specifies the specific
+output bitrate.
+
+.IP "--quality N.nnn"
+Target audio quality (6-256 per channel).
+
+In VBR mode this is the same as bitrate: It specifies quality in terms of the
+average rate for a large collection of audio.
 .br
 Default for >=44.1kHz input is 64kbps per mono stream, 96kbps per coupled pair.
 .IP "--vbr"
 Use variable bitrate encoding (default)
+
+In VBR mode the bitrate may go up and down freely depending on the content
+to achieve more consistent quality.
+
 .IP "--cvbr"
-Use constrained variable bitrate encoding
+Use constrained variable bitrate encoding.
+
+Outputs to a specific bitrate. This mode is analogous to CBR in AAC/MP3
+encoders and managed mode in vorbis coders. This delivers less consistent
+quality than VBR mode but consistent bitrate.
 .IP "--hard-cbr"
-Use hard constant bitrate encoding
+Use hard constant bitrate encoding.
+
+With hard-cbr every frame will be exactly the same size, similar to how
+speech codecs work. This delivers lower overall quality but is useful
+ where bitrate changes might leak data in encrypted channels or on
+synchronous transports.
 .IP "--comp N"
 Encoding computational complexity (0-10, default: 10). Zero gives the
 fastest encodes but lower quality, while 10 gives the highest quality

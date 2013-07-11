@@ -129,7 +129,8 @@ void usage(void)
   printf("  filename.opus     compressed file\n");
   printf("  -                 stdout\n");
   printf("\nEncoding options:\n");
-  printf(" --bitrate n.nnn    Encoding bitrate in kbit/sec (6-256 per channel)\n");
+  printf(" --bitrate n.nnn    Target bitrate in kbit/sec (6-256/channel)\n");
+  printf(" --quality n.nnn    Target quality (6-256/channel; same as bitrate in VBR)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -252,6 +253,7 @@ int main(int argc, char **argv)
   {
     {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
+    {"quality", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
@@ -403,7 +405,8 @@ int main(int argc, char **argv)
       case 0:
         if(strcmp(long_options[option_index].name,"quiet")==0){
           quiet=1;
-        }else if(strcmp(long_options[option_index].name,"bitrate")==0){
+        }else if(strcmp(long_options[option_index].name,"bitrate")==0||
+                 strcmp(long_options[option_index].name,"quality")==0){
           bitrate=atof(optarg)*1000.;
         }else if(strcmp(long_options[option_index].name,"hard-cbr")==0){
           with_hard_cbr=1;
