@@ -129,7 +129,7 @@ void usage(void)
   printf("  filename.opus     compressed file\n");
   printf("  -                 stdout\n");
   printf("\nEncoding options:\n");
-  printf(" --bitrate n.nnn    Encoding bitrate in kbit/sec (6-256 per channel)\n");
+  printf(" --bitrate n.nnn    Target bitrate in kbit/sec (6-256/channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
