@@ -27,6 +27,7 @@
     <ClCompile Include="lpc.c" />
     <ClCompile Include="opusenc.c" />
     <ClCompile Include="opus_header.c" />
+    <ClCompile Include="picture.c" />
     <ClCompile Include="resample.c" />
     <ClCompile Include="..\win32\unicode_support.c" />
     <ClCompile Include="wave_out.c" />
@@ -43,6 +44,7 @@
     <ClInclude Include="opusinfo.h" />
     <ClInclude Include="opus_header.h" />
     <ClInclude Include="os_support.h" />
+    <ClInclude Include="picture.h" />
     <ClInclude Include="resample_sse.h" />
     <ClInclude Include="speex_resampler.h" />
     <ClInclude Include="stack_alloc.h" />

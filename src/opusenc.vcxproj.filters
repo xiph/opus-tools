@@ -32,6 +32,9 @@
     <ClCompile Include="opusenc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="picture.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="resample.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -65,6 +68,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="os_support.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="picture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="speex_resampler.h">
