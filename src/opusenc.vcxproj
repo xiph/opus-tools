@@ -90,19 +90,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>..\..\opus\Debug;..\..\libogg\win32\VS2010\Win32\Debug;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>..\..\opus\x64\Debug;..\..\libogg\win32\VS2010\x64\Debug;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>..\..\opus\Release;..\..\libogg\win32\VS2010\Win32\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>..\..\opus\x64\Release;..\..\libogg\win32\VS2010\x64\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusenc\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
