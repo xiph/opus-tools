@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS = subdir-objects 1.11 dist-zip dist-xz
 SUBDIRS = .
 
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/win32 -D_FORTIFY_SOURCE=2
-AM_CFLAGS = $(OGG_CFLAGS) $(OPUS_CFLAGS)
+AM_CFLAGS = $(OPUS_CFLAGS) $(OGG_CFLAGS)
 
 bin_PROGRAMS = opusenc opusdec opusinfo
 noinst_PROGRAMS = opusrtp
@@ -59,7 +59,7 @@ opusenc_MANS = man/opusenc.1
 
 opusdec_SOURCES = src/opus_header.c src/wav_io.c src/wave_out.c src/opusdec.c src/resample.c src/diag_range.c win32/unicode_support.c
 opusdec_CPPFLAGS = $(AM_CPPFLAGS) $(resampler_CPPFLAGS)
-opusdec_LDADD = $(OGG_LIBS) $(OPUS_LIBS) $(LIBM)
+opusdec_LDADD = $(OPUS_LIBS) $(OGG_LIBS) $(LIBM)
 opusdec_MANS = man/opusdec.1
 
 opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c src/picture.c win32/unicode_support.c
@@ -68,7 +68,7 @@ opusinfo_LDADD = $(OGG_LIBS)
 opusinfo_MANS = man/opusinfo.1
 
 opusrtp_SOURCES = src/opusrtp.c
-opusrtp_LDADD = @LIBPCAP@ $(OGG_LIBS) $(OPUS_LIBS)
+opusrtp_LDADD = $(OPUS_LIBS) $(OGG_LIBS) @LIBPCAP@
 
 #TESTS = FIXME
 
