@@ -142,8 +142,6 @@ AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
     please see http://opus-codec.org/ for how to
     obtain a copy.
   ]))
-  CFLAGS="$CFLAGS $OPUS_CFLAGS"
-  LIBS="$LIBS $OPUS_LIBS"
  ])
 
 dnl check for OSS
