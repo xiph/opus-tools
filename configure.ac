@@ -191,8 +191,6 @@ AS_IF([test "$with_flac" = "yes"],
     )
    ])
 
-  CFLAGS="$FLAC_CFLAGS $CFLAGS"
-  LIBS="$FLAC_LIBS $LIBS"
   AC_DEFINE([HAVE_LIBFLAC],[1],[FLAC])
  ])
 
