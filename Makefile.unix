@@ -5,7 +5,7 @@
 -include package_version
 
 #CC=gcc
-CFLAGS := -O2 -g -c -Wall -Wextra $(CFLAGS)
+CFLAGS := -O2 -g -c -Wall -Wextra -DHAVE_LIBFLAC $(CFLAGS)
 INCLUDES := -I../opus/include -I/usr/include/FLAC
 
 ifneq (,$(findstring mingw,$(CC)))
