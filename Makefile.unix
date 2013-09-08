@@ -24,7 +24,8 @@ clean:
 .PHONY: all clean
 
 
-VERSIONED_OBJS = src/opusenc.o src/opusdec.o src/opusinfo.o src/opusrtp.o
+VERSIONED_OBJS = src/opusenc.o src/opusdec.o src/opusinfo.o src/opusrtp.o \
+  src/wave_out.o
 
 $(VERSIONED_OBJS): CFLAGS += -DPACKAGE_NAME='"opus-tools"' -DPACKAGE_VERSION='$(PACKAGE_VERSION)'
 $(VERSIONED_OBJS): package_version
