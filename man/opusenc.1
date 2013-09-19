@@ -174,7 +174,9 @@ See the vorbis-comment specification for well known tag names:
 http://www.xiph.org/vorbis/doc/v-comment.html
 .IP "--artist artist"
 Set the artist comment field to
-.I artist
+.I artist.
+This may be used multiple times to list contributing artists individually.
+Note that some playback software does not display multiple artists gracefully.
 .IP "--title title"
 Set the track title comment field to
 .I title
@@ -186,7 +188,9 @@ Set the date comment field to
 .I YYYY-MM-DD
 .IP "--genre genre"
 Set the genre comment field to
-.I genre
+.I genre.
+This option may be specified multiple times to tag a track with
+multiple overlapping genres.
 .IP "--picture filename|specification"
 Attach album art for the track.
 
