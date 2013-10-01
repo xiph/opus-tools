@@ -1,6 +1,6 @@
 @echo off
 
-for /f %%v in ('git describe --tags --match "v*"') do set version=%%v
+for /f %%v in ('git describe --tags --match "v*" --always') do set version=%%v
 
 set version_out=#define %2 "%version%"
 
