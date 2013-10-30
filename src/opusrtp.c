@@ -510,7 +510,7 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
   return ret;
 }
 
-int rtp_send_file(const char *filename)
+int rtp_send_file(const char *filename, const char *dest, int port)
 {
   rtp_header rtp;
   int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -523,8 +523,12 @@ int rtp_send_file(const char *filename)
     return fd;
   }
   sin.sin_family = AF_INET;
-  sin.sin_port = htons(1234);
-  sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+  sin.sin_port = htons(port);
+  if ((sin.sin_addr.s_addr = inet_addr(dest)) == INADDR_NONE) {
+    fprintf(stderr, "Invalid address %s\n", dest);
+    return -1;
+  }
+
   ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
   if (ret < 0) {
     fprintf(stderr, "Couldn't set socket options\n");
@@ -634,10 +638,10 @@ int rtp_send_file(const char *filename)
   return 0;
 }
 #else /* _WIN32 */
-int rtp_send_file(const char *filename)
+int rtp_send_file(const char *filename, const char *addr, int port)
 {
-  fprintf(stderr, "Cannot send '%s'. Socket support not available.\n",
-      filename);
+  fprintf(stderr, "Cannot send '%s to %s:%d'. Socket support not available.\n",
+          filename, addr, port);
   return -2;
 }
 #endif
@@ -855,6 +859,8 @@ void usage(char *exe)
   printf(" -h, --help           This help\n");
   printf(" -V, --version        Version information\n");
   printf(" -q, --quiet          Suppress status output\n");
+  printf(" -d, --destination    Destination address (default 127.0.0.1)\n");
+  printf(" -p, --port           Destination port (default 1234)\n");
   printf(" --sniff              Sniff and record Opus RTP streams\n");
   printf("\n");
   printf("By default, the given file(s) will be sent over RTP.\n");
@@ -863,16 +869,20 @@ void usage(char *exe)
 int main(int argc, char *argv[])
 {
   int option, i;
+  const char *dest = "127.0.0.1";
+  int port = 1234;
   struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'V'},
     {"quiet", no_argument, NULL, 'q'},
+    {"destination", optional_argument, NULL, 'd'},
+    {"port", optional_argument, NULL, 'p'},
     {"sniff", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
 
   /* process command line arguments */
-  while ((option = getopt_long(argc, argv, "hVq", long_options, &i)) != -1) {
+  while ((option = getopt_long(argc, argv, "hVqd:p:", long_options, &i)) != -1) {
     switch (option) {
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
@@ -893,6 +903,14 @@ int main(int argc, char *argv[])
         return 0;
       case 'q':
         break;
+      case 'd':
+        if (optarg)
+            dest = optarg;
+        break;
+      case 'p':
+        if (optarg)
+            port = atoi(optarg);
+        break;
       case 'h':
         usage(argv[0]);
         return 0;
@@ -904,7 +922,7 @@ int main(int argc, char *argv[])
   }
 
   for (i = optind; i < argc; i++) {
-    rtp_send_file(argv[i]);
+    rtp_send_file(argv[i], dest, port);
   }
 
   return 0;
