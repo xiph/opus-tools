@@ -875,8 +875,8 @@ int main(int argc, char *argv[])
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'V'},
     {"quiet", no_argument, NULL, 'q'},
-    {"destination", optional_argument, NULL, 'd'},
-    {"port", optional_argument, NULL, 'p'},
+    {"destination", required_argument, NULL, 'd'},
+    {"port", required_argument, NULL, 'p'},
     {"sniff", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
