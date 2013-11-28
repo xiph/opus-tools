@@ -207,11 +207,11 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         offs+=4;
         WRITE_U32_BE(buf+offs,(FLAC__uint32)mime_type_length);
         offs+=4;
-        memcpy(buf,metadata->data.picture.mime_type,mime_type_length);
+        memcpy(buf+offs,metadata->data.picture.mime_type,mime_type_length);
         offs+=mime_type_length;
         WRITE_U32_BE(buf+offs,(FLAC__uint32)description_length);
         offs+=4;
-        memcpy(buf,metadata->data.picture.description,description_length);
+        memcpy(buf+offs,metadata->data.picture.description,description_length);
         offs+=description_length;
         WRITE_U32_BE(buf+offs,metadata->data.picture.width);
         offs+=4;
