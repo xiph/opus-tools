@@ -278,7 +278,7 @@ static void print_comments(char *comments, int length)
    }
 }
 
-FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family, int *channels)
+FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family, int *channels, int fp)
 {
    FILE *fout=NULL;
    /*Open output file*/
@@ -429,7 +429,7 @@ FILE *out_file_open(char *outFile, int *wav_format, int rate, int mapping_family
       }
       if (*wav_format)
       {
-         *wav_format = write_wav_header(fout, rate, mapping_family, *channels);
+         *wav_format = write_wav_header(fout, rate, mapping_family, *channels, fp);
          if (*wav_format < 0)
          {
             fprintf (stderr, "Error writing WAV header.\n");
@@ -460,6 +460,7 @@ void usage(void)
    printf (" --rate n              Force decoding at sampling rate n Hz\n");
    printf (" --gain n              Manually adjust gain by n.nn dB (0 default)\n");
    printf (" --no-dither           Do not dither 16-bit output\n");
+   printf (" --float               32-bit floating-point output\n");
    printf (" --force-wav           Force wav header on output\n");
    printf (" --packet-loss n       Simulate n %% random packet loss\n");
    printf (" --save-range file     Saves check values for every frame to a file\n");
@@ -558,7 +559,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate,
 }
 
 opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, SpeexResamplerState *resampler,
-                       int *skip, shapestate *shapemem, int file, opus_int64 maxout)
+                       int *skip, shapestate *shapemem, int file, opus_int64 maxout, int fp)
 {
    opus_int64 sampout=0;
    int i,ret,tmp_skip;
@@ -590,16 +591,19 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
        frame_size=0;
      }
 
-     /*Convert to short and save to output file*/
-     if (shapemem){
-       shape_dither_toshort(shapemem,out,output,out_len,channels);
-     }else{
-       for (i=0;i<(int)out_len*channels;i++)
-         out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
-     }
-     if ((le_short(1)!=1)&&file){
-       for (i=0;i<(int)out_len*channels;i++)
-         out[i]=le_short(out[i]);
+     if(!file||!fp)
+     {
+        /*Convert to short and save to output file*/
+        if (shapemem){
+          shape_dither_toshort(shapemem,out,output,out_len,channels);
+        }else{
+          for (i=0;i<(int)out_len*channels;i++)
+            out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
+        }
+        if ((le_short(1)!=1)&&file){
+          for (i=0;i<(int)out_len*channels;i++)
+            out[i]=le_short(out[i]);
+        }
      }
 
      if(maxout>0)
@@ -617,7 +621,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout, Spe
          else fprintf(stderr, "Error playing audio.\n");
        }else
 #endif
-         ret=fwrite(out, 2*channels, out_len<maxout?out_len:maxout, fout);
+         ret=fwrite(fp?(char *)output:(char *)out, (fp?4:2)*channels, out_len<maxout?out_len:maxout, fout);
        sampout+=ret;
        maxout-=ret;
      }
@@ -650,6 +654,7 @@ int main(int argc, char **argv)
       {"rate", required_argument, NULL, 0},
       {"gain", required_argument, NULL, 0},
       {"no-dither", no_argument, NULL, 0},
+      {"float", no_argument, NULL, 0},
       {"force-wav", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {"save-range", required_argument, NULL, 0},
@@ -675,6 +680,7 @@ int main(int argc, char **argv)
    int has_tags_packet=0;
    ogg_int32_t opus_serialno;
    int dither=1;
+   int fp=0;
    shapestate shapemem;
    SpeexResamplerState *resampler=NULL;
    float gain=1;
@@ -733,6 +739,9 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
             dither=0;
+         } else if (strcmp(long_options[option_index].name,"float")==0)
+         {
+            fp=1;
          } else if (strcmp(long_options[option_index].name,"force-wav")==0)
          {
             forcewav=1;
@@ -799,7 +808,11 @@ int main(int argc, char **argv)
        relevant for playback. Many audio devices sound
        better at 48kHz and not resampling also saves CPU.*/
      if(rate==0)rate=48000;
+     /*Playback is 16-bit only.*/
+     fp=0;
    }
+   /*If the output is floating point, don't dither.*/
+   if(fp)dither=0;
 
    /*Open input file*/
    if (strcmp(inFile, "-")==0)
@@ -934,7 +947,7 @@ int main(int argc, char **argv)
                      fprintf(stderr, "resampler error: %s\n", speex_resampler_strerror(err));
                   speex_resampler_skip_zeros(resampler);
                }
-               if(!fout)fout=out_file_open(outFile, &wav_format, rate, mapping_family, &channels);
+               if(!fout)fout=out_file_open(outFile, &wav_format, rate, mapping_family, &channels, fp);
             } else if (packet_count==1)
             {
                if (!quiet)
@@ -983,7 +996,7 @@ int main(int argc, char **argv)
                if(!quiet){
                   /*Display a progress spinner while decoding.*/
                   static const char spinner[]="|/-\\";
-                  double coded_seconds = (double)audio_size/(channels*rate*sizeof(short));
+                  double coded_seconds = (double)audio_size/(channels*rate*(fp?4:2));
                   if(coded_seconds>=last_coded_seconds+1){
                      fprintf(stderr,"\r[%c] %02d:%02d:%02d", spinner[last_spin&3],
                              (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
@@ -1025,9 +1038,9 @@ int main(int argc, char **argv)
                  the final end-trim by not letting the output sample count
                  get ahead of the granpos indicated value.*/
                maxout=((page_granule-gran_offset)*rate/48000)-link_out;
-               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,0>maxout?0:maxout);
+               outsamp=audio_write(output, channels, frame_size, fout, resampler, &preskip, dither?&shapemem:0, strlen(outFile)!=0,0>maxout?0:maxout,fp);
                link_out+=outsamp;
-               audio_size+=sizeof(short)*outsamp*channels;
+               audio_size+=(fp?4:2)*outsamp*channels;
             }
             packet_count++;
          }
@@ -1044,9 +1057,9 @@ int main(int argc, char **argv)
                int tmp = drain;
                if (tmp > 100)
                   tmp = 100;
-               outsamp=audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)!=0, ((page_granule-gran_offset)*rate/48000)-link_out);
+               outsamp=audio_write(zeros, channels, tmp, fout, resampler, NULL, &shapemem, strlen(outFile)!=0, ((page_granule-gran_offset)*rate/48000)-link_out,fp);
                link_out+=outsamp;
-               audio_size+=sizeof(short)*outsamp*channels;
+               audio_size+=(fp?4:2)*outsamp*channels;
                drain -= tmp;
             } while (drain>0);
             free(zeros);
