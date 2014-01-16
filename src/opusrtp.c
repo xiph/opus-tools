@@ -109,10 +109,12 @@ ogg_packet *op_opushead(void)
 
   if (!data) {
     fprintf(stderr, "Couldn't allocate data buffer.\n");
+    free(op);
     return NULL;
   }
   if (!op) {
     fprintf(stderr, "Couldn't allocate Ogg packet.\n");
+    free(data);
     return NULL;
   }
 
@@ -146,10 +148,12 @@ ogg_packet *op_opustags(void)
 
   if (!data) {
     fprintf(stderr, "Couldn't allocate data buffer.\n");
+    free(op);
     return NULL;
   }
   if (!op) {
     fprintf(stderr, "Couldn't allocate Ogg packet.\n");
+    free(data);
     return NULL;
   }
 
@@ -804,15 +808,20 @@ int sniff(char *device)
   params->stream = malloc(sizeof(ogg_stream_state));
   if (!params->stream) {
     fprintf(stderr, "Couldn't allocate stream struct.\n");
+    free(params);
     return -1;
   }
   if (ogg_stream_init(params->stream, rand()) < 0) {
     fprintf(stderr, "Couldn't initialize Ogg stream state.\n");
+    free(params->stream);
+    free(params);
     return -1;
   }
   params->out = fopen("rtpdump.opus", "wb");
   if (!params->out) {
     fprintf(stderr, "Couldn't open output file.\n");
+    free(params->stream);
+    free(params);
     return -2;
   }
   params->seq = 0;
