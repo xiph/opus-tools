@@ -221,6 +221,7 @@ void usage(void)
   printf("                      imported, or the URL if the MIME-TYPE is -->.\n");
   printf(" --padding n        Extra bytes to reserve for metadata (default: 512)\n");
   printf(" --discard-comments Don't keep metadata when transcoding\n");
+  printf(" --discard-pictures Don't keep pictures when transcoding\n");
   printf("\nInput options:\n");
   printf(" --raw              Raw input\n");
   printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
@@ -285,6 +286,7 @@ int main(int argc, char **argv)
     {"picture", required_argument, NULL, 0},
     {"padding", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
+    {"discard-pictures", no_argument, NULL, 0},
     {0, 0, 0, 0}
   };
   int i, ret;
@@ -377,6 +379,7 @@ int main(int argc, char **argv)
   inopt.rawmode=0;
   inopt.ignorelength=0;
   inopt.copy_comments=1;
+  inopt.copy_pictures=1;
 
   start_time = time(NULL);
   srand(((getpid()&65535)<<15)^start_time);
@@ -567,6 +570,9 @@ int main(int argc, char **argv)
           comment_padding=atoi(optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
           inopt.copy_comments=0;
+          inopt.copy_pictures=0;
+        } else if(strcmp(long_options[option_index].name,"discard-pictures")==0){
+          inopt.copy_pictures=0;
         }
         /*Commands whos arguments would leak file paths or just end up as metadata
            should have save_cmd=0; to prevent them from being saved in the

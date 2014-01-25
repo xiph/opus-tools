@@ -197,6 +197,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         size_t buf_sz;
         size_t b64_sz;
         size_t offs;
+        if(!inopt->copy_pictures)break;
         mime_type_length=strlen(metadata->data.picture.mime_type);
         description_length=strlen((char *)metadata->data.picture.description);
         buf_sz=32+mime_type_length+description_length

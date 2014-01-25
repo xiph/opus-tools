@@ -73,6 +73,8 @@ opusenc \- encode audio into the Opus format
 ] [
 .B --discard-comments
 ] [
+.B --discard-pictures
+] [
 .B --raw
 ] [
 .B --raw-bits
@@ -298,6 +300,8 @@ extra bytes for metadata tags. This can make later tag editing more
 efficient. Defaults to 512.
 .IP "--discard-comments"
 Don't propagate metadata tags from the input file.
+.IP "--discard-pictures"
+Don't propagate pictures or art from the input file.
 
 .IP "--raw"
 Raw (headerless) PCM input
