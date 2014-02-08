@@ -377,6 +377,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
         opt->rate = format.rate;
         opt->channels = format.channels;
+        opt->samplesize = format.samplesize;
         opt->read_samples = wav_read; /* Similar enough, so we use the same */
         opt->total_samples_per_channel = format.totalframes;
 
@@ -437,6 +438,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     unsigned char buf[40];
     unsigned int len;
     int samplesize;
+    int validbits;
     wav_fmt format;
     wavfile *wav;
     int i;
@@ -493,6 +495,10 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         return 0;
       }
 
+      validbits = READ_U16_LE(buf+18);
+      if(validbits < 1 || validbits > format.samplesize)
+        validbits = format.samplesize;
+
       format.mask = READ_U32_LE(buf+20);
       /* warn the user if the format mask is not a supported/expected type */
       switch(format.mask){
@@ -529,6 +535,10 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
       }
       format.format = READ_U16_LE(buf+24);
     }
+    else
+    {
+      validbits = format.samplesize;
+    }
 
     if(!find_wav_chunk(in, "data", &len))
         return 0; /* EOF */
@@ -540,6 +550,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     }
     else if(format.format == 3)
     {
+        validbits = 24;
         samplesize = 4;
         opt->read_samples = wav_ieee_read;
     }
@@ -569,6 +580,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
            now we want to find the size of the file */
         opt->rate = format.samplerate;
         opt->channels = format.channels;
+        opt->samplesize = validbits;
 
         wav = malloc(sizeof(wavfile));
         wav->f = in;
