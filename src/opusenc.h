@@ -76,6 +76,7 @@ typedef struct {
     opus_int64 samplesread;
     FILE *f;
     short bigendian;
+    short unsigned8bit;
     int *channel_permute;
 } wavfile;
 

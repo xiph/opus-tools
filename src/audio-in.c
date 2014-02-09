@@ -388,6 +388,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         aiff->samplesize = format.samplesize;
         aiff->totalsamples = format.totalframes;
         aiff->bigendian = bigendian;
+        aiff->unsigned8bit = 0;
 
         if(aiff->channels>3)
           fprintf(stderr,"WARNING: AIFF[-C] files with greater than three channels use\n"
@@ -586,6 +587,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         wav->f = in;
         wav->samplesread = 0;
         wav->bigendian = 0;
+        wav->unsigned8bit = format.samplesize == 8;
         wav->channels = format.channels; /* This is in several places. The price
                                             of trying to abstract stuff. */
         wav->samplesize = format.samplesize;
@@ -676,12 +678,25 @@ long wav_read(void *in, float *buffer, int samples)
 
     if(f->samplesize==8)
     {
-        unsigned char *bufu = (unsigned char *)buf;
-        for(i = 0; i < realsamples; i++)
+        if(f->unsigned8bit)
         {
-            for(j=0; j < f->channels; j++)
+            unsigned char *bufu = (unsigned char *)buf;
+            for(i = 0; i < realsamples; i++)
             {
-                buffer[i*f->channels+j]=((int)(bufu[i*f->channels + ch_permute[j]])-128)/128.0f;
+                for(j=0; j < f->channels; j++)
+                {
+                    buffer[i*f->channels+j]=((int)(bufu[i*f->channels + ch_permute[j]])-128)/128.0f;
+                }
+            }
+        }
+        else
+        {
+            for(i = 0; i < realsamples; i++)
+            {
+                for(j=0; j < f->channels; j++)
+                {
+                    buffer[i*f->channels+j]=buf[i*f->channels + ch_permute[j]]/128.0f;
+                }
             }
         }
     }
@@ -788,6 +803,7 @@ int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     wav->f =             in;
     wav->samplesread =   0;
     wav->bigendian =     opt->endianness;
+    wav->unsigned8bit =  format.samplesize == 8;
     wav->channels =      format.channels;
     wav->samplesize =    opt->samplesize;
     wav->totalsamples =  0;
