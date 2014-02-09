@@ -170,7 +170,7 @@ static int find_wav_chunk(FILE *in, char *type, unsigned int *len)
     {
         if(fread(buf,1,8,in) < 8) /* Suck down a chunk specifier */
         {
-            fprintf(stderr, _("Warning: Unexpected EOF in reading WAV header\n"));
+            fprintf(stderr, _("Warning: Unexpected EOF reading WAV header\n"));
             return 0; /* EOF before reaching the appropriate chunk */
         }
 
@@ -317,7 +317,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
     if(fread(buffer,1,len,in) < len)
     {
-        fprintf(stderr, _("Warning: Unexpected EOF in reading AIFF header\n"));
+        fprintf(stderr, _("Warning: Unexpected EOF reading AIFF header\n"));
         return 0;
     }
 
@@ -391,9 +391,9 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         aiff->unsigned8bit = 0;
 
         if(aiff->channels>3)
-          fprintf(stderr,"WARNING: AIFF[-C] files with greater than three channels use\n"
-                  "speaker locations incompatable with Vorbis suppound definitions.\n"
-                  "Not performaing channel location mapping.\n");
+          fprintf(stderr, _("WARNING: AIFF[-C] files with more than three channels use\n"
+                  "speaker locations incompatible with Vorbis surround definitions.\n"
+                  "Not performing channel location mapping.\n"));
 
         opt->readdata = (void *)aiff;
 
@@ -412,9 +412,8 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     }
     else
     {
-        fprintf(stderr,
-                _("Warning: OggEnc does not support this type of AIFF/AIFC file\n"
-                " Must be 8 or 16 bit PCM.\n"));
+        fprintf(stderr, _("ERROR: Unsupported AIFF/AIFC file.\n"
+                "Must be 8 or 16 bit PCM.\n"));
         return 0;
     }
 }
@@ -477,7 +476,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
 
     if(fread(buf,1,len,in) < len)
     {
-        fprintf(stderr, _("Warning: Unexpected EOF in reading WAV header\n"));
+        fprintf(stderr, _("Warning: Unexpected EOF reading WAV header\n"));
         return 0;
     }
 
@@ -492,7 +491,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     {
       if(len<40)
       {
-        fprintf(stderr,"ERROR: Extended WAV format header invalid (too small)\n");
+        fprintf(stderr, _("ERROR: Extended WAV format header invalid (too small)\n"));
         return 0;
       }
 
@@ -504,20 +503,20 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
       /* warn the user if the format mask is not a supported/expected type */
       switch(format.mask){
       case 1539: /* 4.0 using side surround instead of back */
-        fprintf(stderr,"WARNING: WAV file uses side surround instead of rear for quadraphonic;\n"
-                "remapping side speakers to rear in encoding.\n");
+        fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for quadraphonic;\n"
+                "remapping side speakers to rear in encoding.\n"));
         break;
       case 1551: /* 5.1 using side instead of rear */
-        fprintf(stderr,"WARNING: WAV file uses side surround instead of rear for 5.1;\n"
-                "remapping side speakers to rear in encoding.\n");
+        fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for 5.1;\n"
+                "remapping side speakers to rear in encoding.\n"));
         break;
       case 319:  /* 6.1 using rear instead of side */
-        fprintf(stderr,"WARNING: WAV file uses rear surround instead of side for 6.1;\n"
-                "remapping rear speakers to side in encoding.\n");
+        fprintf(stderr, _("WARNING: WAV file uses rear surround instead of side for 6.1;\n"
+                "remapping rear speakers to side in encoding.\n"));
         break;
       case 255:  /* 7.1 'Widescreen' */
-        fprintf(stderr,"WARNING: WAV file is a 7.1 'Widescreen' channel mapping;\n"
-                "remapping speakers to Vorbis 7.1 format.\n");
+        fprintf(stderr, _("WARNING: WAV file is a 7.1 'Widescreen' channel mapping;\n"
+                "remapping speakers to Vorbis 7.1 format.\n"));
         break;
       case 0:    /* default/undeclared */
       case 1:    /* mono */
@@ -529,8 +528,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
       case 1599: /* 7.1 */
         break;
       default:
-        fprintf(stderr,"WARNING: Unknown WAV surround channel mask: %d\n"
-                "blindly mapping speakers using default SMPTE/ITU ordering.\n",
+        fprintf(stderr, _("WARNING: Unknown WAV surround channel mask: %d\n"
+                "Blindly mapping speakers using default SMPTE/ITU ordering.\n"),
                 format.mask);
         break;
       }
@@ -557,9 +556,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     }
     else
     {
-        fprintf(stderr,
-                _("ERROR: Wav file is unsupported type (must be standard PCM\n"
-                " or type 3 floating point PCM\n"));
+        fprintf(stderr, _("ERROR: Unsupported WAV file type.\n"
+                "Must be standard PCM or type 3 floating point PCM.\n"));
         return 0;
     }
 
@@ -651,9 +649,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     }
     else
     {
-        fprintf(stderr,
-                _("ERROR: Wav file is unsupported subformat (must be 8,16, or 24 bit PCM\n"
-                "or floating point PCM\n"));
+        fprintf(stderr, _("ERROR: Unsupported WAV sample size.\n"
+                "Must be 8, 16, or 24 bit PCM or 32 bit floating point PCM.\n"));
         return 0;
     }
 }
@@ -1044,9 +1041,13 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
     downmix *d;
     int i,j;
 
-    if(opt->channels<=out_channels || out_channels>2 || (out_channels==2&&opt->channels>8) || opt->channels<=0 || out_channels<=0) {
-        fprintf(stderr, "Downmix must actually downmix and only knows mono/stereo out.\n");
-        if(opt->channels>8)fprintf(stderr, "Downmix also only knows how to mix >8ch to mono.\n");
+    if(opt->channels<=out_channels || out_channels>2 || opt->channels<=0 || out_channels<=0) {
+        fprintf(stderr, _("Downmix must actually downmix and only knows mono/stereo out.\n"));
+        return 0;
+    }
+
+    if(out_channels==2 && opt->channels>8) {
+        fprintf(stderr, _("Downmix only knows how to mix >8ch to mono.\n"));
         return 0;
     }
 
