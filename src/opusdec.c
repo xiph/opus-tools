@@ -513,7 +513,7 @@ static OpusMSDecoder *process_header(ogg_packet *op, opus_int32 *rate,
    *preskip = header.preskip;
    st = opus_multistream_decoder_create(48000, header.channels, header.nb_streams, header.nb_coupled, header.stream_map, &err);
    if(err != OPUS_OK){
-     fprintf(stderr, "Cannot create encoder: %s\n", opus_strerror(err));
+     fprintf(stderr, "Cannot create decoder: %s\n", opus_strerror(err));
      return NULL;
    }
    if (!st)
