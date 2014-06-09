@@ -226,7 +226,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                   else inf->firstgranule=0;
                 }
             }
-            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%" I64FORMAT ">%" I64FORMAT ") in stream %d\n"),
+            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%" I64FORMAT "<%" I64FORMAT ") in stream %d\n"),
                 (long long)inf->total_samples,(long long)(gp-inf->firstgranule),stream->num);
             if(!ogg_page_eos(page) && (inf->total_samples>gp-inf->firstgranule))
                 oi_warn(_("WARNING: Sample count ahead of granule (%" I64FORMAT ">%" I64FORMAT ") in stream %d\n"),
