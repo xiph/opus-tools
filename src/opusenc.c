@@ -642,6 +642,17 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+  if(inopt.rate<100||inopt.rate>768000){
+    /*Crazy rates excluded to avoid excessive memory usage for padding/resampling.*/
+    fprintf(stderr,"Error parsing input file: %s unhandled sampling rate: %ld hz\n",inFile,inopt.rate);
+    exit(1);
+  }
+
+  if(inopt.channels>255||inopt.channels<1){
+    fprintf(stderr,"Error parsing input file: %s unhandled number of channels: %d\n",inFile,inopt.channels);
+    exit(1);
+  }
+
   if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)){
     if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 16kbit/sec/channel, downmixing.\n");
     downmix=inopt.channels>8?1:2;
