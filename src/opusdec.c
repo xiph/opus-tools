@@ -908,9 +908,18 @@ int main(int argc, char **argv)
             /*If first packet in a logical stream, process the Opus header*/
             if (packet_count==0)
             {
+               int old_channels = channels;
                st = process_header(&op, &rate, &mapping_family, &channels, &preskip, &gain, manual_gain, &streams, wav_format, quiet);
                if (!st)
                   quit(1);
+
+               if (output && channels!=old_channels)
+               {
+                   fprintf(stderr,"\nError: Apparent chaining changes channel count from %d to %d.\n",
+                     old_channels,channels);
+                   fprintf(stderr,"This is currently unhandled by opusdec.\n");
+                   quit(1);
+               }
 
                if(ogg_stream_packetout(&os, &op)!=0 || og.header[og.header_len-1]==255)
                {
@@ -934,6 +943,11 @@ int main(int argc, char **argv)
                   shapemem.fs=rate;
                }
                if(!output)output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
+               if(!shapemem.a_buf||!shapemem.b_buf||!output)
+               {
+                  fprintf(stderr, "Memory allocation failure.\n");
+                  quit(1);
+               }
 
                /*Normal players should just play at 48000 or their maximum rate,
                  as described in the OggOpus spec.  But for commandline tools
@@ -1051,6 +1065,11 @@ int main(int argc, char **argv)
             int drain;
 
             zeros=(float *)calloc(100*channels,sizeof(float));
+            if(!zeros)
+            {
+                fprintf(stderr, "Memory allocation failure.\n");
+                quit(1);
+            }
             drain = speex_resampler_get_input_latency(resampler);
             do {
                opus_int64 outsamp;

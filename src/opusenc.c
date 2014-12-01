@@ -516,6 +516,11 @@ int main(int argc, char **argv)
           }
           if(opt_ctls==0)opt_ctls_ctlval=malloc(sizeof(int)*3);
           else opt_ctls_ctlval=realloc(opt_ctls_ctlval,sizeof(int)*(opt_ctls+1)*3);
+          if(!opt_ctls_ctlval)
+          {
+            fprintf(stderr, "Memory allocation failure.\n");
+            exit(1);
+          }
           opt_ctls_ctlval[opt_ctls*3]=target;
           opt_ctls_ctlval[opt_ctls*3+1]=atoi(tpos+1);
           opt_ctls_ctlval[opt_ctls*3+2]=atoi(spos+1);

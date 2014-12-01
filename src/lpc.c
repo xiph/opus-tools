@@ -65,6 +65,8 @@ float vorbis_lpc_from_data(float *data,float *lpci,int n,int m,int stride){
   double epsilon;
   int i,j;
 
+  if(!aut || !lpc)return 0;
+
   /* autocorrelation, p+1 lag coefficients */
   j=m+1;
   while(j--){
@@ -141,6 +143,8 @@ void vorbis_lpc_predict(float *coeff,float *prime,int m,
   long i,j,o,p;
   float y;
   float *work=malloc(sizeof(*work)*(m+n));
+
+  if(!work)return;
 
   if(!prime)
     for(i=0;i<m;i++)
