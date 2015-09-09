@@ -44,7 +44,7 @@
              2..254: reserved, 255: multistream with no mapping)
 
   - if (mapping != 0)
-     - N = totel number of streams (8 bits)
+     - N = total number of streams (8 bits)
      - M = number of paired streams (8 bits)
      - C times channel origin
           - if (C<2*M)
