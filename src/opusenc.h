@@ -85,7 +85,7 @@ typedef struct {
     opus_int64 totalframes;
     short samplesize;
     int rate;
-    int offset;
+    unsigned int offset;
     int blocksize;
 } aiff_fmt;
 

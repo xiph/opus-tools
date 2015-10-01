@@ -191,27 +191,27 @@ static int seek_forward(FILE *in, ogg_int64_t length)
 static int find_wav_chunk(FILE *in, char *type, unsigned int *len)
 {
     unsigned char buf[8];
+    unsigned int chunklen;
 
     while(1)
     {
         if(fread(buf,1,8,in) < 8) /* Suck down a chunk specifier */
-        {
-            fprintf(stderr, _("Warning: Unexpected EOF reading WAV header\n"));
             return 0; /* EOF before reaching the appropriate chunk */
-        }
+
+        chunklen = READ_U32_LE(buf+4);
 
         if(memcmp(buf, type, 4))
         {
-            *len = READ_U32_LE(buf+4);
-            if(!seek_forward(in, *len))
-                return 0;
-
             buf[4] = 0;
-            fprintf(stderr, _("Skipping chunk of type \"%s\", length %d\n"), buf, *len);
+            fprintf(stderr, _("Skipping chunk of type \"%s\", length %u\n"),
+                buf, chunklen);
+
+            if(!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
+                return 0;
         }
         else
         {
-            *len = READ_U32_LE(buf+4);
+            *len = chunklen;
             return 1;
         }
     }
@@ -220,11 +220,12 @@ static int find_wav_chunk(FILE *in, char *type, unsigned int *len)
 static int find_aiff_chunk(FILE *in, char *type, unsigned int *len)
 {
     unsigned char buf[8];
+    unsigned int chunklen;
     int restarted = 0;
 
     while(1)
     {
-        if(fread(buf,1,8,in) <8)
+        if(fread(buf,1,8,in) < 8)
         {
             if(!restarted) {
                 /* Handle out of order chunks by seeking back to the start
@@ -233,23 +234,43 @@ static int find_aiff_chunk(FILE *in, char *type, unsigned int *len)
                 if(!FSEEK(in, 12, SEEK_SET))
                     continue;
             }
-            fprintf(stderr, _("Warning: Unexpected EOF in AIFF chunk\n"));
             return 0;
         }
 
-        *len = READ_U32_BE(buf+4);
+        chunklen = READ_U32_BE(buf+4);
 
         if(memcmp(buf,type,4))
         {
-            if((*len) & 0x1)
-                (*len)++;
-
-            if(!seek_forward(in, *len))
+            if(!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
                 return 0;
         }
         else
+        {
+            *len = chunklen;
             return 1;
+        }
     }
+}
+
+/* Read chunk of size *len and advance the file position to the next chunk.
+ * Returns 0 on EOF or read error. Otherwise *len is updated with the number
+ * of bytes placed in the buffer (the lesser of the chunk size and buffer
+ * size) and 1 is returned.
+ */
+static int read_chunk(FILE *in, unsigned char *buf, unsigned int bufsize,
+        unsigned int *len)
+{
+    unsigned int chunklen = *len;
+    unsigned int readlen = chunklen > bufsize ? bufsize : chunklen;
+
+    if(fread(buf, 1, readlen, in) != readlen)
+        return 0;
+
+    if(!seek_forward(in, (ogg_int64_t)(chunklen - readlen) + (chunklen & 1)))
+        return 0;
+
+    *len = readlen;
+    return 1;
 }
 
 double read_IEEE80(unsigned char *buf)
@@ -314,7 +335,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 {
     int aifc; /* AIFC or AIFF? */
     unsigned int len;
-    unsigned char *buffer;
+    unsigned char buffer[22];
     unsigned char buf2[8];
     int bigendian = 1;
     aiff_fmt format;
@@ -333,17 +354,9 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         return 0; /* EOF before COMM chunk */
     }
 
-    if(len < 18)
+    if(len < 18 || !read_chunk(in, buffer, sizeof(buffer), &len))
     {
-        fprintf(stderr, _("Warning: Truncated common chunk in AIFF header\n"));
-        return 0; /* Weird common chunk */
-    }
-
-    buffer = alloca(len);
-
-    if(fread(buffer,1,len,in) < len)
-    {
-        fprintf(stderr, _("Warning: Unexpected EOF reading AIFF header\n"));
+        fprintf(stderr, _("ERROR: Incomplete common chunk in AIFF header\n"));
         return 0;
     }
 
@@ -484,7 +497,10 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
      */
 
     if(!find_wav_chunk(in, "fmt ", &len))
-        return 0; /* EOF */
+    {
+        fprintf(stderr, _("ERROR: No format chunk found in WAV file\n"));
+        return 0;
+    }
 
     if(len < 16)
     {
@@ -504,11 +520,9 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                 _("Warning: INVALID format chunk in wav header.\n"
                 " Trying to read anyway (may not work)...\n"));
 
-    if(len>40)len=40;
-
-    if(fread(buf,1,len,in) < len)
+    if(!read_chunk(in, buf, sizeof(buf), &len))
     {
-        fprintf(stderr, _("Warning: Unexpected EOF reading WAV header\n"));
+        fprintf(stderr, _("ERROR: Incomplete format chunk in WAV header\n"));
         return 0;
     }
 
@@ -578,9 +592,6 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
       validbits = format.samplesize;
     }
 
-    if(!find_wav_chunk(in, "data", &len))
-        return 0; /* EOF */
-
     if(format.format == 1)
     {
         samplesize = format.samplesize/8;
@@ -596,6 +607,12 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     {
         fprintf(stderr, _("ERROR: Unsupported WAV file type.\n"
                 "Must be standard PCM or type 3 floating point PCM.\n"));
+        return 0;
+    }
+
+    if(!find_wav_chunk(in, "data", &len))
+    {
+        fprintf(stderr, _("ERROR: No data chunk found in WAV file\n"));
         return 0;
     }
 
