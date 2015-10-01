@@ -847,8 +847,12 @@ int main(int argc, char **argv)
 
   /*Write header*/
   {
-    unsigned char header_data[100];
-    int packet_size=opus_header_to_packet(&header, header_data, 100);
+    /*The Identification Header is 19 bytes, plus a Channel Mapping Table for
+      mapping families other than 0. The Channel Mapping Table is 2 bytes +
+      1 byte per channel. Because the maximum number of channels is 255, the
+      maximum size of this header is 19 + 2 + 255 = 276 bytes.*/
+    unsigned char header_data[276];
+    int packet_size=opus_header_to_packet(&header, header_data, sizeof(header_data));
     op.packet=header_data;
     op.bytes=packet_size;
     op.b_o_s=1;
