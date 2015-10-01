@@ -1036,8 +1036,8 @@ int main(int argc, char **argv)
         }else estbitrate=nbBytes*8*((double)coding_rate/frame_size);
         fprintf(stderr,"\r");
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
-        if(inopt.total_samples_per_channel>0 && inopt.total_samples_per_channel<nb_encoded){
-          snprintf(sbuf,54,"\r[%c] %02d%% ",spinner[last_spin&3],
+        if(inopt.total_samples_per_channel>0 && nb_encoded<inopt.total_samples_per_channel){
+          snprintf(sbuf,54,"\r[%c] %2d%% ",spinner[last_spin&3],
           (int)floor(nb_encoded/(double)(inopt.total_samples_per_channel+inopt.skip)*100.));
         }else{
           snprintf(sbuf,54,"\r[%c] ",spinner[last_spin&3]);
@@ -1058,13 +1058,14 @@ int main(int argc, char **argv)
   }
   stop_time = time(NULL);
 
+  if(last_spin_len)fprintf(stderr,"\r");
   for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
   if(last_spin_len)fprintf(stderr,"\r");
 
   if(!quiet){
     double coded_seconds=nb_encoded/(double)coding_rate;
     double wall_time=(stop_time-start_time)+1e-6;
-    fprintf(stderr,"Encoding complete                                    \n");
+    fprintf(stderr,"Encoding complete\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"       Encoded:");
     print_time(coded_seconds);
