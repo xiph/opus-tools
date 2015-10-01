@@ -718,18 +718,13 @@ long wav_read(void *in, float *buffer, int samples)
 {
     wavfile *f = (wavfile *)in;
     int sampbyte = f->samplesize / 8;
-    signed char *buf = alloca(samples*sampbyte*f->channels);
-    long bytes_read = fread(buf, 1, samples*sampbyte*f->channels, f->f);
+    int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
+        ? f->totalsamples - f->samplesread : samples;
+    signed char *buf = alloca(realsamples*sampbyte*f->channels);
     int i,j;
-    opus_int64 realsamples;
     int *ch_permute = f->channel_permute;
 
-    if(f->totalsamples > 0 && f->samplesread +
-            bytes_read/(sampbyte*f->channels) > f->totalsamples) {
-        bytes_read = sampbyte*f->channels*(f->totalsamples - f->samplesread);
-    }
-
-    realsamples = bytes_read/(sampbyte*f->channels);
+    realsamples = fread(buf, sampbyte*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
     if(f->samplesize==8)
@@ -814,16 +809,12 @@ long wav_read(void *in, float *buffer, int samples)
 long wav_ieee_read(void *in, float *buffer, int samples)
 {
     wavfile *f = (wavfile *)in;
-    float *buf = alloca(samples*4*f->channels); /* de-interleave buffer */
-    long bytes_read = fread(buf,1,samples*4*f->channels, f->f);
+    int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
+        ? f->totalsamples - f->samplesread : samples;
+    float *buf = alloca(realsamples*4*f->channels); /* de-interleave buffer */
     int i,j;
-    opus_int64 realsamples;
 
-    if(f->totalsamples > 0 && f->samplesread +
-            bytes_read/(4*f->channels) > f->totalsamples)
-        bytes_read = 4*f->channels*(f->totalsamples - f->samplesread);
-
-    realsamples = bytes_read/(4*f->channels);
+    realsamples = fread(buf, 4*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
     for(i=0; i < realsamples; i++)
