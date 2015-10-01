@@ -94,13 +94,13 @@
 
 /* Macros to read header data */
 #define READ_U32_LE(buf) \
-    (((buf)[3]<<24)|((buf)[2]<<16)|((buf)[1]<<8)|((buf)[0]&0xff))
+    (((unsigned int)(buf)[3]<<24)|((buf)[2]<<16)|((buf)[1]<<8)|((buf)[0]))
 
 #define READ_U16_LE(buf) \
     (((buf)[1]<<8)|((buf)[0]&0xff))
 
 #define READ_U32_BE(buf) \
-    (((buf)[0]<<24)|((buf)[1]<<16)|((buf)[2]<<8)|((buf)[3]&0xff))
+    (((unsigned int)(buf)[0]<<24)|((buf)[1]<<16)|((buf)[2]<<8)|((buf)[3]))
 
 #define READ_U16_BE(buf) \
     (((buf)[0]<<8)|((buf)[1]&0xff))
@@ -370,7 +370,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
     format.channels = (short)READ_U16_BE(buffer);
     format.totalframes = READ_U32_BE(buffer+2);
-    format.samplesize = READ_U16_BE(buffer+6);
+    format.samplesize = (short)READ_U16_BE(buffer+6);
     format.rate = (int)read_IEEE80(buffer+8);
 
     if(format.channels <= 0)
@@ -549,7 +549,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         return 0;
     }
 
-    if(format.format == -2) /* WAVE_FORMAT_EXTENSIBLE */
+    if(format.format == 0xfffe) /* WAVE_FORMAT_EXTENSIBLE */
     {
       if(len<40)
       {
@@ -590,7 +590,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
       case 1599: /* 7.1 */
         break;
       default:
-        fprintf(stderr, _("WARNING: Unknown WAV surround channel mask: %d\n"
+        fprintf(stderr, _("WARNING: Unknown WAV surround channel mask: %u\n"
                 "Blindly mapping speakers using default SMPTE/ITU ordering.\n"),
                 format.mask);
         break;
@@ -727,7 +727,7 @@ long wav_read(void *in, float *buffer, int samples)
     opus_int64 realsamples;
     int *ch_permute = f->channel_permute;
 
-    if(f->totalsamples && f->samplesread +
+    if(f->totalsamples > 0 && f->samplesread +
             bytes_read/(sampbyte*f->channels) > f->totalsamples) {
         bytes_read = sampbyte*f->channels*(f->totalsamples - f->samplesread);
     }
@@ -822,7 +822,7 @@ long wav_ieee_read(void *in, float *buffer, int samples)
     int i,j;
     opus_int64 realsamples;
 
-    if(f->totalsamples && f->samplesread +
+    if(f->totalsamples > 0 && f->samplesread +
             bytes_read/(4*f->channels) > f->totalsamples)
         bytes_read = 4*f->channels*(f->totalsamples - f->samplesread);
 
@@ -846,24 +846,16 @@ void wav_close(void *info)
 
 int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 {
-    wav_fmt format; /* fake wave header ;) */
     wavfile *wav = malloc(sizeof(wavfile));
     int i;
     (void)buf;/*unused*/
     (void)buflen;/*unused*/
 
-    /* construct fake wav header ;) */
-    format.format =      2;
-    format.channels =    opt->channels;
-    format.samplerate =  opt->rate;
-    format.samplesize =  opt->samplesize;
-    format.bytespersec = opt->channels * opt->rate * opt->samplesize / 8;
-    format.align =       format.bytespersec;
     wav->f =             in;
     wav->samplesread =   0;
     wav->bigendian =     opt->endianness;
-    wav->unsigned8bit =  format.samplesize == 8;
-    wav->channels =      format.channels;
+    wav->unsigned8bit =  opt->samplesize == 8;
+    wav->channels =      opt->channels;
     wav->samplesize =    opt->samplesize;
     wav->totalsamples =  0;
     wav->channel_permute = malloc(wav->channels * sizeof(int));
