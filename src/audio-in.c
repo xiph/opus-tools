@@ -321,10 +321,16 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         return 0;
     }
 
-    format.channels = READ_U16_BE(buffer);
+    format.channels = (short)READ_U16_BE(buffer);
     format.totalframes = READ_U32_BE(buffer+2);
     format.samplesize = READ_U16_BE(buffer+6);
     format.rate = (int)read_IEEE80(buffer+8);
+
+    if(format.channels <= 0)
+    {
+        fprintf(stderr, _("ERROR: Invalid channel count in AIFF header\n"));
+        return 0;
+    }
 
     if(aifc)
     {
@@ -486,6 +492,12 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     format.bytespersec = READ_U32_LE(buf+8);
     format.align =       READ_U16_LE(buf+12);
     format.samplesize =  READ_U16_LE(buf+14);
+
+    if(format.channels == 0)
+    {
+        fprintf(stderr, _("ERROR: Zero channels in WAV header\n"));
+        return 0;
+    }
 
     if(format.format == -2) /* WAVE_FORMAT_EXTENSIBLE */
     {
