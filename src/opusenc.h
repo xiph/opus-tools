@@ -84,7 +84,7 @@ typedef struct {
     short channels;
     unsigned int totalframes;
     short samplesize;
-    int rate;
+    double rate;
     unsigned int offset;
     unsigned int blocksize;
 } aiff_fmt;

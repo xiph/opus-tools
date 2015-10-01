@@ -281,35 +281,17 @@ static int read_chunk(FILE *in, unsigned char *buf, unsigned int bufsize,
     return 1;
 }
 
-double read_IEEE80(unsigned char *buf)
+static double read_IEEE80(unsigned char *buf)
 {
-    int s=buf[0]&0xff;
-    int e=((buf[0]&0x7f)<<8)|(buf[1]&0xff);
-    double f=((unsigned long)(buf[2]&0xff)<<24)|
-        ((buf[3]&0xff)<<16)|
-        ((buf[4]&0xff)<<8) |
-         (buf[5]&0xff);
-
+    int e = READ_U16_BE(buf) & 0x7fff;
+    double f;
     if(e==32767)
-    {
-        if(buf[2]&0x80)
-            return HUGE_VAL; /* Really NaN, but this won't happen in reality */
-        else
-        {
-            if(s)
-                return -HUGE_VAL;
-            else
-                return HUGE_VAL;
-        }
-    }
-
-    f=ldexp(f,32);
-    f+= ((buf[6]&0xff)<<24)|
-        ((buf[7]&0xff)<<16)|
-        ((buf[8]&0xff)<<8) |
-         (buf[9]&0xff);
-
-    return ldexp(f, e-16446);
+        /* NaNs and infinities -- their format can vary among implementations,
+           but for our purposes they can all be treated as infinite. */
+        f = HUGE_VAL;
+    else
+        f = ldexp(READ_U32_BE(buf+2) + READ_U32_BE(buf+6)*ldexp(1.0, -32), e-16383-31);
+    return (buf[0]&0x80)?-f:f;
 }
 
 /* AIFF/AIFC support adapted from the old OggSQUISH application */
@@ -371,7 +353,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     format.channels = (short)READ_U16_BE(buffer);
     format.totalframes = READ_U32_BE(buffer+2);
     format.samplesize = (short)READ_U16_BE(buffer+6);
-    format.rate = (int)read_IEEE80(buffer+8);
+    format.rate = read_IEEE80(buffer+8);
 
     if(format.channels <= 0)
     {
@@ -404,6 +386,13 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         }
     }
 
+    if(!(format.rate >= 1 && format.rate <= INT_MAX))
+    {
+        fprintf(stderr, _("ERROR: Preposterous sample rate in AIFF header: %g Hz\n"),
+            format.rate);
+        return 0;
+    }
+
     if(!find_aiff_chunk(in, "SSND", &len))
     {
         fprintf(stderr, _("Warning: No SSND chunk found in AIFF file\n"));
@@ -430,7 +419,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     {
         /* From here on, this is very similar to the wav code. Oh well. */
 
-        opt->rate = format.rate;
+        opt->rate = (int)(format.rate + 0.5);  /* round to nearest integer */
         opt->channels = format.channels;
         opt->samplesize = format.samplesize;
         opt->read_samples = wav_read; /* Similar enough, so we use the same */
@@ -617,6 +606,13 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     {
         fprintf(stderr, _("ERROR: Unsupported WAV file type.\n"
                 "Must be standard PCM or type 3 floating point PCM.\n"));
+        return 0;
+    }
+
+    if(format.samplerate > INT_MAX)
+    {
+        fprintf(stderr, _("ERROR: Preposterous sample rate in WAV header: %u Hz\n"),
+            format.samplerate);
         return 0;
     }
 
