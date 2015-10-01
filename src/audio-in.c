@@ -340,7 +340,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
     if(!find_aiff_chunk(in, "COMM", &len))
     {
-        fprintf(stderr, _("Warning: No common chunk found in AIFF file\n"));
+        fprintf(stderr, _("ERROR: No common chunk found in AIFF file\n"));
         return 0; /* EOF before COMM chunk */
     }
 
@@ -365,7 +365,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     {
         if(len < 22)
         {
-            fprintf(stderr, _("Warning: AIFF-C header truncated.\n"));
+            fprintf(stderr, _("ERROR: AIFF-C header truncated.\n"));
             return 0;
         }
 
@@ -395,19 +395,19 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
     if(!find_aiff_chunk(in, "SSND", &len))
     {
-        fprintf(stderr, _("Warning: No SSND chunk found in AIFF file\n"));
+        fprintf(stderr, _("ERROR: No SSND chunk found in AIFF file\n"));
         return 0; /* No SSND chunk -> no actual audio */
     }
 
     if(len < 8)
     {
-        fprintf(stderr, _("Warning: Corrupted SSND chunk in AIFF header\n"));
+        fprintf(stderr, _("ERROR: Corrupted SSND chunk in AIFF header\n"));
         return 0;
     }
 
     if(fread(buf2,1,8, in) < 8)
     {
-        fprintf(stderr, _("Warning: Unexpected EOF reading AIFF header\n"));
+        fprintf(stderr, _("ERROR: Unexpected EOF reading AIFF header\n"));
         return 0;
     }
 
@@ -503,7 +503,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
 
     if(len < 16)
     {
-        fprintf(stderr, _("Warning: Unrecognised format chunk in WAV header\n"));
+        fprintf(stderr, _("ERROR: Unrecognised format chunk in WAV header\n"));
         return 0; /* Weird format chunk */
     }
 
