@@ -377,7 +377,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          j += 4;
          mime_type_length = READ_U32_BE(data+j);
          if(mime_type_length > (size_t)data_sz-32) {
-             oi_warn(_("WARNING: Invalid mime type length in "
+             oi_warn(_("WARNING: Invalid media type length in "
                    "METADATA_BLOCK_PICTURE comment %d (stream %d): "
                    "%lu bytes when %i are available\n"), i, stream->num,
                    (long)mime_type_length, data_sz-32);
@@ -386,7 +386,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          }
          for (j += 4; j < 8+(int)mime_type_length; j++) {
              if(data[j] < 0x20 || data[j] > 0x7E) {
-                 oi_warn(_("WARNING: Invalid character in mime type of "
+                 oi_warn(_("WARNING: Invalid character in media type of "
                        "METADATA_BLOCK_PICTURE comment %d (stream %d): "
                        "0x%02X\n"), i, stream->num, data[j]);
                  broken = 1;
@@ -444,7 +444,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              if(!is_jpeg(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
                        "METADATA_BLOCK_PICTURE comment %d (stream %d): "
-                       "mime type is %.*s but image does not appear to be "
+                       "media type is %.*s but image does not appear to be "
                        "JPEG\n"), i, stream->num, mime_type_length, data+8);
                  free(data);
                  return;
@@ -457,7 +457,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              if(!is_png(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
                        "METADATA_BLOCK_PICTURE comment %d (stream %d): "
-                       "mime type is %.*s but image does not appear to be "
+                       "media type is %.*s but image does not appear to be "
                        "PNG\n"), i, stream->num, mime_type_length, data+8);
                  free(data);
                  return;
@@ -470,7 +470,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              if(!is_gif(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
                        "METADATA_BLOCK_PICTURE comment %d (stream %d): "
-                       "mime type is %.*s but image does not appear to be "
+                       "media type is %.*s but image does not appear to be "
                        "PNG\n"), i, stream->num, mime_type_length, data+8);
                  free(data);
                  return;
@@ -502,7 +502,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              }
          }
          else {
-             oi_warn(_("WARNING: Unknown mime type in "
+             oi_warn(_("WARNING: Unknown media type in "
                    "METADATA_BLOCK_PICTURE comment %d (stream %d): "
                    "\"%.*s\" may not be well-supported\n"), i, stream->num,
                    mime_type_length, data+8);

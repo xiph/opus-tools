@@ -290,9 +290,9 @@ char *parse_picture_specification(const char *spec,
       *error_message="invalid picture specification: not enough fields";
       return NULL;
     }
-    /*The mime type must be composed of ASCII printable characters 0x20-0x7E.*/
+    /*The media type must be composed of ASCII printable characters 0x20-0x7E.*/
     for(p=mime_type;p<mime_type_end;p++)if(*p<0x20||*p>0x7E){
-      *error_message="invalid characters in mime type";
+      *error_message="invalid characters in media type";
       return NULL;
     }
     is_url=mime_type_end-mime_type==3
@@ -336,7 +336,7 @@ char *parse_picture_specification(const char *spec,
   }
   /*Buffer size: 8 static 4-byte fields plus 2 dynamic fields, plus the
      file/URL data.
-    We reserve at least 10 bytes for the mime type, in case we still need to
+    We reserve at least 10 bytes for the media type, in case we still need to
      extract it from the file.*/
   data_offset=32+(description_end-description)+IMAX(mime_type_end-mime_type,10);
   buf=NULL;
@@ -355,7 +355,7 @@ char *parse_picture_specification(const char *spec,
     ogg_uint32_t file_colors;
     int          has_palette;
     /*Complicated case: we have a real file.
-      Read it in, attempt to parse the mime type and image dimensions if
+      Read it in, attempt to parse the media type and image dimensions if
        necessary, and validate what the user passed in.*/
     if(picture_file==NULL){
       *error_message="error opening picture file";
@@ -398,7 +398,7 @@ char *parse_picture_specification(const char *spec,
       else cbuf=cbuf<<1|1;
     }
     data_length=nbuf-data_offset;
-    /*If there was no mimetype, try to extract it from the file data.*/
+    /*If there was no media type, try to extract it from the file data.*/
     if(mime_type_end==mime_type){
       if(is_jpeg(buf+data_offset,data_length)){
         mime_type="image/jpeg";
@@ -414,7 +414,7 @@ char *parse_picture_specification(const char *spec,
       }
       else{
         free(buf);
-        *error_message="unable to guess MIME type from file, "
+        *error_message="unable to guess media type from file, "
          "must set it explicitly";
         return NULL;
       }
@@ -466,7 +466,7 @@ char *parse_picture_specification(const char *spec,
   }
   /*Build the METADATA_BLOCK_PICTURE buffer.
     We do this backwards from data_offset, because we didn't necessarily know
-     how big the mime type string was before we read the data in.*/
+     how big the media type string was before we read the data in.*/
   data_offset-=4;
   WRITE_U32_BE(buf+data_offset,(unsigned long)data_length);
   data_offset-=4;
