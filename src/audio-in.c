@@ -42,6 +42,7 @@
 # define _FILE_OFFSET_BITS 64
 #endif
 
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -75,6 +76,21 @@
 #include "lpc.h"
 #include "opus_header.h"
 #include "flac.h"
+
+/* Macros for handling potentially large file offsets */
+#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+# define OFF_T __int64
+# define FSEEK _fseeki64
+# define FTELL _ftelli64
+#elif defined HAVE_FSEEKO
+# define OFF_T off_t
+# define FSEEK fseeko
+# define FTELL ftello
+#else
+# define OFF_T long
+# define FSEEK fseek
+# define FTELL ftell
+#endif
 
 /* Macros to read header data */
 #define READ_U32_LE(buf) \
@@ -142,22 +158,32 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
     return NULL;
 }
 
-static int seek_forward(FILE *in, unsigned int length)
+static int seek_forward(FILE *in, ogg_int64_t length)
 {
-    if(fseek(in, length, SEEK_CUR))
+    ogg_int64_t remaining = length;
+    while(remaining > 0)
     {
-        /* Failed. Do it the hard way. */
-        unsigned char buf[1024];
-        unsigned int seek_needed = length;
-        int seeked;
-        while(seek_needed > 0)
+        /* When OFF_T is 64 bits, only one seek is needed and the comparison
+         * will always be false. When OFF_T is not large enough, seek LONG_MAX
+         * bytes at a time (the maximum offset that basic fseek() can handle).
+         */
+        OFF_T seekstep = (OFF_T)remaining;
+        if (seekstep != remaining)
+            seekstep = LONG_MAX;
+        if(FSEEK(in, seekstep, SEEK_CUR))
         {
-            seeked = fread(buf, 1, seek_needed>1024?1024:seek_needed, in);
-            if(!seeked)
-                return 0; /* Couldn't read more, can't read file */
-            else
-                seek_needed -= seeked;
+            /* Failed to seek; do it by reading. */
+            unsigned char buf[1024];
+            do {
+                size_t readstep = remaining > 1024 ? 1024 : (size_t)remaining;
+                readstep = fread(buf, 1, readstep, in);
+                if(!readstep)
+                    return 0; /* Couldn't read more, can't read file */
+                remaining -= readstep;
+            } while (remaining);
+            break;
         }
+        remaining -= seekstep;
     }
     return 1;
 }
@@ -204,8 +230,8 @@ static int find_aiff_chunk(FILE *in, char *type, unsigned int *len)
                 /* Handle out of order chunks by seeking back to the start
                  * to retry */
                 restarted = 1;
-                fseek(in, 12, SEEK_SET);
-                continue;
+                if(!FSEEK(in, 12, SEEK_SET))
+                    continue;
             }
             fprintf(stderr, _("Warning: Unexpected EOF in AIFF chunk\n"));
             return 0;
@@ -592,6 +618,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         opt->rate = format.samplerate;
         opt->channels = format.channels;
         opt->samplesize = validbits;
+        opt->total_samples_per_channel = 0;
 
         wav = malloc(sizeof(wavfile));
         wav->f = in;
@@ -601,10 +628,16 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         wav->channels = format.channels; /* This is in several places. The price
                                             of trying to abstract stuff. */
         wav->samplesize = format.samplesize;
+        wav->totalsamples = 0;
 
-        if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536) && opt->ignorelength!=1) /*Length provided is plausible.*/
+        if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536) && opt->ignorelength!=1)
         {
-            opt->total_samples_per_channel = len/(format.channels*samplesize);
+            /* Chunk length is plausible.  Limit the audio data read to
+               this length so that we do not misinterpret any additional
+               chunks after this as audio.  Also use this length to report
+               percent progress. */
+            wav->totalsamples = opt->total_samples_per_channel =
+                len/(format.channels*samplesize);
         }
 #ifdef WIN32
         /*On Mingw/Win32 fseek() returns zero on pipes.*/
@@ -613,37 +646,27 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         else if (opt->ignorelength==1)
 #endif
         {
-           opt->total_samples_per_channel = 0;
+            /* Assume audio data continues until EOF.
+               No percent progress will be reported. */
         }
         else
         {
-            opus_int64 pos;
-            pos = ftell(in);
-            if(fseek(in, 0, SEEK_END) == -1)
+            /* Assume audio data continues until EOF.
+               If the stream is seekable and the current file size can
+               be determined, use that to estimate percent progress
+               (opt->total_samples_per_channel), but not to limit the
+               number of samples read (wav->totalsamples).  Continue to
+               read until EOF even if the file grows while reading. */
+            OFF_T pos[2];
+            pos[0] = FTELL(in);
+            if(pos[0] >= 0 && !FSEEK(in, 0, SEEK_END))
             {
-                opt->total_samples_per_channel = 0; /* Give up */
-            }
-            else
-            {
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
-                opt->total_samples_per_channel = _ftelli64(in);
-#elif defined HAVE_FSEEKO
-                opt->total_samples_per_channel = ftello(in);
-#else
-                opt->total_samples_per_channel = ftell(in);
-#endif
-                if(opt->total_samples_per_channel>pos)
-                {
-                   opt->total_samples_per_channel = (opt->total_samples_per_channel-pos)/(format.channels*samplesize);
-                }
-                else
-                {
-                   opt->total_samples_per_channel=0;
-                }
-                fseek(in,pos, SEEK_SET);
+                pos[1] = FTELL(in);
+                FSEEK(in, pos[0], SEEK_SET);
+                if(pos[1] > pos[0])
+                    opt->total_samples_per_channel = (pos[1]-pos[0])/(format.channels*samplesize);
             }
         }
-        wav->totalsamples = opt->total_samples_per_channel;
 
         opt->readdata = (void *)wav;
 
