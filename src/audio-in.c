@@ -158,6 +158,14 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
     return NULL;
 }
 
+static void sanitize_fourcc(unsigned char *buf)
+{
+    int i;
+    for(i = 0; i < 4; ++i)
+        if(buf[i] < ' ' || buf[i] > '~')
+            buf[i] = '?';
+}
+
 static int seek_forward(FILE *in, ogg_int64_t length)
 {
     ogg_int64_t remaining = length;
@@ -202,8 +210,8 @@ static int find_wav_chunk(FILE *in, char *type, unsigned int *len)
 
         if(memcmp(buf, type, 4))
         {
-            buf[4] = 0;
-            fprintf(stderr, _("Skipping chunk of type \"%s\", length %u\n"),
+            sanitize_fourcc(buf);
+            fprintf(stderr, _("Skipping chunk of type \"%.4s\", length %u\n"),
                 buf, chunklen);
 
             if(!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
@@ -389,7 +397,9 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         }
         else
         {
-            fprintf(stderr, _("Warning: Can't handle compressed AIFF-C (%c%c%c%c)\n"), *(buffer+18), *(buffer+19), *(buffer+20), *(buffer+21));
+            sanitize_fourcc(buffer+18);
+            fprintf(stderr, _("ERROR: Can't handle compressed AIFF-C \"%.4s\"\n"),
+                buffer+18);
             return 0; /* Compressed. Can't handle */
         }
     }
