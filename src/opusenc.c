@@ -578,7 +578,7 @@ int main(int argc, char **argv)
         } else if(strcmp(long_options[option_index].name,"discard-pictures")==0){
           inopt.copy_pictures=0;
         }
-        /*Commands whos arguments would leak file paths or just end up as metadata
+        /*Commands whose arguments would leak file paths or just end up as metadata
            should have save_cmd=0; to prevent them from being saved in the
            command-line tag.*/
         break;
@@ -648,7 +648,7 @@ int main(int argc, char **argv)
 
   if(inopt.rate<100||inopt.rate>768000){
     /*Crazy rates excluded to avoid excessive memory usage for padding/resampling.*/
-    fprintf(stderr,"Error parsing input file: %s unhandled sampling rate: %ld hz\n",inFile,inopt.rate);
+    fprintf(stderr,"Error parsing input file: %s unhandled sampling rate: %ld Hz\n",inFile,inopt.rate);
     exit(1);
   }
 
@@ -695,9 +695,9 @@ int main(int argc, char **argv)
   header.input_sample_rate=rate;
   header.gain=inopt.gain;
 
-  /*Initialize OPUS encoder*/
-  /*Framesizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
-    to save the extra 2.5ms of codec lookahead when we'll be using only small frames.*/
+  /*Initialize Opus encoder*/
+  /*Frame sizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
+    to save the extra 4ms of codec lookahead when we'll be using only small frames.*/
   st=opus_multistream_surround_encoder_create(coding_rate, chan, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
      header.stream_map, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
   if(ret!=OPUS_OK){
@@ -881,7 +881,7 @@ int main(int argc, char **argv)
     ogg_stream_packetin(&os, &op);
   }
 
-  /* writing the rest of the opus header packets */
+  /* writing the rest of the Opus header packets */
   while((ret=ogg_stream_flush(&os, &og))){
     if(!ret)break;
     ret=oe_write_page(&og, fout);
@@ -1111,7 +1111,7 @@ int main(int argc, char **argv)
 
 /*
  Comments will be stored in the Vorbis style.
- It is describled in the "Structure" section of
+ It is described in the "Structure" section of
     http://www.xiph.org/ogg/vorbis/doc/v-comment.html
 
  However, Opus and other non-vorbis formats omit the "framing_bit".
