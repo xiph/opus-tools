@@ -312,7 +312,6 @@ int main(int argc, char **argv)
   ogg_int64_t        original_samples=0;
   ogg_int32_t        id=-1;
   int                last_segments=0;
-  int                eos=0;
   OpusHeader         header;
   char               ENCODER_string[1024];
   /*Counters*/
@@ -903,7 +902,6 @@ int main(int argc, char **argv)
   }
 
   /*Main encoding loop (one frame per iteration)*/
-  eos=0;
   nb_samples=-1;
   while(!op.e_o_s){
     int size_segments,cur_frame_size;
@@ -912,10 +910,7 @@ int main(int argc, char **argv)
     if(nb_samples<0){
       nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
       total_samples+=nb_samples;
-      if(nb_samples<frame_size)op.e_o_s=1;
-      else op.e_o_s=0;
     }
-    op.e_o_s|=eos;
 
     if(start_time==0){
       start_time = time(NULL);
@@ -923,8 +918,14 @@ int main(int argc, char **argv)
 
     cur_frame_size=frame_size;
 
-    /*No fancy end padding, just fill with zeros for now.*/
-    if(nb_samples<cur_frame_size)for(i=nb_samples*chan;i<cur_frame_size*chan;i++)input[i]=0;
+    if(nb_samples<cur_frame_size){
+      op.e_o_s=1;
+      /*Avoid making the final packet 20ms or more longer than needed.*/
+      cur_frame_size-=((cur_frame_size-(nb_samples>0?nb_samples:1))
+        /(coding_rate/50))*(coding_rate/50);
+      /*No fancy end padding, just fill with zeros for now.*/
+      for(i=nb_samples*chan;i<cur_frame_size*chan;i++)input[i]=0;
+    }
 
     /*Encode current frame*/
     VG_UNDEF(packet,max_frame_bytes);
@@ -982,7 +983,6 @@ int main(int argc, char **argv)
     if((!op.e_o_s)&&max_ogg_delay>5760){
       nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
       total_samples+=nb_samples;
-      if(nb_samples<frame_size)eos=1;
       if(nb_samples==0)op.e_o_s=1;
     } else nb_samples=-1;
 
@@ -991,9 +991,10 @@ int main(int argc, char **argv)
     op.b_o_s=0;
     op.granulepos=enc_granulepos;
     if(op.e_o_s){
-      /*We compute the final GP as ceil(len*48k/input_rate). When a resampling
-        decoder does the matching floor(len*input/48k) conversion the length will
-        be exactly the same as the input.*/
+      /*We compute the final GP as ceil(len*48k/input_rate)+preskip. When a
+        resampling decoder does the matching floor((len-preskip)*input_rate/48k)
+        conversion, the resulting output length will exactly equal the original
+        input length when 0<input_rate<=48000.*/
       op.granulepos=((original_samples*48000+rate-1)/rate)+header.preskip;
     }
     op.packetno=2+id;
