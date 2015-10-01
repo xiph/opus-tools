@@ -114,7 +114,7 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
       };
       static const int wav_channel_masks[8] =
       {
-         1,                      /* 1.0 mono */
+         4,                      /* 1.0 mono */
          1|2,                    /* 2.0 stereo */
          1|2|4,                  /* 3.0 channel ('wide') stereo */
          1|2|16|32,              /* 4.0 discrete quadrophonic */
