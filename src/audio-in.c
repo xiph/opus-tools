@@ -570,7 +570,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                 "remapping speakers to Vorbis 7.1 format.\n"));
         break;
       case 0:    /* default/undeclared */
-      case 1:    /* mono */
+      case 1:    /* mono (left only) */
+      case 4:    /* mono (center only) */
       case 3:    /* stereo */
       case 51:   /* quad */
       case 55:   /* 5.0 */
