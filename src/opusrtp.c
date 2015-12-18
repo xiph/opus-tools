@@ -662,7 +662,7 @@ int rtp_send_file(const char *filename, const char *addr, int port)
 void write_packet(u_char *args, const struct pcap_pkthdr *header,
                   const u_char *data)
 {
-  state *params = (state *)args;
+  state *params = (state *)(void *)args;
   const unsigned char *packet;
   int size;
   eth_header eth;
