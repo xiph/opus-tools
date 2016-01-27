@@ -261,11 +261,11 @@ AS_IF([test "$enable_pie" = "yes"],
   saved_CFLAGS="$CFLAGS"
   saved_LDFLAGS="$LDFLAGS"
   saved_LIBS="$LIBS"
-  CFLAGS="$CFLAGS -fPIE"
+  CFLAGS="$CFLAGS $OPUS_CFLAGS -fPIE"
   LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
   LIBS="$LIBS $OPUS_LIBS"
   AC_MSG_CHECKING([for PIE support])
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <opus/opus.h>]],
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <opus.h>]],
                                   [[OpusDecoder *dec = opus_decoder_create(48000, 2, 0L)]])],
     [ AC_MSG_RESULT([yes]) ],
     [ AC_MSG_RESULT([no])
