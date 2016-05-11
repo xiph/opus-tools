@@ -1,5 +1,8 @@
 *.o
 *.exe
+*.log
+*.suo
+*.tlog
 *.sw*
 *~
 .deps
@@ -31,4 +34,3 @@ opusinfo
 opusrtp
 *.vcxproj.user
 opus-tools.sdf
-opus-tools.suo

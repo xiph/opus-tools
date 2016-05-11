@@ -19,36 +19,36 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\share\getopt.c" />
-    <ClCompile Include="..\share\getopt1.c" />
-    <ClCompile Include="audio-in.c" />
-    <ClCompile Include="diag_range.c" />
-    <ClCompile Include="flac.c" />
-    <ClCompile Include="lpc.c" />
-    <ClCompile Include="opusdec.c" />
-    <ClCompile Include="opus_header.c" />
-    <ClCompile Include="resample.c" />
-    <ClCompile Include="..\win32\unicode_support.c" />
-    <ClCompile Include="wave_out.c" />
-    <ClCompile Include="wav_io.c" />
+    <ClCompile Include="..\..\share\getopt.c" />
+    <ClCompile Include="..\..\share\getopt1.c" />
+    <ClCompile Include="..\..\src\audio-in.c" />
+    <ClCompile Include="..\..\src\diag_range.c" />
+    <ClCompile Include="..\..\src\flac.c" />
+    <ClCompile Include="..\..\src\lpc.c" />
+    <ClCompile Include="..\..\src\opusdec.c" />
+    <ClCompile Include="..\..\src\opus_header.c" />
+    <ClCompile Include="..\..\src\resample.c" />
+    <ClCompile Include="..\..\src\wave_out.c" />
+    <ClCompile Include="..\..\src\wav_io.c" />
+    <ClCompile Include="..\..\win32\unicode_support.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\win32\config.h" />
-    <ClInclude Include="arch.h" />
-    <ClInclude Include="diag_range.h" />
-    <ClInclude Include="flac.h" />
-    <ClInclude Include="info_opus.h" />
-    <ClInclude Include="lpc.h" />
-    <ClInclude Include="opusenc.h" />
-    <ClInclude Include="opusinfo.h" />
-    <ClInclude Include="opus_header.h" />
-    <ClInclude Include="os_support.h" />
-    <ClInclude Include="resample_sse.h" />
-    <ClInclude Include="speex_resampler.h" />
-    <ClInclude Include="stack_alloc.h" />
-    <ClInclude Include="..\win32\unicode_support.h" />
-    <ClInclude Include="wave_out.h" />
-    <ClInclude Include="wav_io.h" />
+    <ClInclude Include="..\..\src\arch.h" />
+    <ClInclude Include="..\..\src\diag_range.h" />
+    <ClInclude Include="..\..\src\flac.h" />
+    <ClInclude Include="..\..\src\info_opus.h" />
+    <ClInclude Include="..\..\src\lpc.h" />
+    <ClInclude Include="..\..\src\opusenc.h" />
+    <ClInclude Include="..\..\src\opusinfo.h" />
+    <ClInclude Include="..\..\src\opus_header.h" />
+    <ClInclude Include="..\..\src\os_support.h" />
+    <ClInclude Include="..\..\src\resample_sse.h" />
+    <ClInclude Include="..\..\src\speex_resampler.h" />
+    <ClInclude Include="..\..\src\stack_alloc.h" />
+    <ClInclude Include="..\..\src\wave_out.h" />
+    <ClInclude Include="..\..\src\wav_io.h" />
+    <ClInclude Include="..\..\win32\config.h" />
+    <ClInclude Include="..\..\win32\unicode_support.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>
@@ -90,19 +90,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusdec\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusdec\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)_opusdec\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\libogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_opusdec\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -112,7 +112,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\opus\include;..\..\win32;..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -122,7 +122,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>"$(ProjectDir)..\win32\genversion.bat" "$(ProjectDir)..\win32\version.h" PACKAGE_VERSION</Command>
+      <Command>"$(ProjectDir)..\genversion.bat" "$(ProjectDir)..\version.h" PACKAGE_VERSION</Command>
       <Message>Generating version.h</Message>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -141,7 +141,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -167,7 +167,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CRT_SECURE_NO_WARNINGS;_CONSOLE;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\opus\include;..\..\win32;..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -182,7 +182,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>"$(ProjectDir)..\win32\genversion.bat" "$(ProjectDir)..\win32\version.h" PACKAGE_VERSION</Command>
+      <Command>"$(ProjectDir)..\genversion.bat" "$(ProjectDir)..\version.h" PACKAGE_VERSION</Command>
       <Message>Generating version.h</Message>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -199,7 +199,7 @@
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CRT_SECURE_NO_WARNINGS;_CONSOLE;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>..\..\libogg\include;..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\opus\include;..\win32;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
