@@ -570,18 +570,21 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   ret = ogg_sync_init(&oy);
   if (ret < 0) {
     fprintf(stderr, "Couldn't initialize Ogg sync state\n");
+    fclose(in);
     return ret;
   }
   while (!feof(in)) {
   in_data = ogg_sync_buffer(&oy, in_size);
   if (!in_data) {
     fprintf(stderr, "ogg_sync_buffer failed\n");
+    fclose(in);
     return -1;
   }
   in_read = fread(in_data, 1, in_size, in);
   ret = ogg_sync_wrote(&oy, in_read);
   if (ret < 0) {
     fprintf(stderr, "ogg_sync_wrote failed\n");
+    fclose(in);
     return ret;
   }
   while (ogg_sync_pageout(&oy, &og) == 1) {
@@ -591,12 +594,14 @@ int rtp_send_file(const char *filename, const char *dest, int port)
         ret = ogg_stream_init(&os, ogg_page_serialno(&og));
         if (ret < 0) {
           fprintf(stderr, "ogg_stream_init failed\n");
+          fclose(in);
           return ret;
         }
         headers++;
       } else if (!ogg_page_bos(&og)) {
         /* We're past the header and haven't found an Opus stream.
          * Time to give up. */
+        fclose(in);
         return 1;
       } else {
         /* try again */
@@ -607,6 +612,7 @@ int rtp_send_file(const char *filename, const char *dest, int port)
     ret = ogg_stream_pagein(&os, &og);
     if (ret < 0) {
       fprintf(stderr, "ogg_stream_pagein failed\n");
+      fclose(in);
       return ret;
     }
     /* read and process available packets */
