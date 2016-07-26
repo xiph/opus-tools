@@ -1,1 +1,1 @@
-#define PACKAGE_VERSION "v0.1.9-12-g769f90b" 
+#define PACKAGE_VERSION "v0.1.9-dev"
