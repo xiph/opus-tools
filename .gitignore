@@ -30,18 +30,3 @@ opusrtp
 
 # Always include these!
 !win32/config.h
-
-# Visual Studio ignores
-*.exe
-*.log
-*.idb
-*.ipdb
-*.ilk
-*.iobj
-*.obj
-*.pdb
-*.sdf
-*.suo
-*.tlog
-*.vcxproj.user
-*.vc.db
