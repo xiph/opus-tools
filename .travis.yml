@@ -1,0 +1,17 @@
+language: c
+
+# We need at least Ubuntu 14.04 for the libopus dependency.
+dist: trusty
+
+addons:
+  apt:
+    packages:
+      - libogg-dev
+      - libopus-dev
+      - libflac-dev
+
+script:
+  - ./autogen.sh
+  - ./configure
+  - make
+  - make distcheck
