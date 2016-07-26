@@ -96,19 +96,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-    <IntDir>$(Configuration)_opusdec\</IntDir>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <OutDir>$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-    <IntDir>$(Platform)\$(Configuration)_opusdec\</IntDir>
+    <OutDir>$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-    <IntDir>$(Configuration)_opusdec\</IntDir>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <OutDir>$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-    <IntDir>$(Platform)\$(Configuration)_opusdec\</IntDir>
+    <OutDir>$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
