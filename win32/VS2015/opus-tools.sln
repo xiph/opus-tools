@@ -4,10 +4,21 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusdec", "opusdec.vcxproj", "{F2434089-C12F-D049-6D5E-19E75E1C68D2}"
+	ProjectSection(ProjectDependencies) = postProject
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA} = {77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusenc", "opusenc.vcxproj", "{02C9F2A5-2FE3-B16A-D0E1-FCAAEFC3B855}"
+	ProjectSection(ProjectDependencies) = postProject
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA} = {77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opusinfo", "opusinfo.vcxproj", "{BE460D7E-0DD8-81AC-FC4D-AB960C097EFE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA} = {77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "generate_version", "generate_version.vcxproj", "{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +52,14 @@ Global
 		{BE460D7E-0DD8-81AC-FC4D-AB960C097EFE}.Release|Win32.Build.0 = Release|Win32
 		{BE460D7E-0DD8-81AC-FC4D-AB960C097EFE}.Release|x64.ActiveCfg = Release|x64
 		{BE460D7E-0DD8-81AC-FC4D-AB960C097EFE}.Release|x64.Build.0 = Release|x64
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Debug|Win32.ActiveCfg = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Debug|Win32.Build.0 = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Debug|x64.ActiveCfg = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Debug|x64.Build.0 = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Release|Win32.ActiveCfg = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Release|Win32.Build.0 = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Release|x64.ActiveCfg = Any|Win32
+		{77C41C23-C4D0-4B86-9E1B-16BCD80FC0CA}.Release|x64.Build.0 = Any|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
