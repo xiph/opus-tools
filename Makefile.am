@@ -31,13 +31,6 @@ noinst_HEADERS = src/arch.h \
 
 EXTRA_DIST = Makefile.unix \
              man/opusrtp.1 \
-             opus-tools.sln \
-             src/opusdec.vcxproj.filters \
-             src/opusinfo.vcxproj.filters \
-             src/opusenc.vcxproj.filters \
-             src/opusinfo.vcxproj \
-             src/opusenc.vcxproj \
-             src/opusdec.vcxproj \
              include/getopt.h \
              share/getopt.c \
              share/getopt1.c \
