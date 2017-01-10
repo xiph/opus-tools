@@ -658,6 +658,115 @@ int rtp_send_file(const char *filename, const char *addr, int port)
 
 
 #ifdef HAVE_PCAP
+/* Modified version of write_packet to deal with pcap files */
+void write_file_packet(u_char *args, const struct pcap_pkthdr *header,
+                  const u_char *data)
+{
+  state *params = (state *)args;
+  const unsigned char *packet;
+  int size;
+  eth_header eth;
+  ip_header ip;
+  udp_header udp;
+  rtp_header rtp;
+
+  fprintf(stderr, "Got %d byte packet (%d bytes captured)\n",
+          header->len, header->caplen);
+  packet = data;
+  size = header->caplen;
+
+  if (parse_eth_header(packet, size, &eth)) {
+    fprintf(stderr, "error parsing eth header\n");
+    return;
+  }
+
+  fprintf(stderr, "  eth 0x%04x", eth.type);
+  fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x ->",
+          eth.src[0], eth.src[1], eth.src[2],
+          eth.src[3], eth.src[4], eth.src[5]);
+  fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x\n",
+          eth.dst[0], eth.dst[1], eth.dst[2],
+          eth.dst[3], eth.dst[4], eth.dst[5]);
+
+  packet += ETH_HEADER_LEN;
+  size -= ETH_HEADER_LEN;
+
+  if (parse_ip_header(packet, size, &ip)) {
+    fprintf(stderr, "error parsing ip header\n");
+    return;
+  }
+
+  fprintf(stderr, " ipv%d protocol %d", ip.version, ip.protocol);
+  fprintf(stderr, " %d.%d.%d.%d ->",
+          ip.src[0], ip.src[1], ip.src[2], ip.src[3]);
+  fprintf(stderr, " %d.%d.%d.%d",
+          ip.dst[0], ip.dst[1], ip.dst[2], ip.dst[3]);
+  fprintf(stderr, " header %d bytes\n", ip.header_size);
+
+  if (ip.protocol != 17) {
+    fprintf(stderr, "skipping packet: not UDP\n");
+    return;
+  }
+  packet += ip.header_size;
+  size -= ip.header_size;
+
+  if (parse_udp_header(packet, size, &udp)) {
+    fprintf(stderr, "error parsing udp header\n");
+    return;
+  }
+  fprintf(stderr, "  udp %d bytes %d -> %d crc 0x%04x\n",
+          udp.size, udp.src, udp.dst, udp.checksum);
+
+  packet += UDP_HEADER_LEN;
+  size -= UDP_HEADER_LEN;
+
+  if (parse_rtp_header(packet, size, &rtp)) {
+    fprintf(stderr, "error parsing rtp header\n");
+    return;
+  }
+  fprintf(stderr, "  rtp 0x%08x %d %d %d",
+          rtp.ssrc, rtp.type, rtp.seq, rtp.time);
+  fprintf(stderr, "  v%d %s%s%s CC %d", rtp.version,
+          rtp.pad ? "P":".", rtp.ext ? "X":".",
+          rtp.mark ? "M":".", rtp.cc);
+  fprintf(stderr, " %5d bytes\n", rtp.payload_size);
+
+  packet += rtp.header_size;
+  size -= rtp.header_size;
+
+  if (size < 0) {
+    fprintf(stderr, "skipping short packet\n");
+    return;
+  }
+
+  if (rtp.seq < params->seq) {
+    fprintf(stderr, "skipping out-of-sequence packet\n");
+    return;
+  }
+  params->seq = rtp.seq;
+
+  if (rtp.type != OPUS_PAYLOAD_TYPE) {
+    fprintf(stderr, "skipping non-opus packet - rtp.type: %d\n", rtp.type);
+    return;
+  }
+
+  /* write the payload to our opus file */
+  ogg_packet *op = op_from_pkt(packet, size);
+  op->packetno = rtp.seq;
+  params->granulepos += opus_samples(packet, size);
+  op->granulepos = params->granulepos;
+  ogg_stream_packetin(params->stream, op);
+  free(op);
+  ogg_write(params);
+
+  if (size < rtp.payload_size) {
+    fprintf(stderr, "!! truncated %d uncaptured bytes\n",
+            rtp.payload_size - size);
+  }
+}
+#endif
+
+#ifdef HAVE_PCAP
 /* pcap 'got_packet' callback */
 void write_packet(u_char *args, const struct pcap_pkthdr *header,
                   const u_char *data)
@@ -787,6 +896,72 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
 }
 
+int extract(const char* input_file)
+{
+  state *params;
+  pcap_t *pcap;
+  char errbuf[PCAP_ERRBUF_SIZE];
+  ogg_packet *op;
+
+  if ((pcap = pcap_open_offline(input_file, errbuf)) == NULL)
+  {
+    fprintf(stderr,"\nError opening dump file\n");
+    return -1;
+  }
+
+  params = malloc(sizeof(state));
+  if (!params) {
+    fprintf(stderr, "Couldn't allocate param struct.\n");
+    return -1;
+  }
+  params->linktype = pcap_datalink(pcap);
+  params->stream = malloc(sizeof(ogg_stream_state));
+  if (!params->stream) {
+    fprintf(stderr, "Couldn't allocate stream struct.\n");
+    free(params);
+    return -1;
+  }
+  if (ogg_stream_init(params->stream, rand()) < 0) {
+    fprintf(stderr, "Couldn't initialize Ogg stream state.\n");
+    free(params->stream);
+    free(params);
+    return -1;
+  }
+  params->out = fopen("rtpdump.opus", "wb");
+  if (!params->out) {
+    fprintf(stderr, "Couldn't open output file.\n");
+    free(params->stream);
+    free(params);
+    return -2;
+  }
+  params->seq = 0;
+  params->granulepos = 0;
+
+  /* write stream headers */
+  op = op_opushead();
+  ogg_stream_packetin(params->stream, op);
+  op_free(op);
+  op = op_opustags();
+  ogg_stream_packetin(params->stream, op);
+  op_free(op);
+  ogg_flush(params);
+
+  fprintf(stderr, "Capturing packets\n");
+  // read and dispatch packets until EOF is reached
+  pcap_loop(pcap, 0, write_file_packet, (u_char *)params);
+
+  /* write outstanding data */
+  ogg_flush(params);
+
+  /* clean up */
+  fclose(params->out);
+  ogg_stream_destroy(params->stream);
+  free(params);
+  pcap_close(pcap);
+
+  return 0;
+}
+
 /* use libpcap to capture packets and write them to a file */
 int sniff(char *device)
 {
@@ -867,7 +1042,7 @@ void opustools_version(void)
 
 void usage(char *exe)
 {
-  printf("Usage: %s [--sniff] <file.opus> [<file2.opus>]\n", exe);
+  printf("Usage: %s [--extract file.pcap] [--sniff] <file.opus> [<file2.opus>]\n", exe);
   printf("\n");
   printf("Sends and receives Opus audio RTP streams.\n");
   printf("\nGeneral Options:\n");
@@ -877,6 +1052,7 @@ void usage(char *exe)
   printf(" -d, --destination    Destination address (default 127.0.0.1)\n");
   printf(" -p, --port           Destination port (default 1234)\n");
   printf(" --sniff              Sniff and record Opus RTP streams\n");
+  printf(" -e, --extract	Extract from input pcap file (default input.pcap)\n");
   printf("\n");
   printf("By default, the given file(s) will be sent over RTP.\n");
 }
@@ -885,6 +1061,7 @@ int main(int argc, char *argv[])
 {
   int option, i;
   const char *dest = "127.0.0.1";
+  const char *input_pcap = "input.pcap";
   int port = 1234;
   struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
@@ -893,6 +1070,7 @@ int main(int argc, char *argv[])
     {"destination", required_argument, NULL, 'd'},
     {"port", required_argument, NULL, 'p'},
     {"sniff", no_argument, NULL, 0},
+    {"extract", required_argument, NULL, 'e'},
     {0, 0, 0, 0}
   };
 
@@ -921,6 +1099,11 @@ int main(int argc, char *argv[])
       case 'd':
         if (optarg)
             dest = optarg;
+        break;
+      case 'e':
+        if (optarg)
+            input_pcap = optarg;
+        extract(input_pcap);
         break;
       case 'p':
         if (optarg)
