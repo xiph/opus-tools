@@ -71,7 +71,7 @@ Box ( const char* msg )
  */
 
 static void CALLBACK
-wave_callback ( HWAVE hWave, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2 )
+wave_callback ( HWAVE hWave, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2 )
 {
         (void) hWave;
         (void) dwInstance;
