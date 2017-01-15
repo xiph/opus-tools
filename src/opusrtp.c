@@ -803,6 +803,7 @@ int extract(const char* input_file)
   params = malloc(sizeof(state));
   if (!params) {
     fprintf(stderr, "Couldn't allocate param struct.\n");
+    pcap_close(pcap);
     return -1;
   }
   params->linktype = pcap_datalink(pcap);
@@ -810,12 +811,14 @@ int extract(const char* input_file)
   if (!params->stream) {
     fprintf(stderr, "Couldn't allocate stream struct.\n");
     free(params);
+    pcap_close(pcap);
     return -1;
   }
   if (ogg_stream_init(params->stream, rand()) < 0) {
     fprintf(stderr, "Couldn't initialize Ogg stream state.\n");
     free(params->stream);
     free(params);
+    pcap_close(pcap);
     return -1;
   }
   params->out = fopen("rtpdump.opus", "wb");
@@ -823,6 +826,7 @@ int extract(const char* input_file)
     fprintf(stderr, "Couldn't open output file.\n");
     free(params->stream);
     free(params);
+    pcap_close(pcap);
     return -2;
   }
   params->seq = 0;
