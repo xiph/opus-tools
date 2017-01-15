@@ -952,7 +952,9 @@ int main(int argc, char *argv[])
 {
   int option, i;
   const char *dest = "127.0.0.1";
+#ifdef HAVE_PCAP
   const char *input_pcap = "input.pcap";
+#endif
   int port = 1234;
   struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
@@ -992,10 +994,15 @@ int main(int argc, char *argv[])
             dest = optarg;
         break;
       case 'e':
+#ifdef HAVE_PCAP
         if (optarg)
             input_pcap = optarg;
         extract(input_pcap);
-        break;
+        return 0;
+#else
+        fprintf(stderr, "pcap support disabled, sorry.\n");
+        return 1;
+#endif
       case 'p':
         if (optarg)
             port = atoi(optarg);
