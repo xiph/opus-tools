@@ -3,6 +3,13 @@ language: c
 # We need at least Ubuntu 14.04 for the libopus dependency.
 dist: trusty
 
+addons:
+  apt:
+    packages:
+      - libogg-dev
+      - libopus-dev
+      - libflac-dev
+
 os:
   - linux
   - osx
@@ -10,13 +17,6 @@ os:
 compiler:
   - gcc
   - clang
-
-addons:
-  apt:
-    packages:
-      - libogg-dev
-      - libopus-dev
-      - libflac-dev
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
