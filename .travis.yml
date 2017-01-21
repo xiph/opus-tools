@@ -3,6 +3,14 @@ language: c
 # We need at least Ubuntu 14.04 for the libopus dependency.
 dist: trusty
 
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
+
 addons:
   apt:
     packages:
