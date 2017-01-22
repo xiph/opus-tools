@@ -1012,7 +1012,7 @@ int setup_resample(oe_enc_opt *opt, int complexity, long outfreq) {
     rs->resampler = speex_resampler_init(rs->channels, opt->rate, outfreq, complexity, &err);
     if(err!=0)fprintf(stderr, _("resampler error: %s\n"), speex_resampler_strerror(err));
 
-    opt->skip+=speex_resampler_get_output_latency(rs->resampler);
+    speex_resampler_skip_zeros(rs->resampler);
 
     rs->bufs = malloc(sizeof(float) * rs->bufsize * opt->channels);
 
