@@ -98,7 +98,7 @@ static inline int oe_write_page(ogg_page *page, FILE *fp)
 void opustoolsversion(const char *opusversion)
 {
   printf("opusenc %s %s (using %s)\n",PACKAGE_NAME,PACKAGE_VERSION,opusversion);
-  printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
+  printf("Copyright (C) 2008-2017 Xiph.Org Foundation\n");
 }
 
 void opustoolsversion_short(const char *opusversion)

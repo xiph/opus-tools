@@ -473,7 +473,7 @@ void usage(void)
 void version(void)
 {
    printf("opusdec %s %s (using %s)\n",PACKAGE_NAME,PACKAGE_VERSION,opus_get_version_string());
-   printf("Copyright (C) 2008-2013 Xiph.Org Foundation\n");
+   printf("Copyright (C) 2008-2017 Xiph.Org Foundation\n");
 }
 
 void version_short(void)
