@@ -45,7 +45,8 @@ EXTRA_DIST = Makefile.unix \
              win32/VS2015/opusenc.vcxproj.filters \
              win32/VS2015/opusinfo.vcxproj \
              win32/VS2015/opusinfo.vcxproj.filters \
-             win32/VS2015/opus-tools.sln
+             win32/VS2015/opus-tools.sln \
+             win32/VS2015/common.props
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
