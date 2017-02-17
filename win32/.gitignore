@@ -19,3 +19,5 @@
 *.vcxproj.user
 *.vc.db
 *.vc.opendb
+
+version.h
