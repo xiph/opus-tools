@@ -7,6 +7,9 @@ platform:
 - Win32
 - x64
 
+environment:
+  sample_url: https://people.xiph.org/~giles/2012/opus/ehren-paper_lights-96.opus
+
 install:
 - cd %APPVEYOR_BUILD_FOLDER%
 - git clone -q https://github.com/xiph/opus.git ..\opus
@@ -26,6 +29,13 @@ after_build:
   - for %%a in (enc dec info) do curl -O https://mf4.xiph.org/jenkins/view/opus/job/opus-tools/ws/man/opus%%a.html
   - 7z a opus-tools.zip .\opusenc.html .\opusdec.html .\opusinfo.html
 
+test_script:
+  - cd %APPVEYOR_BUILD_FOLDER%\win32\VS2015\%PLATFORM%\%CONFIGURATION%
+  - curl -o original.opus %SAMPLE_URL%
+  - opusdec.exe original.opus decoded.wav
+  - opusenc.exe decoded.wav encoded.opus
+  - opusinfo.exe encoded.opus
+  - appveyor PushArtifact encoded.opus
+
 artifacts:
   - path: opus-tools.zip
-
