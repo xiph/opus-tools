@@ -20,8 +20,11 @@ build:
   verbosity: minimal
 
 after_build:
-- cd %APPVEYOR_BUILD_FOLDER%
-- 7z a opus-tools.zip .\win32\VS2015\%PLATFORM%\%CONFIGURATION%\*.exe .\COPYING
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - copy /Y COPYING LICENSE
+  - 7z a opus-tools.zip .\win32\VS2015\%PLATFORM%\%CONFIGURATION%\*.exe .\LICENSE
+  - for %%a in (enc dec info) do curl -O https://mf4.xiph.org/jenkins/view/opus/job/opus-tools/ws/man/opus%%a.html
+  - 7z a opus-tools.zip .\opusenc.html .\opusdec.html .\opusinfo.html
 
 artifacts:
   - path: opus-tools.zip
