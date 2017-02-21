@@ -12,7 +12,7 @@
 #define SPX_RESAMPLE_EXPORT
 #define __SSE__
 
-#define RANDOM_PREFIX foo
+#define RANDOM_PREFIX opustools
 
 #define PACKAGE_NAME "opus-tools"
 #include "version.h"
