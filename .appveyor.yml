@@ -9,13 +9,15 @@ platform:
 
 environment:
   sample_url: https://people.xiph.org/~giles/2012/opus/ehren-paper_lights-96.opus
+  opus_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opus/artifacts/opus.zip
 
 install:
-- cd %APPVEYOR_BUILD_FOLDER%
-- git clone -q https://github.com/xiph/opus.git ..\opus
-- git clone -q https://github.com/xiph/ogg.git ..\ogg
-- msbuild "..\opus\win32\VS2015\opus.vcxproj" /p:Configuration=%CONFIGURATION%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-- msbuild "..\ogg\win32\VS2015\libogg_static.sln" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUS_URL%'
+  - 7z x opus.zip -oopus-artifacts
+  - move /Y opus-artifacts ..\opus
+  - git clone -q https://github.com/xiph/ogg.git ..\ogg
+  - msbuild "..\ogg\win32\VS2015\libogg_static.sln" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 build:
   project: win32\VS2015\opus-tools.sln
