@@ -37,7 +37,15 @@ EXTRA_DIST = Makefile.unix \
              win32/genversion.bat \
              win32/config.h \
              win32/unicode_support.h \
-             win32/unicode_support.c
+             win32/unicode_support.c \
+             win32/VS2015/generate_version.vcxproj \
+             win32/VS2015/opusdec.vcxproj \
+             win32/VS2015/opusdec.vcxproj.filters \
+             win32/VS2015/opusenc.vcxproj \
+             win32/VS2015/opusenc.vcxproj.filters \
+             win32/VS2015/opusinfo.vcxproj \
+             win32/VS2015/opusinfo.vcxproj.filters \
+             win32/VS2015/opus-tools.sln
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
