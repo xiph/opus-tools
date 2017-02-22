@@ -80,7 +80,8 @@
 /* Macros for handling potentially large file offsets */
 #if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
 # define OFF_T __int64
-# define FSEEK _fseeki64
+/* On Windows, fseek() on pipes may return zero even though it doesn't seek. */
+# define FSEEK(s,o,w) (((GetFileType((HANDLE)_get_osfhandle(_fileno(s)))&~FILE_TYPE_REMOTE)==FILE_TYPE_DISK)?_fseeki64((s),(o),(w)):1)
 # define FTELL _ftelli64
 #elif defined HAVE_FSEEKO
 # define OFF_T off_t
@@ -654,7 +655,12 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         wav->samplesize = format.samplesize;
         wav->totalsamples = 0;
 
-        if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536) && opt->ignorelength!=1)
+        if (opt->ignorelength)
+        {
+            /* Assume audio data continues until EOF.
+               No percent progress will be reported. */
+        }
+        else if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536))
         {
             /* Chunk length is plausible.  Limit the audio data read to
                this length so that we do not misinterpret any additional
@@ -662,16 +668,6 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                percent progress. */
             wav->totalsamples = opt->total_samples_per_channel =
                 len/(format.channels*samplesize);
-        }
-#ifdef WIN32
-        /*On Mingw/Win32 fseek() returns zero on pipes.*/
-        else if (opt->ignorelength==1 || ((GetFileType((HANDLE)_get_osfhandle(fileno(in)))&~FILE_TYPE_REMOTE)!=FILE_TYPE_DISK))
-#else
-        else if (opt->ignorelength==1)
-#endif
-        {
-            /* Assume audio data continues until EOF.
-               No percent progress will be reported. */
         }
         else
         {
