@@ -1,0 +1,25 @@
+image: Visual Studio 2015
+configuration:
+- Debug
+- Release
+
+platform:
+- Win32
+- x64
+
+install:
+- git clone -q https://github.com/xiph/opus.git %APPVEYOR_BUILD_FOLDER%\..\opus
+- git clone -q https://github.com/xiph/ogg.git %APPVEYOR_BUILD_FOLDER%\..\ogg
+- msbuild "%APPVEYOR_BUILD_FOLDER%\..\opus\win32\VS2015\opus.vcxproj" /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
+- msbuild "%APPVEYOR_BUILD_FOLDER%\..\ogg\win32\VS2015\libogg_static.sln" /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
+
+build:
+  project: win32\VS2015\opus-tools.sln
+  parallel: true
+  verbosity: minimal
+
+after_build:
+- git describe --tags --match "v*" --always > _git_tag.tmp
+- set /p version=<_git_tag.tmp
+- 7z a opus-tools-%version%.zip %APPVEYOR_BUILD_FOLDER%\win32\VS2015\%PLATFORM%\%CONFIGURATION%\*.exe
+- appveyor PushArtifact opus-tools-%version%.zip
