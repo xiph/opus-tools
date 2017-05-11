@@ -267,33 +267,17 @@ More than one --picture option can be specified to attach multiple pictures.
 There may only be one picture each of type 1 and 2 in a file.
 
 .I media-type
-is optional. If left blank, it will be detected from the file. For
-best compatibility with players, use pictures with a
-.I media-type
-of image/jpeg or image/png. The
-.I media-type
-can also be "-->" to mean that
-.I filename
-is actually a URL to an image, though this use is discouraged.
-The file at the URL will not be fetched.
-The URL itself is stored in the metadata.
+is optional and is now ignored.
 
 .I description
 is optional. The default is an empty string.
 
-The next part specifies the resolution and color information. If the
-.I media-type
-is image/jpeg, image/png, or image/gif, this can usually be left empty
-and the information will be read from the file.
-Otherwise, you must specify the width in
-pixels, height in pixels, and color depth in bits-per-pixel. If the image has
-indexed colors you should also specify the number of colors used. If possible,
-these are checked against the file for accuracy.
+The next part specifies the resolution and color information, but
+is now ignored.
 
 .I filename
-is the path to the picture file to be imported, or the URL if the
-.I media-type
-is "-->".
+is the path to the picture file to be imported.
+
 .IP "--padding n"
 Reserve
 .I n

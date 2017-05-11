@@ -216,7 +216,7 @@ static int opus_packet_parse_impl(const unsigned char *data, opus_int32 len,
    return count;
 }
 
-void save_range(FILE *frange, int frame_size, unsigned char *packet, int nbBytes, opus_uint32 *rngs, int nb_streams){
+void save_range(FILE *frange, int frame_size, const unsigned char *packet, int nbBytes, opus_uint32 *rngs, int nb_streams){
   int i, parsed_size;
   const unsigned char *subpkt;
   static const char *bw_strings[5]={"NB","MB","WB","SWB","FB"};

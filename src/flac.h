@@ -26,7 +26,7 @@
 # define __FLAC_H
 # include <stdio.h>
 # include "os_support.h"
-# include "opusenc.h"
+# include "encoder.h"
 # if defined(HAVE_LIBFLAC)
 #  include <FLAC/stream_decoder.h>
 #  include <FLAC/metadata.h>

@@ -168,7 +168,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
                _("Discarding comment not in the form name=value\n"));
             continue;
           }
-          comment_add(&inopt->comments,&inopt->comments_length,NULL,entry);
+          ope_comments_add_string(inopt->comments,entry);
         }
         setlocale(LC_NUMERIC,saved_locale);
         /*Set the header gain to the album gain after converting to the R128
@@ -184,8 +184,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           gain=256*(track_gain-album_gain)+0.5;
           track_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
           sprintf(track_gain_buf,"%i",track_gain_val);
-          comment_add(&inopt->comments,&inopt->comments_length,
-             "R128_TRACK_GAIN",track_gain_buf);
+          ope_comments_add(inopt->comments, "R128_TRACK_GAIN",track_gain_buf);
         }
       }
       break;
@@ -231,8 +230,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         b64=(char *)malloc(b64_sz);
         base64_encode(b64,buf,buf_sz);
         free(buf);
-        comment_add(&inopt->comments,&inopt->comments_length,
-           "METADATA_BLOCK_PICTURE",b64);
+        ope_comments_add(inopt->comments, "METADATA_BLOCK_PICTURE", b64);
         free(b64);
       }
       break;

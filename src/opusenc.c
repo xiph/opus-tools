@@ -61,14 +61,13 @@
 
 #include <opus.h>
 #include <opus_multistream.h>
-#include <ogg/ogg.h>
 #include "wav_io.h"
 
-#include "picture.h"
 #include "opus_header.h"
-#include "opusenc.h"
+#include "encoder.h"
 #include "diag_range.h"
 #include "cpusupport.h"
+#include <opusenc.h>
 
 #ifdef VALGRIND
 #include <valgrind/memcheck.h>
@@ -79,19 +78,6 @@
 #define VG_CHECK(x,y)
 #endif
 
-static void comment_init(char **comments, int* length, const char *vendor_string);
-static void comment_pad(char **comments, int* length, int amount);
-
-/*Write an Ogg page to a file pointer*/
-static inline int oe_write_page(ogg_page *page, FILE *fp)
-{
-   int written;
-   written=fwrite(page->header,1,page->header_len, fp);
-   written+=fwrite(page->body,1,page->body_len, fp);
-   return written;
-}
-
-#define MAX_FRAME_BYTES 61295
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
@@ -206,25 +192,14 @@ void help_picture(void)
   printf("  be specified to attach multiple pictures. There may only be one\n");
   printf("  picture each of type 1 and 2 in a file.\n");
   printf("\n");
-  printf("  MEDIA-TYPE is optional. If left blank, it will be detected from the\n");
-  printf("  file. For best compatibility with players, use pictures with a\n");
-  printf("  MEDIA-TYPE of image/jpeg or image/png. The MEDIA-TYPE can also be\n");
-  printf("  \"-->\" to mean that FILENAME is actually a URL to an image, though\n");
-  printf("  this use is discouraged. The file at the URL will not be fetched.\n");
-  printf("  The URL itself is stored in the metadata.\n");
+  printf("  MEDIA-TYPE is optional and is now ignored.\n");
   printf("\n");
   printf("  DESCRIPTION is optional. The default is an empty string.\n");
   printf("\n");
-  printf("  The next part specifies the resolution and color information. If\n");
-  printf("  the MEDIA-TYPE is image/jpeg, image/png, or image/gif, this can\n");
-  printf("  usually be left empty and the information will be read from the\n");
-  printf("  file.  Otherwise, you must specify the width in pixels, height in\n");
-  printf("  pixels, and color depth in bits-per-pixel. If the image has indexed\n");
-  printf("  colors you should also specify the number of colors used. If possible,\n");
-  printf("  these are checked against the file for accuracy.\n");
+  printf("  The next part specifies the resolution and color information, but\n");
+  printf("  is now ignored.\n");
   printf("\n");
-  printf("  FILENAME is the path to the picture file to be imported, or the URL\n");
-  printf("  if the MEDIA-TYPE is \"-->\".\n");
+  printf("  FILENAME is the path to the picture file to be imported.\n");
 }
 
 static inline void print_time(double seconds)
@@ -239,6 +214,62 @@ static inline void print_time(double seconds)
   if(minutes)fprintf(stderr,"%s%" I64FORMAT " minute%s%s",hours?", ":" ",minutes,
                      minutes>1?"s":"",!hours&&seconds>0?" and":seconds>0?", and":"");
   if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
+}
+
+typedef struct {
+  OggOpusEnc *enc;
+  FILE *fout;
+  opus_int64 total_bytes;
+  opus_int64 bytes_written;
+  opus_int64 nb_encoded;
+  opus_int64 pages_out;
+  opus_int64 packets_out;
+  int peak_bytes;
+  int min_bytes;
+  int last_length;
+  FILE *frange;
+} EncData;
+
+int write_callback(void *user_data, const unsigned char *ptr, opus_int32 len) {
+  EncData *data = (EncData*)user_data;
+  data->bytes_written += len;
+  data->pages_out++;
+  return fwrite(ptr, 1, len, data->fout) != (size_t)len;
+}
+
+int close_callback(void *user_data) {
+  EncData *obj = (EncData*)user_data;
+  int ret = 0;
+  if (obj->fout) ret = fclose(obj->fout);
+  return ret;
+}
+
+int packet_callback(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags) {
+  int frame_size;
+  EncData *data = (EncData*)user_data;
+  if (packet_ptr[0] == 'O' && packet_ptr[1] == 'p') return 0;
+  data->total_bytes+=packet_len;
+  data->peak_bytes=IMAX(packet_len,data->peak_bytes);
+  data->min_bytes=IMIN(packet_len,data->min_bytes);
+  frame_size = opus_packet_get_samples_per_frame(packet_ptr, 48000);
+  data->nb_encoded += frame_size;
+  data->packets_out++;
+  data->last_length = packet_len;
+  if(data->frange!=NULL){
+    int ret;
+    opus_uint32 rngs[256];
+    OpusEncoder *oe;
+    int nb_streams;
+    for(nb_streams=0;;nb_streams++){
+      ret=ope_encoder_ctl(data->enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
+      if (ret != 0 || oe == NULL) break;
+      ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[nb_streams]));
+    }
+    save_range(data->frange,frame_size,packet_ptr,packet_len,
+               rngs,nb_streams);
+  }
+  (void)flags;
+  return 0;
 }
 
 int main(int argc, char **argv)
@@ -288,9 +319,10 @@ int main(int argc, char **argv)
   };
   int i, ret;
   int                cline_size;
-  OpusMSEncoder      *st;
+  OpusEncCallbacks   callbacks = {write_callback, close_callback};
+  OggOpusEnc         *enc;
+  EncData            data;
   const char         *opus_version;
-  unsigned char      *packet;
   float              *input;
   /*I/O*/
   oe_enc_opt         inopt;
@@ -299,39 +331,21 @@ int main(int argc, char **argv)
   char               *outFile;
   char               *range_file;
   FILE               *fin;
-  FILE               *fout;
-  FILE               *frange;
-  ogg_stream_state   os;
-  ogg_page           og;
-  ogg_packet         op;
-  ogg_int64_t        last_granulepos=0;
-  ogg_int64_t        enc_granulepos=0;
-  ogg_int64_t        original_samples=0;
-  ogg_int32_t        id=-1;
-  int                last_segments=0;
-  OpusHeader         header;
+  int                eos;
   char               ENCODER_string[1024];
   /*Counters*/
-  opus_int64         nb_encoded=0;
-  opus_int64         bytes_written=0;
-  opus_int64         pages_out=0;
-  opus_int64         total_bytes=0;
   opus_int64         total_samples=0;
-  opus_int32         nbBytes;
   opus_int32         nb_samples;
-  opus_int32         peak_bytes=0;
-  opus_int32         min_bytes;
   time_t             start_time;
   time_t             stop_time;
   time_t             last_spin=0;
   int                last_spin_len=0;
   /*Settings*/
   int                quiet=0;
-  int                max_frame_bytes;
   opus_int32         bitrate=-1;
   opus_int32         rate=48000;
-  opus_int32         coding_rate=48000;
   opus_int32         frame_size=960;
+  opus_int32         opus_frame_param = OPUS_FRAMESIZE_20_MS;
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
@@ -345,6 +359,8 @@ int main(int argc, char **argv)
   int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
+  int                nb_streams;
+  int                nb_coupled;
 #ifdef WIN_UNICODE
    int argc_utf8;
    char **argv_utf8;
@@ -363,11 +379,10 @@ int main(int argc, char **argv)
 #endif
 
   opt_ctls_ctlval=NULL;
-  frange=NULL;
   range_file=NULL;
   in_format=NULL;
   inopt.channels=chan;
-  inopt.rate=coding_rate=rate;
+  inopt.rate=rate;
   /* 0 dB gain is recommended unless you know what you're doing */
   inopt.gain=0;
   inopt.samplesize=16;
@@ -381,15 +396,16 @@ int main(int argc, char **argv)
   srand(((getpid()&65535)<<15)^start_time);
   serialno=rand();
 
+  inopt.comments = ope_comments_create();
   opus_version=opus_get_version_string();
   /*Vendor string should just be the encoder library,
     the ENCODER comment specifies the tool used.*/
-  comment_init(&inopt.comments, &inopt.comments_length, opus_version);
   snprintf(ENCODER_string, sizeof(ENCODER_string), "opusenc from %s %s",PACKAGE_NAME,PACKAGE_VERSION);
-  comment_add(&inopt.comments, &inopt.comments_length, "ENCODER", ENCODER_string);
+  ope_comments_add(inopt.comments, "ENCODER", ENCODER_string);
 
   /*Process command-line options*/
   cline_size=0;
+  data.frange = NULL;
   while(1){
     int c;
     int save_cmd=1;
@@ -473,6 +489,18 @@ int main(int argc, char **argv)
             exit(1);
           }
         }else if(strcmp(long_options[option_index].name,"framesize")==0){
+          if(strcmp(optarg,"2.5")==0)opus_frame_param=OPUS_FRAMESIZE_2_5_MS;
+          else if(strcmp(optarg,"5")==0)opus_frame_param=OPUS_FRAMESIZE_5_MS;
+          else if(strcmp(optarg,"10")==0)opus_frame_param=OPUS_FRAMESIZE_10_MS;
+          else if(strcmp(optarg,"20")==0)opus_frame_param=OPUS_FRAMESIZE_20_MS;
+          else if(strcmp(optarg,"40")==0)opus_frame_param=OPUS_FRAMESIZE_40_MS;
+          else if(strcmp(optarg,"60")==0)opus_frame_param=OPUS_FRAMESIZE_60_MS;
+          else{
+            fprintf(stderr,"Invalid framesize: %s\n",optarg);
+            fprintf(stderr,"Framesize must be 2.5, 5, 10, 20, 40, or 60.\n");
+            exit(1);
+          }
+
           if(strcmp(optarg,"2.5")==0)frame_size=120;
           else if(strcmp(optarg,"5")==0)frame_size=240;
           else if(strcmp(optarg,"10")==0)frame_size=480;
@@ -525,9 +553,9 @@ int main(int argc, char **argv)
           opt_ctls_ctlval[opt_ctls*3+2]=atoi(spos+1);
           opt_ctls++;
         }else if(strcmp(long_options[option_index].name,"save-range")==0){
-          frange=fopen_utf8(optarg,"w");
+          data.frange=fopen_utf8(optarg,"w");
           save_cmd=0;
-          if(frange==NULL){
+          if(data.frange==NULL){
             perror(optarg);
             fprintf(stderr,"Could not open save-range file: %s\n",optarg);
             fprintf(stderr,"Must provide a writable file name.\n");
@@ -541,35 +569,93 @@ int main(int argc, char **argv)
             fprintf(stderr, "Comments must be of the form name=value\n");
             exit(1);
           }
-          comment_add(&inopt.comments, &inopt.comments_length, NULL, optarg);
+          ope_comments_add_string(inopt.comments, optarg);
         }else if(strcmp(long_options[option_index].name,"artist")==0){
           save_cmd=0;
-          comment_add(&inopt.comments, &inopt.comments_length, "artist", optarg);
+          ope_comments_add(inopt.comments, "artist", optarg);
         } else if(strcmp(long_options[option_index].name,"title")==0){
           save_cmd=0;
-          comment_add(&inopt.comments, &inopt.comments_length, "title", optarg);
+          ope_comments_add(inopt.comments, "title", optarg);
         } else if(strcmp(long_options[option_index].name,"album")==0){
           save_cmd=0;
-          comment_add(&inopt.comments, &inopt.comments_length, "album", optarg);
+          ope_comments_add(inopt.comments, "album", optarg);
         } else if(strcmp(long_options[option_index].name,"date")==0){
           save_cmd=0;
-          comment_add(&inopt.comments, &inopt.comments_length, "date", optarg);
+          ope_comments_add(inopt.comments, "date", optarg);
         } else if(strcmp(long_options[option_index].name,"genre")==0){
           save_cmd=0;
-          comment_add(&inopt.comments, &inopt.comments_length, "genre", optarg);
+          ope_comments_add(inopt.comments, "genre", optarg);
         } else if(strcmp(long_options[option_index].name,"picture")==0){
-          const char *error_message;
-          char       *picture_data;
-          save_cmd=0;
-          picture_data=parse_picture_specification(optarg,&error_message,
-                                                   &seen_file_icons);
-          if(picture_data==NULL){
-            fprintf(stderr,"Error parsing picture option: %s\n",error_message);
+          const char    *media_type;
+          const char    *media_type_end;
+          const char    *description;
+          const char    *description_end;
+          const char    *filename;
+          const char    *spec;
+          char *description_copy;
+          FILE *picture_file;
+          int picture_type;
+          spec = optarg;
+          picture_type=3;
+          media_type=media_type_end=description=description_end=filename=spec;
+          picture_file=fopen_utf8(filename,"rb");
+          description_copy=NULL;
+          if(picture_file==NULL&&strchr(spec,'|')){
+            const char *p;
+            char       *q;
+            unsigned long val;
+            /*We don't have a plain file, and there is a pipe character: assume it's
+              the full form of the specification.*/
+            val=strtoul(spec,&q,10);
+            if(*q!='|'||val>20){
+              fprintf(stderr, "Invalid picture type: %.*s\n",
+                (int)strcspn(spec,"|"), spec);
+              exit(1);
+            }
+            /*An empty field implies a default of 'Cover (front)'.*/
+            if(spec!=q)picture_type=val;
+            media_type=q+1;
+            media_type_end=media_type+strcspn(media_type,"|");
+            if(*media_type_end=='|'){
+              description=media_type_end+1;
+              description_end=description+strcspn(description,"|");
+              if(*description_end=='|'){
+                p=description_end+1;
+                /*Ignore WIDTHxHEIGHTxDEPTH/COLORS.*/
+                p+=strcspn(p,"|");
+                if(*p=='|'){
+                  filename=p+1;
+                }
+              }
+            }
+            if (filename==spec) {
+              fprintf(stderr, "Not enough fields in picture specification: %s\n", spec);
+              exit(1);
+            }
+            if (media_type_end-media_type==3 && strncmp("-->",media_type,3)==0) {
+              fprintf(stderr, "Picture URLs are no longer supported.\n");
+              exit(1);
+            }
+            if (picture_type>=1&&picture_type<=2&&(seen_file_icons&picture_type)) {
+              fprintf(stderr, "Only one picture of type %d (%s) is allowed.\n",
+                picture_type, picture_type==1 ? "32x32 icon" : "icon");
+              exit(1);
+            }
+          }
+          if (picture_file) fclose(picture_file);
+          if (description_end-description != 0) {
+            size_t len = description_end-description;
+            description_copy = malloc(len+1);
+            memcpy(description_copy, description, len);
+            description_copy[len]=0;
+          }
+          ret = ope_comments_add_picture(inopt.comments, filename, picture_type, description_copy);
+          if (ret != OPE_OK) {
+            fprintf(stderr, "Error: %s: %s\n", ope_strerror(ret), filename);
             exit(1);
           }
-          comment_add(&inopt.comments,&inopt.comments_length,
-                      "METADATA_BLOCK_PICTURE",picture_data);
-          free(picture_data);
+          if (description_copy) free(description_copy);
+          if (picture_type>=1&&picture_type<=2) seen_file_icons|=picture_type;
         } else if(strcmp(long_options[option_index].name,"padding")==0){
           comment_padding=atoi(optarg);
         } else if(strcmp(long_options[option_index].name,"discard-comments")==0){
@@ -619,7 +705,7 @@ int main(int argc, char **argv)
   inFile=argv_utf8[optind];
   outFile=argv_utf8[optind+1];
 
-  if(cline_size>0)comment_add(&inopt.comments, &inopt.comments_length, "ENCODER_OPTIONS", ENCODER_string);
+  if(cline_size>0)ope_comments_add(inopt.comments, "ENCODER_OPTIONS", ENCODER_string);
 
   if(strcmp(inFile, "-")==0){
 #if defined WIN32 || defined _WIN32
@@ -669,52 +755,23 @@ int main(int argc, char **argv)
   chan=inopt.channels;
   inopt.skip=0;
 
-  /*In order to code the complete length we'll need to do a little padding*/
-  setup_padder(&inopt,&original_samples);
-
-  if(rate>24000)coding_rate=48000;
-  else if(rate>16000)coding_rate=24000;
-  else if(rate>12000)coding_rate=16000;
-  else if(rate>8000)coding_rate=12000;
-  else coding_rate=8000;
-
-  frame_size=frame_size/(48000/coding_rate);
-
-  /*Scale the resampler complexity, but only for 48000 output because
-    the near-cutoff behavior matters a lot more at lower rates.*/
-  if(rate!=coding_rate)setup_resample(&inopt,coding_rate==48000?(complexity+1)/2:5,coding_rate);
-
-  if(rate!=coding_rate&&complexity!=10&&!quiet){
-    fprintf(stderr,"Notice: Using resampling with complexity<10.\n");
-    fprintf(stderr,"Opusenc is fastest with 48, 24, 16, 12, or 8kHz input.\n\n");
-  }
-
-  /*OggOpus headers*/ /*FIXME: broke forcemono*/
-  header.channels=chan;
-  header.channel_mapping=header.channels>8?255:chan>2;
-  header.input_sample_rate=rate;
-  header.gain=inopt.gain;
-
   /*Initialize Opus encoder*/
-  /*Frame sizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
-    to save the extra 4ms of codec lookahead when we'll be using only small frames.*/
-  st=opus_multistream_surround_encoder_create(coding_rate, chan, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
-     header.stream_map, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
-  if(ret!=OPUS_OK){
-    fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
-    exit(1);
+  enc = ope_encoder_create_callbacks(&callbacks, &data, inopt.comments, rate, chan, chan>8?255:chan>2, NULL);
+  ope_encoder_ctl(enc, OPE_SET_MUXING_DELAY(max_ogg_delay));
+  ope_encoder_ctl(enc, OPE_SET_SERIALNO(serialno));
+  ope_encoder_ctl(enc, OPE_SET_PACKET_CALLBACK(packet_callback, &data));
+  ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(opus_frame_param));
+  ope_encoder_ctl(enc, OPE_SET_COMMENT_PADDING(comment_padding));
+  for(nb_streams=0;;nb_streams++){
+    OpusEncoder *oe;
+    ret=ope_encoder_ctl(enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
+    if (ret != 0 || oe == NULL) break;
   }
-
-  min_bytes=max_frame_bytes=(1275*3+7)*header.nb_streams;
-  packet=malloc(sizeof(unsigned char)*max_frame_bytes);
-  if(packet==NULL){
-    fprintf(stderr,"Error allocating packet buffer.\n");
-    exit(1);
-  }
+  nb_coupled = chan - nb_streams;
 
   if(bitrate<0){
     /*Lower default rate for sampling rates [8000-44100) by a factor of (rate+16k)/(64k)*/
-    bitrate=((64000*header.nb_streams+32000*header.nb_coupled)*
+    bitrate=((64000*nb_streams+32000*nb_coupled)*
              (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
   }
 
@@ -725,40 +782,40 @@ int main(int argc, char **argv)
   }
   bitrate=IMIN(chan*256000,bitrate);
 
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_BITRATE(bitrate));
+  ret = ope_encoder_ctl(enc, OPUS_SET_BITRATE(bitrate));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_SET_BITRATE returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR(!with_hard_cbr));
+  ret = ope_encoder_ctl(enc, OPUS_SET_VBR(!with_hard_cbr));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_SET_VBR returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
   if(!with_hard_cbr){
-    ret=opus_multistream_encoder_ctl(st, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
+    ret = ope_encoder_ctl(enc, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
     if(ret!=OPUS_OK){
       fprintf(stderr,"Error OPUS_SET_VBR_CONSTRAINT returned: %s\n",opus_strerror(ret));
       exit(1);
     }
   }
 
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_COMPLEXITY(complexity));
+  ret = ope_encoder_ctl(enc, OPUS_SET_COMPLEXITY(complexity));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_SET_COMPLEXITY returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_PACKET_LOSS_PERC(expect_loss));
+  ret = ope_encoder_ctl(enc, OPUS_SET_PACKET_LOSS_PERC(expect_loss));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_SET_PACKET_LOSS_PERC returned: %s\n",opus_strerror(ret));
     exit(1);
   }
 
 #ifdef OPUS_SET_LSB_DEPTH
-  ret=opus_multistream_encoder_ctl(st, OPUS_SET_LSB_DEPTH(IMAX(8,IMIN(24,inopt.samplesize))));
+  ret = ope_encoder_ctl(enc, OPUS_SET_LSB_DEPTH(IMAX(8,IMIN(24,inopt.samplesize))));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Warning OPUS_SET_LSB_DEPTH returned: %s\n",opus_strerror(ret));
   }
@@ -768,60 +825,57 @@ int main(int argc, char **argv)
   for(i=0;i<opt_ctls;i++){
     int target=opt_ctls_ctlval[i*3];
     if(target==-1){
-      ret=opus_multistream_encoder_ctl(st,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
+      ret = ope_encoder_ctl(enc, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
       if(ret!=OPUS_OK){
         fprintf(stderr,"Error opus_multistream_encoder_ctl(st,%d,%d) returned: %s\n",opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
         exit(1);
       }
-    }else if(target<header.nb_streams){
+    }else if(target<nb_streams){
       OpusEncoder *oe;
-      opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(target,&oe));
+      ope_encoder_ctl(enc, OPUS_MULTISTREAM_GET_ENCODER_STATE(target,&oe));
       ret=opus_encoder_ctl(oe, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
       if(ret!=OPUS_OK){
         fprintf(stderr,"Error opus_encoder_ctl(st[%d],%d,%d) returned: %s\n",target,opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2],opus_strerror(ret));
         exit(1);
       }
     }else{
-      fprintf(stderr,"Error --set-ctl-int target stream %d is higher than the maximum stream number %d.\n",target,header.nb_streams-1);
+      fprintf(stderr,"Error --set-ctl-int target stream %d is higher than the maximum stream number %d.\n",target,nb_streams-1);
       exit(1);
     }
   }
 
   /*We do the lookahead check late so user CTLs can change it*/
-  ret=opus_multistream_encoder_ctl(st, OPUS_GET_LOOKAHEAD(&lookahead));
+  ret = ope_encoder_ctl(enc, OPUS_GET_LOOKAHEAD(&lookahead));
   if(ret!=OPUS_OK){
     fprintf(stderr,"Error OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(ret));
     exit(1);
   }
   inopt.skip+=lookahead;
-  /*Regardless of the rate we're coding at the ogg timestamping/skip is
-    always timed at 48000.*/
-  header.preskip=inopt.skip*(48000./coding_rate);
   /* Extra samples that need to be read to compensate for the pre-skip */
-  inopt.extraout=(int)header.preskip*(rate/48000.);
+  inopt.extraout=(int)lookahead*(rate/48000.);
 
   if(!quiet){
     int opus_app;
     fprintf(stderr,"Encoding using %s",opus_version);
-    opus_multistream_encoder_ctl(st,OPUS_GET_APPLICATION(&opus_app));
+    ope_encoder_ctl(enc, OPUS_GET_APPLICATION(&opus_app));
     if(opus_app==OPUS_APPLICATION_VOIP)fprintf(stderr," (VoIP)\n");
     else if(opus_app==OPUS_APPLICATION_AUDIO)fprintf(stderr," (audio)\n");
     else if(opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY)fprintf(stderr," (low-delay)\n");
     else fprintf(stderr," (unknown)\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"   Input: %0.6gkHz %d channel%s\n",
-            header.input_sample_rate/1000.,chan,chan<2?"":"s");
-    fprintf(stderr,"  Output: %d channel%s (",header.channels,header.channels<2?"":"s");
-    if(header.nb_coupled>0)fprintf(stderr,"%d coupled",header.nb_coupled*2);
-    if(header.nb_streams-header.nb_coupled>0)fprintf(stderr,
-       "%s%d uncoupled",header.nb_coupled>0?", ":"",
-       header.nb_streams-header.nb_coupled);
+            rate/1000.,chan,chan<2?"":"s");
+    fprintf(stderr,"  Output: %d channel%s (",chan,chan<2?"":"s");
+    if(nb_coupled>0)fprintf(stderr,"%d coupled",nb_coupled*2);
+    if(nb_streams-nb_coupled>0)fprintf(stderr,
+       "%s%d uncoupled",nb_coupled>0?", ":"",
+       nb_streams-nb_coupled);
     fprintf(stderr,")\n          %0.2gms packets, %0.6gkbit/sec%s\n",
-       frame_size/(coding_rate/1000.), bitrate/1000.,
+       frame_size/(48000/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
-    fprintf(stderr," Preskip: %d\n",header.preskip);
+    fprintf(stderr," Preskip: %d\n",lookahead);
 
-    if(frange!=NULL)fprintf(stderr,"         Writing final range file %s\n",range_file);
+    if(data.frange!=NULL)fprintf(stderr,"         Writing final range file %s\n",range_file);
     fprintf(stderr,"\n");
   }
 
@@ -829,71 +883,23 @@ int main(int argc, char **argv)
 #if defined WIN32 || defined _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
-    fout=stdout;
+    data.fout=stdout;
   }else{
-    fout=fopen_utf8(outFile, "wb");
-    if(!fout){
+    data.fout=fopen_utf8(outFile, "wb");
+    if(!data.fout){
       perror(outFile);
       exit(1);
     }
   }
-
-  /*Initialize Ogg stream struct*/
-  if(ogg_stream_init(&os, serialno)==-1){
-    fprintf(stderr,"Error: stream init failed\n");
-    exit(1);
-  }
-
-  /*Write header*/
-  {
-    /*The Identification Header is 19 bytes, plus a Channel Mapping Table for
-      mapping families other than 0. The Channel Mapping Table is 2 bytes +
-      1 byte per channel. Because the maximum number of channels is 255, the
-      maximum size of this header is 19 + 2 + 255 = 276 bytes.*/
-    unsigned char header_data[276];
-    int packet_size=opus_header_to_packet(&header, header_data, sizeof(header_data));
-    op.packet=header_data;
-    op.bytes=packet_size;
-    op.b_o_s=1;
-    op.e_o_s=0;
-    op.granulepos=0;
-    op.packetno=0;
-    ogg_stream_packetin(&os, &op);
-
-    while((ret=ogg_stream_flush(&os, &og))){
-      if(!ret)break;
-      ret=oe_write_page(&og, fout);
-      if(ret!=og.header_len+og.body_len){
-        fprintf(stderr,"Error: failed writing header to output stream\n");
-        exit(1);
-      }
-      bytes_written+=ret;
-      pages_out++;
-    }
-
-    comment_pad(&inopt.comments, &inopt.comments_length, comment_padding);
-    op.packet=(unsigned char *)inopt.comments;
-    op.bytes=inopt.comments_length;
-    op.b_o_s=0;
-    op.e_o_s=0;
-    op.granulepos=0;
-    op.packetno=1;
-    ogg_stream_packetin(&os, &op);
-  }
-
-  /* writing the rest of the Opus header packets */
-  while((ret=ogg_stream_flush(&os, &og))){
-    if(!ret)break;
-    ret=oe_write_page(&og, fout);
-    if(ret!=og.header_len + og.body_len){
-      fprintf(stderr,"Error: failed writing header to output stream\n");
-      exit(1);
-    }
-    bytes_written+=ret;
-    pages_out++;
-  }
-
-  free(inopt.comments);
+  data.enc = enc;
+  data.total_bytes = 0;
+  data.bytes_written = 0;
+  data.nb_encoded = 0;
+  data.packets_out = 0;
+  data.peak_bytes = 0;
+  data.min_bytes = 256*1275*6;
+  data.pages_out = 0;
+  data.last_length = 0;
 
   input=malloc(sizeof(float)*frame_size*chan);
   if(input==NULL){
@@ -901,149 +907,37 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+  eos = 0;
   /*Main encoding loop (one frame per iteration)*/
-  nb_samples=-1;
-  while(!op.e_o_s){
-    int size_segments,cur_frame_size;
-    id++;
+  while(!eos){
+    nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
+    total_samples+=nb_samples;
 
-    if(nb_samples<0){
-      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
-      total_samples+=nb_samples;
-    }
-
+    ope_encoder_write_float(enc, input, nb_samples);
     if(start_time==0){
       start_time = time(NULL);
     }
 
-    cur_frame_size=frame_size;
-
-    if(nb_samples<cur_frame_size){
-      op.e_o_s=1;
-      /*Avoid making the final packet 20ms or more longer than needed.*/
-      cur_frame_size-=((cur_frame_size-(nb_samples>0?nb_samples:1))
-        /(coding_rate/50))*(coding_rate/50);
-      /*No fancy end padding, just fill with zeros for now.*/
-      for(i=nb_samples*chan;i<cur_frame_size*chan;i++)input[i]=0;
-    }
-
-    /*Encode current frame*/
-    VG_UNDEF(packet,max_frame_bytes);
-    VG_CHECK(input,sizeof(float)*chan*cur_frame_size);
-    nbBytes=opus_multistream_encode_float(st, input, cur_frame_size, packet, max_frame_bytes);
-    if(nbBytes<0){
-      fprintf(stderr, "Encoding failed: %s. Aborting.\n", opus_strerror(nbBytes));
-      break;
-    }
-    VG_CHECK(packet,nbBytes);
-    VG_UNDEF(input,sizeof(float)*chan*cur_frame_size);
-    nb_encoded+=cur_frame_size;
-    enc_granulepos+=cur_frame_size*48000/coding_rate;
-    total_bytes+=nbBytes;
-    size_segments=(nbBytes+255)/255;
-    peak_bytes=IMAX(nbBytes,peak_bytes);
-    min_bytes=IMIN(nbBytes,min_bytes);
-
-    if(frange!=NULL){
-      opus_uint32 rngs[256];
-      OpusEncoder *oe;
-      for(i=0;i<header.nb_streams;i++){
-        ret=opus_multistream_encoder_ctl(st,OPUS_MULTISTREAM_GET_ENCODER_STATE(i,&oe));
-        ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[i]));
-      }
-      save_range(frange,cur_frame_size*(48000/coding_rate),packet,nbBytes,
-                 rngs,header.nb_streams);
-    }
-
-    /*Flush early if adding this packet would make us end up with a
-      continued page which we wouldn't have otherwise.*/
-    while((((size_segments<=255)&&(last_segments+size_segments>255))||
-           (enc_granulepos-last_granulepos>max_ogg_delay))&&
-#ifdef OLD_LIBOGG
-           ogg_stream_flush(&os, &og)){
-#else
-           ogg_stream_flush_fill(&os, &og,255*255)){
-#endif
-      if(ogg_page_packets(&og)!=0)last_granulepos=ogg_page_granulepos(&og);
-      last_segments-=og.header[26];
-      ret=oe_write_page(&og, fout);
-      if(ret!=og.header_len+og.body_len){
-         fprintf(stderr,"Error: failed writing data to output stream\n");
-         exit(1);
-      }
-      bytes_written+=ret;
-      pages_out++;
-    }
-
-    /*The downside of early reading is if the input is an exact
-      multiple of the frame_size you'll get an extra frame that needs
-      to get cropped off. The downside of late reading is added delay.
-      If your ogg_delay is 120ms or less we'll assume you want the
-      low delay behavior.*/
-    if((!op.e_o_s)&&max_ogg_delay>5760){
-      nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
-      total_samples+=nb_samples;
-      if(nb_samples==0)op.e_o_s=1;
-    } else nb_samples=-1;
-
-    op.packet=(unsigned char *)packet;
-    op.bytes=nbBytes;
-    op.b_o_s=0;
-    op.granulepos=enc_granulepos;
-    if(op.e_o_s){
-      /*We compute the final GP as ceil(len*48k/input_rate)+preskip. When a
-        resampling decoder does the matching floor((len-preskip)*input_rate/48k)
-        conversion, the resulting output length will exactly equal the original
-        input length when 0<input_rate<=48000.*/
-      op.granulepos=((original_samples*48000+rate-1)/rate)+header.preskip;
-    }
-    op.packetno=2+id;
-    ogg_stream_packetin(&os, &op);
-    last_segments+=size_segments;
-
-    /*If the stream is over or we're sure that the delayed flush will fire,
-      go ahead and flush now to avoid adding delay.*/
-    while((op.e_o_s||(enc_granulepos+(frame_size*48000/coding_rate)-last_granulepos>max_ogg_delay)||
-           (last_segments>=255))?
-#ifdef OLD_LIBOGG
-    /*Libogg > 1.2.2 allows us to achieve lower overhead by
-      producing larger pages. For 20ms frames this is only relevant
-      above ~32kbit/sec.*/
-           ogg_stream_flush(&os, &og):
-           ogg_stream_pageout(&os, &og)){
-#else
-           ogg_stream_flush_fill(&os, &og,255*255):
-           ogg_stream_pageout_fill(&os, &og,255*255)){
-#endif
-      if(ogg_page_packets(&og)!=0)last_granulepos=ogg_page_granulepos(&og);
-      last_segments-=og.header[26];
-      ret=oe_write_page(&og, fout);
-      if(ret!=og.header_len+og.body_len){
-         fprintf(stderr,"Error: failed writing data to output stream\n");
-         exit(1);
-      }
-      bytes_written+=ret;
-      pages_out++;
-    }
+    if (nb_samples < frame_size) eos = 1;
 
     if(!quiet){
       stop_time = time(NULL);
       if(stop_time>last_spin){
         double estbitrate;
-        double coded_seconds=nb_encoded/(double)coding_rate;
+        double coded_seconds=data.nb_encoded/48000.;
         double wall_time=(stop_time-start_time)+1e-6;
         char sbuf[55];
         static const char spinner[]="|/-\\";
         if(!with_hard_cbr){
           double tweight=1./(1+exp(-((coded_seconds/10.)-3.)));
-          estbitrate=(total_bytes*8.0/coded_seconds)*tweight+
+          estbitrate=(data.total_bytes*8.0/coded_seconds)*tweight+
                       bitrate*(1.-tweight);
-        }else estbitrate=nbBytes*8*((double)coding_rate/frame_size);
+        }else estbitrate=data.last_length*8*(48000./frame_size);
         fprintf(stderr,"\r");
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
-        if(inopt.total_samples_per_channel>0 && nb_encoded<inopt.total_samples_per_channel){
+        if(inopt.total_samples_per_channel>0 && data.nb_encoded<inopt.total_samples_per_channel){
           snprintf(sbuf,54,"\r[%c] %2d%% ",spinner[last_spin&3],
-          (int)floor(nb_encoded/(double)(inopt.total_samples_per_channel+inopt.skip)*100.));
+          (int)floor(data.nb_encoded/(double)(inopt.total_samples_per_channel+lookahead)*100.));
         }else{
           snprintf(sbuf,54,"\r[%c] ",spinner[last_spin&3]);
         }
@@ -1067,8 +961,10 @@ int main(int argc, char **argv)
   for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
   if(last_spin_len)fprintf(stderr,"\r");
 
+  ope_encoder_drain(enc);
+
   if(!quiet){
-    double coded_seconds=nb_encoded/(double)coding_rate;
+    double coded_seconds=data.nb_encoded/48000.;
     double wall_time=(stop_time-start_time)+1e-6;
     fprintf(stderr,"Encoding complete\n");
     fprintf(stderr,"-----------------------------------------------------\n");
@@ -1077,129 +973,27 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n       Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n                (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %d packets, %" I64FORMAT " pages\n",bytes_written,id+1,pages_out);
+    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, %" I64FORMAT " pages\n",data.bytes_written,data.packets_out-1,data.pages_out);
     fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
-            total_bytes*8.0/(coded_seconds)/1000.0);
+            data.total_bytes*8.0/(coded_seconds)/1000.0);
     fprintf(stderr," Instant rates: %0.6gkbit/s to %0.6gkbit/s\n                (%d to %d bytes per packet)\n",
-            min_bytes*8*((double)coding_rate/frame_size/1000.),
-            peak_bytes*8*((double)coding_rate/frame_size/1000.),min_bytes,peak_bytes);
-    fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(bytes_written-total_bytes)/(double)bytes_written*100.);
-#ifdef OLD_LIBOGG
-    if(max_ogg_delay>(frame_size*(48000/coding_rate)*4))fprintf(stderr,"    (use libogg 1.3 or later for lower overhead)\n");
-#endif
+            data.min_bytes*8*(48000./frame_size/1000.),
+            data.peak_bytes*8*(48000./frame_size/1000.),data.min_bytes,data.peak_bytes);
+    fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
     fprintf(stderr,"\n");
   }
 
-  opus_multistream_encoder_destroy(st);
-  ogg_stream_clear(&os);
-  free(packet);
+  ope_encoder_destroy(enc);
+  ope_comments_destroy(inopt.comments);
   free(input);
   if(opt_ctls)free(opt_ctls_ctlval);
 
-  if(rate!=coding_rate)clear_resample(&inopt);
-  clear_padder(&inopt);
   if(downmix)clear_downmix(&inopt);
   in_format->close_func(inopt.readdata);
   if(fin)fclose(fin);
-  if(fout)fclose(fout);
-  if(frange)fclose(frange);
+  if(data.frange)fclose(data.frange);
 #ifdef WIN_UNICODE
    free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif
   return 0;
 }
-
-/*
- Comments will be stored in the Vorbis style.
- It is described in the "Structure" section of
-    http://www.xiph.org/ogg/vorbis/doc/v-comment.html
-
- However, Opus and other non-vorbis formats omit the "framing_bit".
-
-The comment header is decoded as follows:
-  1) [vendor_length] = read an unsigned integer of 32 bits
-  2) [vendor_string] = read a UTF-8 vector as [vendor_length] octets
-  3) [user_comment_list_length] = read an unsigned integer of 32 bits
-  4) iterate [user_comment_list_length] times {
-     5) [length] = read an unsigned integer of 32 bits
-     6) this iteration's user comment = read a UTF-8 vector as [length] octets
-     }
-  7) done.
-*/
-
-#define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
-                           ((buf[base+2]<<16)&0xff0000)| \
-                           ((buf[base+1]<<8)&0xff00)| \
-                           (buf[base]&0xff))
-#define writeint(buf, base, val) do{ buf[base+3]=((val)>>24)&0xff; \
-                                     buf[base+2]=((val)>>16)&0xff; \
-                                     buf[base+1]=((val)>>8)&0xff; \
-                                     buf[base]=(val)&0xff; \
-                                 }while(0)
-
-static void comment_init(char **comments, int* length, const char *vendor_string)
-{
-  /*The 'vendor' field should be the actual encoding library used.*/
-  int vendor_length=strlen(vendor_string);
-  int user_comment_list_length=0;
-  int len=8+4+vendor_length+4;
-  char *p=(char*)malloc(len);
-  if(p==NULL){
-    fprintf(stderr, "malloc failed in comment_init()\n");
-    exit(1);
-  }
-  memcpy(p, "OpusTags", 8);
-  writeint(p, 8, vendor_length);
-  memcpy(p+12, vendor_string, vendor_length);
-  writeint(p, 12+vendor_length, user_comment_list_length);
-  *length=len;
-  *comments=p;
-}
-
-void comment_add(char **comments, int* length, char *tag, char *val)
-{
-  char* p=*comments;
-  int vendor_length=readint(p, 8);
-  int user_comment_list_length=readint(p, 8+4+vendor_length);
-  int tag_len=(tag?strlen(tag)+1:0);
-  int val_len=strlen(val);
-  int len=(*length)+4+tag_len+val_len;
-
-  p=(char*)realloc(p, len);
-  if(p==NULL){
-    fprintf(stderr, "realloc failed in comment_add()\n");
-    exit(1);
-  }
-
-  writeint(p, *length, tag_len+val_len);      /* length of comment */
-  if(tag){
-    memcpy(p+*length+4, tag, tag_len);        /* comment tag */
-    (p+*length+4)[tag_len-1] = '=';           /* separator */
-  }
-  memcpy(p+*length+4+tag_len, val, val_len);  /* comment */
-  writeint(p, 8+4+vendor_length, user_comment_list_length+1);
-  *comments=p;
-  *length=len;
-}
-
-static void comment_pad(char **comments, int* length, int amount)
-{
-  if(amount>0){
-    int i;
-    int newlen;
-    char* p=*comments;
-    /*Make sure there is at least amount worth of padding free, and
-       round up to the maximum that fits in the current ogg segments.*/
-    newlen=(*length+amount+255)/255*255-1;
-    p=realloc(p,newlen);
-    if(p==NULL){
-      fprintf(stderr,"realloc failed in comment_pad()\n");
-      exit(1);
-    }
-    for(i=*length;i<newlen;i++)p[i]=0;
-    *comments=p;
-    *length=newlen;
-  }
-}
-#undef readint
-#undef writeint
