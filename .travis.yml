@@ -8,6 +8,7 @@ addons:
     packages:
       - libogg-dev
       - libopus-dev
+      - libopusfile-dev
       - libflac-dev
 
 os:
@@ -20,7 +21,7 @@ compiler:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libogg opus flac xz; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libogg opus opusfile libopusenc flac xz; fi
 
 script:
   - ./autogen.sh
