@@ -10,10 +10,16 @@ platform:
 environment:
   sample_url: https://people.xiph.org/~giles/2012/opus/ehren-paper_lights-96.opus
   opus_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opus/artifacts/opus.zip
+  opusfile_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opusfile/artifacts/opusfile.zip
+  opusenc_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/libopusenc/artifacts/opus.zip
 
 install:
   - cd %APPVEYOR_BUILD_FOLDER%
   - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUS_URL%'
+  - 7z x opus.zip -oopus-artifacts
+  - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUSFILE_URL%'
+  - 7z x opusfile.zip -oopus-artifacts
+  - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUSENC_URL%'
   - 7z x opus.zip -oopus-artifacts
   - move /Y opus-artifacts ..\opus
   - git clone -q https://github.com/xiph/ogg.git ..\ogg
