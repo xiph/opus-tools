@@ -56,7 +56,7 @@
 #include <opus.h>
 #include <ogg/ogg.h>
 
-#define OPUS_PAYLOAD_TYPE 120
+static uint8_t opus_payload_type = 120;
 
 /* state struct for passing around our handles */
 typedef struct {
@@ -99,6 +99,8 @@ void be16(unsigned char *p, int v)
   p[1] = v & 0xff;
 }
 
+static int samplerate = 48000;
+static int channels = 2;
 
 /* manufacture a generic OpusHead packet */
 ogg_packet *op_opushead(void)
@@ -120,9 +122,9 @@ ogg_packet *op_opushead(void)
 
   memcpy(data, "OpusHead", 8);  /* identifier */
   data[8] = 1;                  /* version */
-  data[9] = 2;                  /* channels */
+  data[9] = channels;                  /* channels */
   le16(data+10, 0);             /* pre-skip */
-  le32(data + 12, 48000);       /* original sample rate */
+  le32(data + 12, samplerate);       /* original sample rate */
   le16(data + 16, 0);           /* gain */
   data[18] = 0;                 /* channel mapping family */
 
@@ -540,7 +542,7 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   }
 
   rtp.version = 2;
-  rtp.type = OPUS_PAYLOAD_TYPE;
+  rtp.type = opus_payload_type;
   rtp.pad = 0;
   rtp.ext = 0;
   rtp.cc = 0;
@@ -767,7 +769,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
   params->seq = rtp.seq;
 
-  if (rtp.type != OPUS_PAYLOAD_TYPE) {
+  if (rtp.type != opus_payload_type) {
     fprintf(stderr, "skipping non-opus packet\n");
     return;
   }
@@ -796,7 +798,7 @@ int extract(const char* input_file)
 
   if ((pcap = pcap_open_offline(input_file, errbuf)) == NULL)
   {
-    fprintf(stderr,"\nError opening dump file\n");
+    fprintf(stderr,"\nError opening dump file \"%s\"\n", input_file);
     return -1;
   }
 
@@ -941,7 +943,7 @@ void opustools_version(void)
 
 void usage(char *exe)
 {
-  printf("Usage: %s [--extract file.pcap] [--sniff] <file.opus> [<file2.opus>]\n", exe);
+  printf("Usage: %s [--extract file.pcap] [--sniff [device name]] <file.opus> [<file2.opus>]\n", exe);
   printf("\n");
   printf("Sends and receives Opus audio RTP streams.\n");
   printf("\nGeneral Options:\n");
@@ -950,6 +952,9 @@ void usage(char *exe)
   printf(" -q, --quiet          Suppress status output\n");
   printf(" -d, --destination    Destination address (default 127.0.0.1)\n");
   printf(" -p, --port           Destination port (default 1234)\n");
+  printf(" -c, --channels       Sets the number of channels in pcap file (default 2)\n");
+  printf(" -s, --samplerate     Sets samplerate in pcap file (default 48000)\n");
+  printf(" -t, --type           Set the used payload type for opus (default 120)\n");
   printf(" --sniff              Sniff and record Opus RTP streams\n");
   printf(" -e, --extract        Extract from input pcap file (default input.pcap)\n");
   printf("\n");
@@ -970,13 +975,16 @@ int main(int argc, char *argv[])
     {"quiet", no_argument, NULL, 'q'},
     {"destination", required_argument, NULL, 'd'},
     {"port", required_argument, NULL, 'p'},
+    {"samplerate", required_argument, NULL, 's'},
+    {"channels", required_argument, NULL, 'c'},
+    {"type", required_argument, NULL, 't'},
     {"sniff", no_argument, NULL, 0},
     {"extract", required_argument, NULL, 'e'},
     {0, 0, 0, 0}
   };
 
   /* process command line arguments */
-  while ((option = getopt_long(argc, argv, "hVqd:pe:", long_options, &i)) != -1) {
+  while ((option = getopt_long(argc, argv, "hVqds:c:t:e:p:", long_options, &i)) != -1) {
     switch (option) {
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
@@ -1015,6 +1023,19 @@ int main(int argc, char *argv[])
         if (optarg)
             port = atoi(optarg);
         break;
+      case 's':
+        if (optarg)
+            samplerate = atoi(optarg);
+        break;
+      case 'c':
+        if (optarg)
+            channels = atoi(optarg);
+      break;
+      case 't':
+        if (optarg)
+            opus_payload_type = atoi(optarg);
+      break;
+
       case 'h':
         usage(argv[0]);
         return 0;
