@@ -976,7 +976,7 @@ int main(int argc, char *argv[])
   };
 
   /* process command line arguments */
-  while ((option = getopt_long(argc, argv, "hVqd:p:", long_options, &i)) != -1) {
+  while ((option = getopt_long(argc, argv, "hVqd:pe:", long_options, &i)) != -1) {
     switch (option) {
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
