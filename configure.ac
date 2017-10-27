@@ -201,6 +201,14 @@ AC_CHECK_LIB([pcap], [pcap_open_live], [
 ])
 AC_SUBST(LIBPCAP)
 
+dnl check for wpcap
+AC_CHECK_HEADER(pcap.h,have_pcap_h=yes,)
+AC_CHECK_LIB(wpcap, pcap_open_live, [
+  AC_DEFINE([HAVE_PCAP], 1, [Define if building with libwpcap support])
+  LIBPCAP="-lwpcap"
+])
+AC_SUBST(LIBWPCAP)
+
 on_x86=no
 case "$host_cpu" in
 i[[3456]]86 | x86_64)
@@ -320,4 +328,3 @@ AC_MSG_NOTICE([
 
  Type "make; make install" to compile and install
 ])
-
