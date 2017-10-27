@@ -437,6 +437,12 @@ int parse_rtp_header(const unsigned char *packet, int size, rtp_header *rtp)
   rtp->ext = (packet[0] >> 4) & 1;
   rtp->cc = packet[0] & 7;
   rtp->header_size = 12 + 4 * rtp->cc;
+  if (rtp->ext == 1) {
+    uint16_t ext_length;
+    rtp->header_size += 4;
+    ext_length = rbe16(packet + rtp->header_size - 2);
+    rtp->header_size += ext_length * 4;
+  }
   rtp->payload_size = size - rtp->header_size;
 
   rtp->mark = (packet[1] >> 7) & 1;
