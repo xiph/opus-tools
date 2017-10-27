@@ -949,7 +949,7 @@ void opustools_version(void)
 
 void usage(char *exe)
 {
-  printf("Usage: %s [--extract file.pcap] [--sniff [device name]] <file.opus> [<file2.opus>]\n", exe);
+  printf("Usage: %s [--extract file.pcap] [--sniff] <file.opus> [<file2.opus>]\n", exe);
   printf("\n");
   printf("Sends and receives Opus audio RTP streams.\n");
   printf("\nGeneral Options:\n");
