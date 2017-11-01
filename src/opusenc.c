@@ -141,7 +141,7 @@ void usage(void)
   printf(" --max-delay n      Set maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf(" --no-surround      Disable surround sound encoding\n");
-  printf(" --coupled 1,4      Specify coupled input channels (e.g. 1/2, 4/5)\n");
+  printf(" --coupled 1:2,4:5  Specify coupled input channel pairs (only for --no-surround)\n");
   printf("\nMetadata options:\n");
   printf(" --title title      Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
@@ -716,15 +716,16 @@ int main(int argc, char **argv)
     /* parse --coupled option if available */
     header.nb_coupled = 0;
     if (coupling) {
+      typedef int map_entry[2];
       const char *delim = ",";
       char *tmp = coupling;
       char *last_delim = NULL;
-      int *mapping = NULL;
-      int *mapping_dst = NULL;
+      map_entry *mapping = NULL;
+      map_entry *mapping_dst = NULL;
       int j,last_mapped;
 
       /* count number of coupled channels: */
-      /* e.g. "1,4" means 1/2 are paired and 4/5 are paired */
+      /* e.g. "1:2,4:5" means 1/2 are paired and 4/5 are paired */
       while (*tmp) {
         if (delim[0] == *tmp) {
           header.nb_coupled++;
@@ -737,7 +738,7 @@ int main(int argc, char **argv)
       header.nb_coupled += last_delim < (coupling + strlen(coupling) - 1);
 
       /* parse integer values into new array */
-      mapping = malloc(sizeof(int) * header.nb_coupled);
+      mapping = (map_entry *)malloc(sizeof(map_entry) * header.nb_coupled);
       if (mapping == NULL) {
         fprintf(stderr, "Error allocating mapping buffer.\n");
         exit(1);
@@ -746,15 +747,23 @@ int main(int argc, char **argv)
       tmp = strtok(coupling, delim);
       mapping_dst = mapping;
       while (tmp) {
-        *mapping_dst++ = atoi(tmp);
+        /* separate left vs right channel numbers by colon: */
+        char *colon = strchr(tmp, ':');
+        if (colon == NULL) {
+          fprintf(stderr, "Error parsing --coupled argument; must be '1:2,3:4' format");
+          exit(1);
+        }
+        *colon = 0;
+        (*mapping_dst)[0] = atoi(tmp);
+        (*mapping_dst)[1] = atoi(colon+1);
+        mapping_dst++;
         tmp = strtok(0, delim);
       }
 
       /* coupled streams must be mapped in first */
       for (i = 0; i < header.nb_coupled; i++) {
-        int input_channel = mapping[i]-1;
-        header.stream_map[i*2+0] = input_channel+0;
-        header.stream_map[i*2+1] = input_channel+1;
+        header.stream_map[i*2+0] = mapping[i][0] - 1;
+        header.stream_map[i*2+1] = mapping[i][1] - 1;
       }
 
       /* map the remaining channels in */
