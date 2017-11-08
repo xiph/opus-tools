@@ -199,15 +199,15 @@ AC_CHECK_LIB([pcap], [pcap_open_live], [
   AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
   LIBPCAP="-lpcap"
 ])
-AC_SUBST(LIBPCAP)
+
 
 dnl check for wpcap
-AC_CHECK_HEADER(pcap.h,have_pcap_h=yes,)
 AC_CHECK_LIB(wpcap, pcap_open_live, [
   AC_DEFINE([HAVE_PCAP], 1, [Define if building with libwpcap support])
   LIBPCAP="-lwpcap"
 ])
-AC_SUBST(LIBWPCAP)
+
+AC_SUBST(LIBPCAP)
 
 on_x86=no
 case "$host_cpu" in
