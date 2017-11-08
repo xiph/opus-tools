@@ -962,7 +962,7 @@ void usage(char *exe)
   printf(" -s, --samplerate     Sets samplerate in pcap file (default 48000)\n");
   printf(" -t, --type           Set the used payload type for opus (default 120)\n");
   printf(" --sniff              Sniff and record Opus RTP streams\n");
-  printf(" -e, --extract        Extract from input pcap file (default input.pcap)\n");
+  printf(" -e, --extract        Extract from input pcap file\n");
   printf("\n");
   printf("By default, the given file(s) will be sent over RTP.\n");
 }
@@ -972,7 +972,7 @@ int main(int argc, char *argv[])
   int option, i;
   const char *dest = "127.0.0.1";
 #ifdef HAVE_PCAP
-  const char *input_pcap = "input.pcap";
+  const char *input_pcap = NULL;
 #endif
   int port = 1234;
   struct option long_options[] = {
@@ -1019,8 +1019,7 @@ int main(int argc, char *argv[])
 #ifdef HAVE_PCAP
         if (optarg)
             input_pcap = optarg;
-        extract(input_pcap);
-        return 0;
+        break;
 #else
         fprintf(stderr, "pcap support disabled, sorry.\n");
         return 1;
@@ -1051,7 +1050,12 @@ int main(int argc, char *argv[])
         return 1;
     }
   }
-
+#ifdef HAVE_PCAP
+  if(input_pcap) {
+    extract(input_pcap);
+    return 0;
+  }
+#endif
   for (i = optind; i < argc; i++) {
     rtp_send_file(argv[i], dest, port);
   }
