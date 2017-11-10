@@ -27,6 +27,7 @@ opusenc
 opusdec
 opusinfo
 opusrtp
+*.exe
 
 # Always include these!
 !win32/config.h
