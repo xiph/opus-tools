@@ -796,7 +796,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
 }
 
-int extract(const char* input_file)
+int extract(const char* input_file, const char* output_file)
 {
   state *params;
   pcap_t *pcap;
@@ -830,7 +830,7 @@ int extract(const char* input_file)
     pcap_close(pcap);
     return -1;
   }
-  params->out = fopen("rtpdump.opus", "wb");
+  params->out = fopen(output_file, "wb");
   if (!params->out) {
     fprintf(stderr, "Couldn't open output file.\n");
     free(params->stream);
@@ -974,6 +974,7 @@ int main(int argc, char *argv[])
   const char *dest = "127.0.0.1";
 #ifdef HAVE_PCAP
   const char *input_pcap = NULL;
+  const char *output_file = "rtpdump.opus";
 #endif
   int port = 1234;
   struct option long_options[] = {
@@ -1051,8 +1052,16 @@ int main(int argc, char *argv[])
     }
   }
 #ifdef HAVE_PCAP
-  if(input_pcap) {
-    extract(input_pcap);
+  if (input_pcap) {
+     if (optind + 1 == argc) {
+       output_file = argv[optind];
+     }
+     else if (argc > optind + 1) {
+        fprintf(stderr,
+            "Please specify exactly one input PCAP file and one output file.\n");
+        return 1;
+    }
+    extract(input_pcap, output_file);
     return 0;
   }
 #endif
