@@ -1057,7 +1057,7 @@ int main(int argc, char *argv[])
        output_file = argv[optind];
      }
      else if(argc >  optind + 1) {
-        fprintf(stderr, "Please specify exactly one input PCAP file and on output file.\n");
+        fprintf(stderr, "Please specify exactly one input PCAP file and one output file.\n");
         return 1;
      }
     extract(input_pcap, output_file);
