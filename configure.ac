@@ -30,6 +30,8 @@ AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
 
+LT_INIT
+
 #Use a hacked up version of autoconf's AC_C_RESTRICT because it's not
 #strong enough a test to detect old buggy versions of GCC (e.g. 2.95.3)
 #Note: Both this and the test for variable-size arrays below are also
