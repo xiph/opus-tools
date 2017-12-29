@@ -51,7 +51,7 @@
 
 #include "stack_alloc.h"
 
-#ifdef WIN32
+#if defined WIN32 || defined _WIN32
 # include <windows.h> /*GetFileType()*/
 # include <io.h>      /*_get_osfhandle()*/
 #endif
@@ -78,11 +78,16 @@
 #include "flac.h"
 
 /* Macros for handling potentially large file offsets */
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+#if defined WIN32 || defined _WIN32
 # define OFF_T __int64
 /* On Windows, fseek() on pipes may return zero even though it doesn't seek. */
-# define FSEEK(s,o,w) (((GetFileType((HANDLE)_get_osfhandle(_fileno(s)))&~FILE_TYPE_REMOTE)==FILE_TYPE_DISK)?_fseeki64((s),(o),(w)):1)
-# define FTELL _ftelli64
+# if defined __MINGW32__ || defined __MINGW64__
+#  define FSEEK(s,o,w) (((GetFileType((HANDLE)_get_osfhandle(_fileno(s)))&~FILE_TYPE_REMOTE)==FILE_TYPE_DISK)?fseeko64((s),(o),(w)):1)
+#  define FTELL ftello64
+# else
+#  define FSEEK(s,o,w) (((GetFileType((HANDLE)_get_osfhandle(_fileno(s)))&~FILE_TYPE_REMOTE)==FILE_TYPE_DISK)?_fseeki64((s),(o),(w)):1)
+#  define FTELL _ftelli64
+# endif
 #elif defined HAVE_FSEEKO
 # define OFF_T off_t
 # define FSEEK fseeko
