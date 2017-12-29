@@ -105,8 +105,7 @@ int oi_strncasecmp(const char *a, const char *b, int n){
 }
 
 int is_jpeg(const unsigned char *buf, size_t length){
-  return length>=11&&memcmp(buf,"\xFF\xD8\xFF\xE0",4)==0
-   &&(buf[4]<<8|buf[5])>=16&&memcmp(buf+6,"JFIF",5)==0;
+  return length>=3&&memcmp(buf,"\xFF\xD8\xFF",3)==0;
 }
 
 int is_png(const unsigned char *buf, size_t length){
