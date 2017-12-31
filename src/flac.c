@@ -368,12 +368,16 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
   FLAC__stream_decoder_set_metadata_respond(flac->decoder,
      FLAC__METADATA_TYPE_PICTURE);
   flac->inopt=opt;
+  flac->channels=0;
   flac->f=in;
   flac->oldbuf=malloc(buflen*sizeof(*flac->oldbuf));
   memcpy(flac->oldbuf,oldbuf,buflen*sizeof(*flac->oldbuf));
   flac->bufpos=0;
   flac->buflen=buflen;
   flac->block_buf=NULL;
+  flac->block_buf_pos=0;
+  flac->block_buf_len=0;
+  flac->max_blocksize=0;
   if((*(flac_id(oldbuf,buflen)?
      FLAC__stream_decoder_init_stream:FLAC__stream_decoder_init_ogg_stream))(
         flac->decoder,read_callback,NULL,NULL,NULL,eof_callback,
@@ -381,11 +385,11 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
      FLAC__STREAM_DECODER_INIT_STATUS_OK){
     /*Decode until we get the file length, sample rate, the number of channels,
       and the Vorbis comments (if any).*/
-    if(FLAC__stream_decoder_process_until_end_of_metadata(flac->decoder)){
+    if(FLAC__stream_decoder_process_until_end_of_metadata(flac->decoder)&&
+       flac->channels>0&&flac->channels<=8){
       opt->read_samples=flac_read;
       opt->readdata=flac;
       /*FLAC supports 1 to 8 channels only.*/
-      speex_assert(flac->channels>0&&flac->channels<=8);
       /*It uses the same channel mappings as WAV.*/
       flac->channel_permute=wav_permute_matrix[flac->channels-1];
       return 1;
