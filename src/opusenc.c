@@ -418,6 +418,7 @@ int main(int argc, char **argv)
       case 0:
         if(strcmp(long_options[option_index].name,"quiet")==0){
           quiet=1;
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"bitrate")==0){
           bitrate=atof(optarg)*1000.;
         }else if(strcmp(long_options[option_index].name,"hard-cbr")==0){
@@ -443,6 +444,7 @@ int main(int argc, char **argv)
           exit(0);
         }else if(strcmp(long_options[option_index].name,"ignorelength")==0){
           inopt.ignorelength=1;
+          save_cmd=0;
         }else if(strcmp(long_options[option_index].name,"raw")==0){
           inopt.rawmode=1;
           save_cmd=0;
@@ -595,6 +597,7 @@ int main(int argc, char **argv)
           char *description_copy;
           FILE *picture_file;
           int picture_type;
+          save_cmd=0;
           spec = optarg;
           picture_type=3;
           media_type=media_type_end=description=description_end=filename=spec;
@@ -664,9 +667,10 @@ int main(int argc, char **argv)
         } else if(strcmp(long_options[option_index].name,"discard-pictures")==0){
           inopt.copy_pictures=0;
         }
-        /*Commands whose arguments would leak file paths or just end up as metadata
-           should have save_cmd=0; to prevent them from being saved in the
-           command-line tag.*/
+        /*Options whose arguments would leak file paths or just end up as
+           metadata, or that relate only to input file handling or console
+           output, should have save_cmd=0; to prevent them from being saved
+           in the ENCODER_OPTIONS tag.*/
         break;
       case 'h':
         usage();
