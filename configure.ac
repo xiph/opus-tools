@@ -120,8 +120,7 @@ AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
   dnl fall back to the old school test
   XIPH_PATH_OGG(, AC_MSG_ERROR([
     libogg is required to build this package!
-    please see http://www.xiph.org/ for how to
-    obtain a copy.
+    Please see https://www.xiph.org/ for how to obtain a copy.
   ]))
   saved_CFLAGS="$CFLAGS"
   saved_LIBS="$LIBS"
@@ -141,8 +140,7 @@ AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
   dnl fall back to the old school test
   XIPH_PATH_OPUS(, AC_MSG_ERROR([
     Opus is required to build this package!
-    please see http://opus-codec.org/ for how to
-    obtain a copy.
+    Please see https://opus-codec.org/ for how to obtain a copy.
   ]))
  ])
 
