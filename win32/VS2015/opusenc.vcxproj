@@ -31,7 +31,6 @@
     <ClCompile Include="..\..\win32\unicode_support.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\share\getopt.h" />
     <ClInclude Include="..\..\src\arch.h" />
     <ClInclude Include="..\..\src\cpusupport.h" />
     <ClInclude Include="..\..\src\diag_range.h" />

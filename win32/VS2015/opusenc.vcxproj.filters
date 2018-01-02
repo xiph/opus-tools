@@ -85,9 +85,6 @@
     <ClInclude Include="..\..\win32\unicode_support.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\share\getopt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\cpusupport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
