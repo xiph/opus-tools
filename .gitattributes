@@ -2,3 +2,8 @@
 .gitattributes		export-ignore
 
 update_version		export-ignore
+
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+*.vcxproj.filters text eol=crlf
+*.bat text eol=crlf

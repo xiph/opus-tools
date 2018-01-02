@@ -2,6 +2,7 @@
 [Dd]ebug/
 [Rr]elease/
 [Rr]eleases/
+.vs/
 *.manifest
 *.lastbuildstate
 *.lib
