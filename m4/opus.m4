@@ -34,9 +34,9 @@ AC_ARG_ENABLE(opustest,AC_HELP_STRING([--disable-opustest],[Do not try to compil
   elif test "x$opus_prefix" = "xno" || test "x$opus_prefix" = "xyes" ; then
     OPUS_CFLAGS=""
   elif test "x$opus_prefix" != "x" ; then
-    OPUS_CFLAGS="-I$opus_prefix/include"
+    OPUS_CFLAGS="-I$opus_prefix/include/opus"
   elif test "x$prefix" != "xNONE"; then
-    OPUS_CFLAGS="-I$prefix/include"
+    OPUS_CFLAGS="-I$prefix/include/opus"
   fi
 
   AC_MSG_CHECKING(for Opus)
