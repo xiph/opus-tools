@@ -4,7 +4,7 @@
 .TH opusdec 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
 
 .SH NAME
-opusdec \- decode audio from Opus format to WAV (or simple audio output)
+opusdec \- decode audio in Opus format to Wave or raw PCM
 
 .SH SYNOPSIS
 .B opusdec
@@ -37,7 +37,15 @@ opusdec \- decode audio from Opus format to WAV (or simple audio output)
 .SH DESCRIPTION
 
 .B opusdec
-decodes Opus files into PCM Wave (uncompressed) files.
+decodes Opus URLs or files to uncompressed Wave or raw PCM.
+
+In URLs, the
+.B file
+,
+.B http
+, and
+.B https
+schemes are supported unless HTTP support was disabled at build time.
 
 If the input file is specified as
 .B "-"
@@ -54,30 +62,30 @@ audio playback on your system.
 
 .SH "OPTIONS"
 .IP "-h, --help"
-Print help message
+Show help message
 .IP "-V, --version"
-Display version information
+Show version information
 .IP "--quiet"
 Suppresses program output
-.IP "--rate"
+.IP "--rate n"
 .br
 Force decoding at sampling rate n Hz
 .IP "--force-stereo"
 .br
 Force decoding to stereo
-.IP "--gain"
+.IP "--gain n"
 .br
 Adjust the output volume n dB, negative values make the signal quieter
 .IP "--no-dither"
 Do not dither 16-bit output
 .IP "--float"
-32-bit floating-point files instead of 16-bit files
+Output 32-bit floating-point samples instead of 16-bit integer samples
 .IP "--force-wav"
-Force including a wav header on output (e.g. for non-wav extensions and stdout)
-.IP "--packet-loss"
+Force including a Wave header on output (e.g. for non-wav extensions and stdout)
+.IP "--packet-loss n"
 Simulate n % random Opus packet loss
-.IP "--save-range"
-Saves check values for every frame to a file
+.IP "--save-range file"
+Save check values for every frame to a file
 
 .SH EXAMPLES
 Decode a file
@@ -90,12 +98,8 @@ opusdec input.opus output.wav
 
 Play a file
 .B input.opus
-and force output at 48000 regardless of
-the original sampling rate
-.br
-.I (48kHz output may be faster, due to avoiding resampling and some sound hardware produces higher quality output when run at 48kHz)
 .RS
-opusdec --rate 48000 input.opus
+opusdec input.opus
 .RE
 
 Re-encode a high bitrate Opus file to a lower rate
@@ -105,11 +109,11 @@ opusdec --force-wav input.opus - | opusenc --bitrate 64 - output.opus
 
 Play an http stream
 .B http://icecast.somwhere.org:8000/stream.opus
-with the help of curl on a system with pulseaudio
+on a system with pulseaudio
 .br
 .I (press ctrl-c to quit)
 .RS
-curl http://icecast.somwhere.org:8000/stream.opus | padsp opusdec -
+padsp opusdec http://icecast.somwhere.org:8000/stream.opus
 .RE
 
 .SH AUTHORS

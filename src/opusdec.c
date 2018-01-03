@@ -441,32 +441,43 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
 
 void usage(void)
 {
-   printf("Usage: opusdec [options] input_file.opus [output_file]\n");
+#if defined HAVE_LIBSNDIO || defined HAVE_SYS_SOUNDCARD_H || \
+    defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H || \
+    defined HAVE_SYS_AUDIOIO_H || defined WIN32 || defined _WIN32
+   printf("Usage: opusdec [options] input [output]\n");
+#else
+   printf("Usage: opusdec [options] input output\n");
+#endif
    printf("\n");
-   printf("Decodes a Opus file and produce a WAV file or raw file\n");
+   printf("Decode audio in Opus format to Wave or raw PCM\n");
    printf("\n");
-   printf("input_file can be:\n");
-   printf("  filename.opus        regular Opus file\n");
+   printf("input can be:\n");
+   printf("  file:filename.opus   Opus URL\n");
+   printf("  filename.opus        Opus file\n");
    printf("  -                    stdin\n");
    printf("\n");
-   printf("output_file can be:\n");
-   printf("  filename.wav         Wav file\n");
+   printf("output can be:\n");
+   printf("  filename.wav         Wave file\n");
    printf("  filename.*           Raw PCM file (any extension other than .wav)\n");
    printf("  -                    stdout (raw; unless --force-wav)\n");
-   printf("  (nothing)            Will be played to soundcard\n");
+#if defined HAVE_LIBSNDIO || defined HAVE_SYS_SOUNDCARD_H || \
+    defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H || \
+    defined HAVE_SYS_AUDIOIO_H || defined WIN32 || defined _WIN32
+   printf("  (default)            Play audio\n");
+#endif
    printf("\n");
    printf("Options:\n");
+   printf(" -h, --help            Show this help\n");
+   printf(" -V, --version         Show version information\n");
+   printf(" --quiet               Suppress program output\n");
    printf(" --rate n              Force decoding at sampling rate n Hz\n");
    printf(" --force-stereo        Force decoding to stereo\n");
-   printf(" --gain n              Manually adjust gain by n.nn dB (0 default)\n");
+   printf(" --gain n              Adjust output volume n dB (negative is quieter)\n");
    printf(" --no-dither           Do not dither 16-bit output\n");
-   printf(" --float               32-bit floating-point output\n");
-   printf(" --force-wav           Force wav header on output\n");
+   printf(" --float               Output 32-bit floating-point samples\n");
+   printf(" --force-wav           Force Wave header on output\n");
    printf(" --packet-loss n       Simulate n %% random packet loss\n");
-   printf(" --save-range file     Saves check values for every frame to a file\n");
-   printf(" -h, --help            This help\n");
-   printf(" -V, --version         Version information\n");
-   printf(" --quiet               Quiet mode\n");
+   printf(" --save-range file     Save check values for every frame to a file\n");
    printf("\n");
 }
 
