@@ -76,10 +76,10 @@
 
 #if defined HAVE_LIBSNDIO
 # include <sndio.h>
-#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
-# ifdef HAVE_SYS_SOUNDCARD_H
+#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H
+# if defined HAVE_SYS_SOUNDCARD_H
 #  include <sys/soundcard.h>
-# elif HAVE_MACHINE_SOUNDCARD_H
+# elif defined HAVE_MACHINE_SOUNDCARD_H
 #  include <machine/soundcard.h>
 # else
 #  include <soundcard.h>
@@ -310,7 +310,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
           fprintf(stderr, "could not start sndio\n");
           quit(1);
       }
-#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || HAVE_SOUNDCARD_H
+#elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H
       int audio_fd, format, stereo;
       audio_fd=open("/dev/dsp", O_WRONLY);
       if (audio_fd<0)
