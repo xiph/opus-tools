@@ -25,7 +25,6 @@
     <ClCompile Include="..\..\src\diag_range.c" />
     <ClCompile Include="..\..\src\flac.c" />
     <ClCompile Include="..\..\src\info_opus.c" />
-    <ClCompile Include="..\..\src\lpc.c" />
     <ClCompile Include="..\..\src\opusinfo.c" />
     <ClCompile Include="..\..\src\opus_header.c" />
     <ClCompile Include="..\..\src\picture.c" />
@@ -39,8 +38,7 @@
     <ClInclude Include="..\..\src\diag_range.h" />
     <ClInclude Include="..\..\src\flac.h" />
     <ClInclude Include="..\..\src\info_opus.h" />
-    <ClInclude Include="..\..\src\lpc.h" />
-    <ClInclude Include="..\..\src\opusenc.h" />
+    <ClInclude Include="..\..\src\encoder.h" />
     <ClInclude Include="..\..\src\opusinfo.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
     <ClInclude Include="..\..\src\os_support.h" />

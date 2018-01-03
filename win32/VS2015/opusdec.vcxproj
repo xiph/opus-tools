@@ -30,7 +30,6 @@
     <ClCompile Include="..\..\src\diag_range.c" />
     <ClCompile Include="..\..\win32\unicode_support.c" />
     <ClCompile Include="..\..\src\flac.c" />
-    <ClCompile Include="..\..\src\lpc.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\share\getopt.h" />
@@ -38,7 +37,6 @@
     <ClInclude Include="..\..\src\cpusupport.h" />
     <ClInclude Include="..\..\src\diag_range.h" />
     <ClInclude Include="..\..\src\flac.h" />
-    <ClInclude Include="..\..\src\lpc.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
     <ClInclude Include="..\..\src\os_support.h" />
     <ClInclude Include="..\..\src\resample_sse.h" />

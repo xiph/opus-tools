@@ -20,9 +20,6 @@
     <ClCompile Include="..\..\src\flac.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\lpc.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\opusdec.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -56,9 +53,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\flac.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lpc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\opus_header.h">

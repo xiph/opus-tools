@@ -29,9 +29,6 @@
     <ClCompile Include="..\..\src\info_opus.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\lpc.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\opusinfo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -67,10 +64,7 @@
     <ClInclude Include="..\..\src\info_opus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lpc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\opusenc.h">
+    <ClInclude Include="..\..\src\encoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\opusinfo.h">
