@@ -802,7 +802,7 @@ static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
 {
     int ret;
     char *buffer;
-    int bytes;
+    size_t bytes;
 
     while((ret = ogg_sync_pageseek(ogsync, page)) <= 0) {
         if(ret < 0) {
@@ -814,11 +814,11 @@ static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
         /* zero return, we didn't have enough data to find a whole page, read */
         buffer = ogg_sync_buffer(ogsync, CHUNK);
         bytes = fread(buffer, 1, CHUNK, f);
-        if(bytes <= 0) {
+        if(bytes == 0) {
             ogg_sync_wrote(ogsync, 0);
             return 0;
         }
-        ogg_sync_wrote(ogsync, bytes);
+        ogg_sync_wrote(ogsync, (long)bytes);
         *written += bytes;
     }
 
