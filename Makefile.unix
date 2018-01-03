@@ -6,7 +6,7 @@
 
 #CC=gcc
 CFLAGS := -O2 -g -c -Wall -Wextra -DHAVE_LIBFLAC $(CFLAGS)
-INCLUDES := -I../opus/include -I/usr/include/FLAC
+INCLUDES := -I../opus/include -I../opusfile/include -I../libopusenc/include -I/usr/include/FLAC
 
 ifneq (,$(findstring mingw,$(CC)))
   INCLUDES += -Iwin32
@@ -40,11 +40,11 @@ src/info_opus.o: CFLAGS += -DOPUSTOOLS
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
 
-opusenc: src/opus_header.o src/opusenc.o src/resample.o src/audio-in.o src/diag_range.o src/lpc.o src/flac.o src/picture.o $(COMMON_OBJS)
-	$(CC) $(LDFLAGS) $^ -o $@ ../opus/.libs/libopus.a -lm -logg -lFLAC $(LIBS)
+opusenc: src/opus_header.o src/opusenc.o src/picture.o src/audio-in.o src/diag_range.o src/flac.o $(COMMON_OBJS)
+	$(CC) $(LDFLAGS) $^ -o $@ ../libopusenc/.libs/libopusenc.a ../opus/.libs/libopus.a -lm -logg -lFLAC $(LIBS)
 
 opusdec: src/opus_header.o src/wav_io.o src/wave_out.o src/opusdec.o src/resample.o src/diag_range.o $(COMMON_OBJS)
-	$(CC) $(LDFLAGS) $^ -o $@ ../opus/.libs/libopus.a -lm -logg $(LIBS)
+	$(CC) $(LDFLAGS) $^ -o $@ ../opusfile/.libs/libopusurl.a ../opusfile/.libs/libopusfile.a ../opus/.libs/libopus.a -lm -logg -lssl -lcrypto $(LIBS)
 
 opusinfo: src/opus_header.o src/opusinfo.o src/info_opus.o src/picture.o $(COMMON_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@ -logg $(LIBS)
