@@ -24,6 +24,11 @@ install:
   - move /Y opus-artifacts ..\opus
   - git clone -q https://github.com/xiph/ogg.git ..\ogg
   - msbuild "..\ogg\win32\VS2015\libogg_static.sln" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - chocolatey install -y nasm
+  - set PATH=%PROGRAMFILES%\nasm;%PATH%
+  - git clone -q https://github.com/xiph/flac.git ..\flac
+  - xcopy /Y ..\ogg\include\ogg\*.h ..\flac\include\ogg\
+  - msbuild "..\flac\FLAC.sln" /t:libFLAC_static /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM%;PlatformToolset=v140 /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 build:
   project: win32\VS2015\opus-tools.sln
