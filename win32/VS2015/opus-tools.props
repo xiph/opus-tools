@@ -3,11 +3,11 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\libopusenc\win32\VS2015\$(Platform)\$(Configuration);..\..\..\opusfile\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\libopusenc\win32\VS2015\$(Platform)\$(Configuration);..\..\..\opusfile\win32\VS2015\$(Platform)\$(Configuration);..\..\..\flac\objs\$(Platform)\$(Configuration)\lib;..\..\..\flac\objs\$(Configuration)\lib;..\..\..\openssl\$(Platform)\Release\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\libopusenc\include;..\..\..\opusfile\include;..\..\..\opus\include;..\..\..\openssl\$(Platform)\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\ogg\include;..\..\..\libopusenc\include;..\..\..\opusfile\include;..\..\..\opus\include;..\..\..\flac\include;..\..\..\openssl\$(Platform)\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Release'">

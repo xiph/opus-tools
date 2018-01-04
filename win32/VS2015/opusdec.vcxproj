@@ -29,13 +29,11 @@
     <ClCompile Include="..\..\src\resample.c" />
     <ClCompile Include="..\..\src\diag_range.c" />
     <ClCompile Include="..\..\win32\unicode_support.c" />
-    <ClCompile Include="..\..\src\flac.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\arch.h" />
     <ClInclude Include="..\..\src\cpusupport.h" />
     <ClInclude Include="..\..\src\diag_range.h" />
-    <ClInclude Include="..\..\src\flac.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
     <ClInclude Include="..\..\src\os_support.h" />
     <ClInclude Include="..\..\src\resample_sse.h" />
