@@ -28,6 +28,7 @@
     <ClCompile Include="..\..\win32\unicode_support.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\getopt.h" />
     <ClInclude Include="..\..\src\info_opus.h" />
     <ClInclude Include="..\..\src\opusinfo.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
