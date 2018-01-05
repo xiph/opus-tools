@@ -24,13 +24,13 @@
     <ClCompile Include="..\..\src\opus_header.c" />
     <ClCompile Include="..\..\src\wav_io.c" />
     <ClCompile Include="..\..\src\wave_out.c" />
-    <ClCompile Include="..\..\src\audio-in.c" />
     <ClCompile Include="..\..\src\opusdec.c" />
     <ClCompile Include="..\..\src\resample.c" />
     <ClCompile Include="..\..\src\diag_range.c" />
     <ClCompile Include="..\..\win32\unicode_support.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\getopt.h" />
     <ClInclude Include="..\..\src\arch.h" />
     <ClInclude Include="..\..\src\cpusupport.h" />
     <ClInclude Include="..\..\src\diag_range.h" />
