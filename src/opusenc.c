@@ -37,16 +37,16 @@
 #include <stdlib.h>
 #include <string.h>
 #if (!defined WIN32 && !defined _WIN32) || defined(__MINGW32__)
-#include <unistd.h>
-#include <time.h>
+# include <unistd.h>
+# include <time.h>
 #endif
 #include <math.h>
 
 #ifdef _MSC_VER
-#define snprintf _snprintf
+# define snprintf _snprintf
 #endif
 
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+#if defined WIN32 || defined _WIN32
 # include "unicode_support.h"
 /* We need the following two to set stdout to binary */
 # include <io.h>
@@ -70,12 +70,12 @@
 #include <opusenc.h>
 
 #ifdef VALGRIND
-#include <valgrind/memcheck.h>
-#define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
-#define VG_CHECK(x,y) VALGRIND_CHECK_MEM_IS_DEFINED((x),(y))
+# include <valgrind/memcheck.h>
+# define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
+# define VG_CHECK(x,y) VALGRIND_CHECK_MEM_IS_DEFINED((x),(y))
 #else
-#define VG_UNDEF(x,y)
-#define VG_CHECK(x,y)
+# define VG_UNDEF(x,y)
+# define VG_CHECK(x,y)
 #endif
 
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
@@ -362,20 +362,20 @@ int main(int argc, char **argv)
   int                nb_streams;
   int                nb_coupled;
 #ifdef WIN_UNICODE
-   int argc_utf8;
-   char **argv_utf8;
+  int argc_utf8;
+  char **argv_utf8;
 #endif
 
-   if(query_cpu_support()){
-     fprintf(stderr,"\n\n** WARNING: This program was compiled with SSE%s\n",query_cpu_support()>1?"2":"");
-     fprintf(stderr,"            but this CPU claims to lack these instructions. **\n\n");
-   }
+  if(query_cpu_support()){
+    fprintf(stderr,"\n\n** WARNING: This program was compiled with SSE%s\n",query_cpu_support()>1?"2":"");
+    fprintf(stderr,"            but this CPU claims to lack these instructions. **\n\n");
+  }
 
 #ifdef WIN_UNICODE
-   (void)argc;
-   (void)argv;
+  (void)argc;
+  (void)argv;
 
-   init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+  init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif
 
   opt_ctls_ctlval=NULL;
@@ -997,7 +997,7 @@ int main(int argc, char **argv)
   if(fin)fclose(fin);
   if(data.frange)fclose(data.frange);
 #ifdef WIN_UNICODE
-   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+  free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif
   return 0;
 }

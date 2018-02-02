@@ -5,17 +5,17 @@
 #include <opusenc.h>
 
 #ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(X) gettext(X)
+# include <libintl.h>
+# define _(X) gettext(X)
 #else
-#define _(X) (X)
-#define textdomain(X)
-#define bindtextdomain(X, Y)
+# define _(X) (X)
+# define textdomain(X)
+# define bindtextdomain(X, Y)
 #endif
 #ifdef gettext_noop
-#define N_(X) gettext_noop(X)
+# define N_(X) gettext_noop(X)
 #else
-#define N_(X) (X)
+# define N_(X) (X)
 #endif
 
 typedef long (*audio_read_func)(void *src, float *buffer, int samples);

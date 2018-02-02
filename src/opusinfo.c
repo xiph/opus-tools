@@ -11,7 +11,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+# include <config.h>
 #endif
 
 #include <stdio.h>
@@ -32,7 +32,7 @@
 #include "info_opus.h"
 #include "picture.h"
 
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+#if defined WIN32 || defined _WIN32
 # include "unicode_support.h"
 #else
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
@@ -1012,8 +1012,8 @@ int main(int argc, char **argv)
     }
 
 #ifdef WIN_UNICODE
-   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
-   uninit_console_utf8();
+    free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
+    uninit_console_utf8();
 #endif
 
     return ret;

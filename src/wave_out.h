@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <windows.h>
 #ifdef __MINGW32__
-#include <mmsystem.h>
+# include <mmsystem.h>
 #endif
 
 //// constants /////////////////////////////////////////////////////

@@ -42,12 +42,12 @@
 
 #if defined WIN32 || defined _WIN32
 
-#include <string.h>
-#include <errno.h>
-#include "wave_out.h"
+# include <string.h>
+# include <errno.h>
+# include "wave_out.h"
 
-#define MAXWAVESIZE     4294967040LU
-#define MAX_WAVEBLOCKS    32
+# define MAXWAVESIZE     4294967040LU
+# define MAX_WAVEBLOCKS    32
 
 // This is modified for USE_WIN_AUDIO - ONLY 2002-02-27
 

@@ -43,15 +43,15 @@
 #include <getopt.h>
 
 #ifndef _WIN32
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <errno.h>
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+# include <errno.h>
 #endif
 
 #ifdef HAVE_PCAP
-#include <pcap.h>
+# include <pcap.h>
 #endif
 #include <opus.h>
 #include <ogg/ogg.h>
@@ -842,7 +842,7 @@ int extract(const char* input_file)
   ogg_flush(params);
 
   fprintf(stderr, "Capturing packets\n");
-  // read and dispatch packets until EOF is reached
+  /* read and dispatch packets until EOF is reached */
   pcap_loop(pcap, 0, write_packet, (u_char *)params);
 
   /* write outstanding data */

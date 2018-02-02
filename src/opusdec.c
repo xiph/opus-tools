@@ -33,7 +33,7 @@
 
 #include <stdio.h>
 #if !defined WIN32 && !defined _WIN32
-#include <unistd.h>
+# include <unistd.h>
 #endif
 
 #include <getopt.h>
@@ -49,18 +49,16 @@
   provides a better mechanism.*/
 #if defined(OPUS_GET_EXPERT_FRAME_DURATION_REQUEST)
 /*Enable soft clipping prevention.*/
-#define HAVE_SOFT_CLIP (1)
+# define HAVE_SOFT_CLIP (1)
 #endif
 
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+#if defined WIN32 || defined _WIN32
 # include "unicode_support.h"
 # include "wave_out.h"
 /* We need the following two to set stdout to binary */
 # include <io.h>
 # include <fcntl.h>
-# define I64FORMAT "I64d"
 #else
-# define I64FORMAT "lld"
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
 # define argc_utf8 argc
 # define argv_utf8 argv
@@ -377,9 +375,9 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       }
 
       AUDIO_INITINFO(&info);
-#ifdef AUMODE_PLAY    /* NetBSD/OpenBSD */
+# ifdef AUMODE_PLAY    /* NetBSD/OpenBSD */
       info.mode = AUMODE_PLAY;
-#endif
+# endif
       info.play.encoding = AUDIO_ENCODING_SLINEAR;
       info.play.precision = 16;
       info.play.input_sample_rate = rate;

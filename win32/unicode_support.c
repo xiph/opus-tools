@@ -27,12 +27,12 @@
    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+#if defined WIN32 || defined _WIN32
 
-#include "unicode_support.h"
+# include "unicode_support.h"
 
-#include <windows.h>
-#include <io.h>
+# include <windows.h>
+# include <io.h>
 
 static UINT g_old_output_cp = ((UINT)-1);
 

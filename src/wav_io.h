@@ -1,17 +1,17 @@
-/* Copyright (C) 2002 Jean-Marc Valin 
+/* Copyright (C) 2002 Jean-Marc Valin
    File: wav_io.h
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions
    are met:
-   
+
    - Redistributions of source code must retain the above copyright
    notice, this list of conditions and the following disclaimer.
-   
+
    - Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
-   
+
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
    ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -32,12 +32,12 @@
 #include <opus_types.h>
 
 #if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
-#define le_short(s) ((short) ((unsigned short) (s) << 8) | ((unsigned short) (s) >> 8))
-#define be_short(s) ((short) (s))
+# define le_short(s) ((short) ((unsigned short) (s) << 8) | ((unsigned short) (s) >> 8))
+# define be_short(s) ((short) (s))
 #else
-#define le_short(s) ((short) (s))
-#define be_short(s) ((short) ((unsigned short) (s) << 8) | ((unsigned short) (s) >> 8))
-#endif 
+# define le_short(s) ((short) (s))
+# define be_short(s) ((short) ((unsigned short) (s) << 8) | ((unsigned short) (s) >> 8))
+#endif
 
 /** Convert little endian */
 static inline opus_int32 le_int(opus_int32 i)
