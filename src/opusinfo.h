@@ -9,10 +9,15 @@
 /*No NLS support for now*/
 #define _(X) (X)
 
-#ifdef _WIN32
-#define I64FORMAT "I64d"
-#else
-#define I64FORMAT "lld"
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+#ifndef PRId64
+# if defined WIN32 || defined _WIN32
+#  define PRId64 "I64d"
+# else
+#  define PRId64 "lld"
+# endif
 #endif
 
 typedef struct _stream_processor {
@@ -45,8 +50,13 @@ typedef struct {
     int in_headers;
 } stream_set;
 
+#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)
+# define OI_FORMAT_PRINTF __attribute__((__format__(printf, 1, 2)))
+#else
+# define OI_FORMAT_PRINTF
+#endif
 
-void oi_info(char *format, ...);
-void oi_warn(char *format, ...);
-void oi_error(char *format, ...);
+void oi_info(char *format, ...) OI_FORMAT_PRINTF;
+void oi_warn(char *format, ...) OI_FORMAT_PRINTF;
+void oi_error(char *format, ...) OI_FORMAT_PRINTF;
 void check_xiph_comment(stream_processor *stream, int i, const char *comment, int comment_length);

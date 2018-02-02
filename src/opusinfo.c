@@ -585,7 +585,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
            SPECIFICATION argument to opusenc/flac/etc. (except without an image
            filename, since we don't know the original).*/
          oi_info("\t%.*s%u|%.*s|%.*s|%ux%ux%u",
-               sep+1-comment, comment, (unsigned)picture_type,
+               (int)(sep+1-comment), comment, (unsigned)picture_type,
                mime_type_length, data+8,
                description_length, data+12+mime_type_length,
                (unsigned)width, (unsigned)height, (unsigned)depth);
@@ -807,7 +807,7 @@ static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
     while((ret = ogg_sync_pageseek(ogsync, page)) <= 0) {
         if(ret < 0) {
             /* unsynced, we jump over bytes to a possible capture - we don't need to read more just yet */
-            oi_warn(_("WARNING: Hole in data (%d bytes) found at approximate offset %" I64FORMAT " bytes. Corrupted Ogg.\n"), -ret, *written);
+            oi_warn(_("WARNING: Hole in data (%d bytes) found at approximate offset %" PRId64 " bytes. Corrupted Ogg.\n"), -ret, *written);
             continue;
         }
 

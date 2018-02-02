@@ -42,6 +42,10 @@
 #endif
 #include <math.h>
 
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+
 #ifdef _MSC_VER
 # define snprintf _snprintf
 #endif
@@ -51,9 +55,7 @@
 /* We need the following two to set stdout to binary */
 # include <io.h>
 # include <fcntl.h>
-# define I64FORMAT "I64d"
 #else
-# define I64FORMAT "lld"
 # define fopen_utf8(_x,_y) fopen((_x),(_y))
 # define argc_utf8 argc
 # define argv_utf8 argv
@@ -68,6 +70,15 @@
 #include "diag_range.h"
 #include "cpusupport.h"
 #include <opusenc.h>
+
+/* printf format specifier for opus_int64 */
+#if !defined opus_int64 && defined PRId64
+# define I64FORMAT PRId64
+#elif defined WIN32 || defined _WIN32
+# define I64FORMAT "I64d"
+#else
+# define I64FORMAT "lld"
+#endif
 
 #ifdef VALGRIND
 # include <valgrind/memcheck.h>

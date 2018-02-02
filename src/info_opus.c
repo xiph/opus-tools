@@ -214,7 +214,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
         if(gp > 0) {
             if(gp < inf->lastgranulepos)
                 oi_warn(_("WARNING: granulepos in stream %d decreases from %"
-                        I64FORMAT " to %" I64FORMAT "\n" ),
+                        PRId64 " to %" PRId64 "\n" ),
                         stream->num, inf->lastgranulepos, gp);
             if(inf->lastgranulepos==0 && inf->firstgranule==-1) {
                 /*First timed page, now we can recover the start time.*/
@@ -226,21 +226,21 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                   else inf->firstgranule=0;
                 }
             }
-            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%" I64FORMAT "<%" I64FORMAT ") in stream %d\n"),
-                (long long)inf->total_samples,(long long)(gp-inf->firstgranule),stream->num);
+            if(inf->total_samples<gp-inf->firstgranule)oi_warn(_("WARNING: Sample count behind granule (%" PRId64 "<%" PRId64 ") in stream %d\n"),
+                inf->total_samples,gp-inf->firstgranule,stream->num);
             if(!ogg_page_eos(page) && (inf->total_samples>gp-inf->firstgranule))
-                oi_warn(_("WARNING: Sample count ahead of granule (%" I64FORMAT ">%" I64FORMAT ") in stream %d\n"),
-                (long long)inf->total_samples,(long long)(gp-inf->firstgranule),stream->num);
+                oi_warn(_("WARNING: Sample count ahead of granule (%" PRId64 ">%" PRId64 ") in stream %d\n"),
+                inf->total_samples,gp-inf->firstgranule,stream->num);
             inf->lastlastgranulepos = inf->lastgranulepos;
             inf->lastgranulepos = gp;
             if(!packets)
-                oi_warn(_("WARNING: Page with positive granpos (%" I64FORMAT ") on a page with no completed packets in stream %d\n"),gp,stream->num);
+                oi_warn(_("WARNING: Page with positive granpos (%" PRId64 ") on a page with no completed packets in stream %d\n"),gp,stream->num);
         }
         else if(packets) {
             /* Only do this if we saw at least one packet ending on this page.
              * It's legal (though very unusual) to have no packets in a page at
              * all - this is occasionally used to have an empty EOS page */
-            oi_warn(_("Negative or zero granulepos (%" I64FORMAT ") on Opus stream outside of headers. This file was created by a buggy encoder\n"), gp);
+            oi_warn(_("Negative or zero granulepos (%" PRId64 ") on Opus stream outside of headers. This file was created by a buggy encoder\n"), gp);
         }
         inf->overhead_bytes += page->header_len;
         if(page_samples)inf->last_page_duration = page_samples;
@@ -270,7 +270,7 @@ void info_opus_end(stream_processor *stream)
         seconds = (long)(time - minutes*60);
         milliseconds = (long)((time - minutes*60 - seconds)*1000);
         if(inf->lastgranulepos-inf->firstgranule<inf->oh.preskip)
-           oi_error(_("\tERROR: stream %d has a negative duration: %" I64FORMAT "-%" I64FORMAT "-%d=%" I64FORMAT "\n"),stream->num,
+           oi_error(_("\tERROR: stream %d has a negative duration: %" PRId64 "-%" PRId64 "-%d=%" PRId64 "\n"),stream->num,
            inf->lastgranulepos,inf->firstgranule,inf->oh.preskip,inf->lastgranulepos-inf->firstgranule-inf->oh.preskip);
         if((inf->total_samples-inf->last_page_duration)>(inf->lastgranulepos-inf->firstgranule))
            oi_error(_("\tERROR: stream %d has interior holes or more than one page of end trimming\n"),stream->num);
@@ -291,7 +291,7 @@ void info_opus_end(stream_processor *stream)
             inf->max_packet_duration/48.,inf->total_samples/(double)inf->total_packets/48.,inf->min_packet_duration/48.);
         if(inf->total_pages)oi_info(_("\tPage duration: %8.1fms (max), %6.1fms (avg), %6.1fms (min)\n"),
             inf->max_page_duration/48.,inf->total_samples/(double)inf->total_pages/48.,inf->min_page_duration/48.);
-        oi_info(_("\tTotal data length: %" I64FORMAT " bytes (overhead: %0.3g%%)\n"),inf->bytes,(double)inf->overhead_bytes/inf->bytes*100.);
+        oi_info(_("\tTotal data length: %" PRId64 " bytes (overhead: %0.3g%%)\n"),inf->bytes,(double)inf->overhead_bytes/inf->bytes*100.);
         oi_info(_("\tPlayback length: %ldm:%02ld.%03lds\n"), minutes, seconds, milliseconds);
         oi_info(_("\tAverage bitrate: %0.4g kb/s, w/o overhead: %.04g kb/s%s\n"),time<=0?0:inf->bytes*8/time/1000.0,
             time<=0?0:(inf->bytes-inf->overhead_bytes)*8/time/1000.0,
