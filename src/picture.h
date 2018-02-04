@@ -1,6 +1,3 @@
-#ifndef __PICTURE_H
-#define __PICTURE_H
-
 #include <ogg/ogg.h>
 
 typedef enum{
@@ -42,5 +39,3 @@ void extract_jpeg_params(const unsigned char *data, size_t data_length,
     (buf)[3]=(unsigned char)(val); \
   } \
   while(0);
-
-#endif /* __PICTURE_H */

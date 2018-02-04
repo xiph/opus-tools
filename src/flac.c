@@ -22,6 +22,7 @@
   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
+
 #if defined(HAVE_CONFIG_H)
 # include <config.h>
 #endif
@@ -29,6 +30,7 @@
 #include <math.h>
 #include <string.h>
 #include <locale.h>
+#include "encoder.h"
 #include "flac.h"
 #include "opus_header.h"
 #include "picture.h"

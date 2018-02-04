@@ -22,14 +22,12 @@
   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
-#ifndef __FLAC_H
-# define __FLAC_H
-# include <stdio.h>
-# include "os_support.h"
-# include "encoder.h"
-# if defined(HAVE_LIBFLAC)
-#  include <FLAC/stream_decoder.h>
-#  include <FLAC/metadata.h>
+
+#include <stdio.h>
+#include "os_support.h"
+#if defined(HAVE_LIBFLAC)
+# include <FLAC/stream_decoder.h>
+# include <FLAC/metadata.h>
 
 typedef struct flacfile flacfile;
 
@@ -48,11 +46,9 @@ struct flacfile{
   opus_int32 max_blocksize;
 };
 
-# endif
+#endif
 
 int flac_id(unsigned char *buf,int len);
 int oggflac_id(unsigned char *buf,int len);
 int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen);
 void flac_close(void *client_data);
-
-#endif

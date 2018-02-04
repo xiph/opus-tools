@@ -1,6 +1,4 @@
-#ifndef __OPUSENC_H
-#define __OPUSENC_H
-
+#include <stdio.h>
 #include <opus_types.h>
 #include <opusenc.h>
 
@@ -96,5 +94,3 @@ void raw_close(void *);
 
 long wav_read(void *, float *buffer, int samples);
 long wav_ieee_read(void *, float *buffer, int samples);
-
-#endif /* __OPUSENC_H */
