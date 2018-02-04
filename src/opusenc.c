@@ -235,9 +235,9 @@ typedef struct {
   opus_int64 nb_encoded;
   opus_int64 pages_out;
   opus_int64 packets_out;
-  int peak_bytes;
-  int min_bytes;
-  int last_length;
+  opus_int32 peak_bytes;
+  opus_int32 min_bytes;
+  opus_int32 last_length;
   FILE *frange;
 } EncData;
 
@@ -256,14 +256,13 @@ int close_callback(void *user_data) {
 }
 
 int packet_callback(void *user_data, const unsigned char *packet_ptr, opus_int32 packet_len, opus_uint32 flags) {
-  int frame_size;
   EncData *data = (EncData*)user_data;
-  if (packet_ptr[0] == 'O' && packet_ptr[1] == 'p') return 0;
+  int nb_samples = opus_packet_get_nb_samples(packet_ptr, packet_len, 48000);
+  if (nb_samples <= 0) return 0;  /* ignore header packets */
   data->total_bytes+=packet_len;
   data->peak_bytes=IMAX(packet_len,data->peak_bytes);
   data->min_bytes=IMIN(packet_len,data->min_bytes);
-  frame_size = opus_packet_get_samples_per_frame(packet_ptr, 48000);
-  data->nb_encoded += frame_size;
+  data->nb_encoded += nb_samples;
   data->packets_out++;
   data->last_length = packet_len;
   if(data->frange!=NULL){
@@ -276,7 +275,7 @@ int packet_callback(void *user_data, const unsigned char *packet_ptr, opus_int32
       if (ret != 0 || oe == NULL) break;
       ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[nb_streams]));
     }
-    save_range(data->frange,frame_size,packet_ptr,packet_len,
+    save_range(data->frange,nb_samples,packet_ptr,packet_len,
                rngs,nb_streams);
   }
   (void)flags;
@@ -342,7 +341,6 @@ int main(int argc, char **argv)
   char               *outFile;
   char               *range_file;
   FILE               *fin;
-  int                eos;
   char               ENCODER_string[1024];
   /*Counters*/
   opus_int64         total_samples=0;
@@ -768,7 +766,10 @@ int main(int argc, char **argv)
 
   rate=inopt.rate;
   chan=inopt.channels;
-  inopt.skip=0;
+
+  if(inopt.total_samples_per_channel && rate!=48000)
+    inopt.total_samples_per_channel = (opus_int64)
+      ((double)inopt.total_samples_per_channel * (48000./(double)rate));
 
   /*Initialize Opus encoder*/
   enc = ope_encoder_create_callbacks(&callbacks, &data, inopt.comments, rate, chan, chan>8?255:chan>2, NULL);
@@ -865,9 +866,6 @@ int main(int argc, char **argv)
     fprintf(stderr,"Error OPUS_GET_LOOKAHEAD returned: %s\n",opus_strerror(ret));
     exit(1);
   }
-  inopt.skip+=lookahead;
-  /* Extra samples that need to be read to compensate for the pre-skip */
-  inopt.extraout=(int)lookahead*(rate/48000.);
 
   if(!quiet){
     int opus_app;
@@ -922,18 +920,12 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  eos = 0;
   /*Main encoding loop (one frame per iteration)*/
-  while(!eos){
+  while(1){
     nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
     total_samples+=nb_samples;
-
     ope_encoder_write_float(enc, input, nb_samples);
-    if(start_time==0){
-      start_time = time(NULL);
-    }
-
-    if (nb_samples < frame_size) eos = 1;
+    if (nb_samples < frame_size) break;
 
     if(!quiet){
       stop_time = time(NULL);
@@ -943,11 +935,15 @@ int main(int argc, char **argv)
         double wall_time=(stop_time-start_time)+1e-6;
         char sbuf[55];
         static const char spinner[]="|/-\\";
-        if(!with_hard_cbr){
+        if(with_hard_cbr){
+          estbitrate=data.last_length*(8*48000./frame_size);
+        }else if(data.nb_encoded<=0){
+          estbitrate=0;
+        }else{
           double tweight=1./(1+exp(-((coded_seconds/10.)-3.)));
           estbitrate=(data.total_bytes*8.0/coded_seconds)*tweight+
                       bitrate*(1.-tweight);
-        }else estbitrate=data.last_length*8*(48000./frame_size);
+        }
         fprintf(stderr,"\r");
         for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
         if(inopt.total_samples_per_channel>0 && data.nb_encoded<inopt.total_samples_per_channel){
@@ -970,13 +966,13 @@ int main(int argc, char **argv)
       }
     }
   }
+
+  ope_encoder_drain(enc);
   stop_time = time(NULL);
 
   if(last_spin_len)fprintf(stderr,"\r");
   for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
   if(last_spin_len)fprintf(stderr,"\r");
-
-  ope_encoder_drain(enc);
 
   if(!quiet){
     double coded_seconds=data.nb_encoded/48000.;
@@ -988,13 +984,17 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n       Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n                (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, %" I64FORMAT " pages\n",data.bytes_written,data.packets_out-1,data.pages_out);
-    fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
-            data.total_bytes*8.0/(coded_seconds)/1000.0);
-    fprintf(stderr," Instant rates: %0.6gkbit/s to %0.6gkbit/s\n                (%d to %d bytes per packet)\n",
-            data.min_bytes*8*(48000./frame_size/1000.),
-            data.peak_bytes*8*(48000./frame_size/1000.),data.min_bytes,data.peak_bytes);
-    fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
+    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, %" I64FORMAT " pages\n",data.bytes_written,data.packets_out,data.pages_out);
+    if(data.nb_encoded>0){
+      fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
+              data.total_bytes*8.0/(coded_seconds)/1000.0);
+      fprintf(stderr," Instant rates: %0.6gkbit/s to %0.6gkbit/s\n                (%d to %d bytes per packet)\n",
+              data.min_bytes*(8*48000./frame_size/1000.),
+              data.peak_bytes*(8*48000./frame_size/1000.),data.min_bytes,data.peak_bytes);
+    }
+    if(data.bytes_written>0){
+      fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
+    }
     fprintf(stderr,"\n");
   }
 

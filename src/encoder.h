@@ -31,10 +31,7 @@ typedef struct
     int gain;
     int samplesize;
     int endianness;
-    char *infilename;
     int ignorelength;
-    int skip;
-    int extraout;
     OggOpusComments *comments;
     int copy_comments;
     int copy_pictures;
