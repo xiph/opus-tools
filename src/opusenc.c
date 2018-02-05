@@ -775,6 +775,7 @@ int main(int argc, char **argv)
   enc = ope_encoder_create_callbacks(&callbacks, &data, inopt.comments, rate, chan, chan>8?255:chan>2, NULL);
   ope_encoder_ctl(enc, OPE_SET_MUXING_DELAY(max_ogg_delay));
   ope_encoder_ctl(enc, OPE_SET_SERIALNO(serialno));
+  ope_encoder_ctl(enc, OPE_SET_HEADER_GAIN(inopt.gain));
   ope_encoder_ctl(enc, OPE_SET_PACKET_CALLBACK(packet_callback, &data));
   ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(opus_frame_param));
   ope_encoder_ctl(enc, OPE_SET_COMMENT_PADDING(comment_padding));
