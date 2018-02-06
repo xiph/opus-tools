@@ -34,51 +34,6 @@
 #include <string.h>
 #include "picture.h"
 
-static const char BASE64_TABLE[64]={
-  'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-  'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
-  'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
-  'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
-};
-
-/*Utility function for base64 encoding METADATA_BLOCK_PICTURE tags.
-  Stores BASE64_LENGTH(len)+1 bytes in dst (including a terminating NUL).*/
-void base64_encode(char *dst, const char *src, int len){
-  unsigned s0;
-  unsigned s1;
-  unsigned s2;
-  int      ngroups;
-  int      i;
-  ngroups=len/3;
-  for(i=0;i<ngroups;i++){
-    s0=(unsigned char)src[3*i+0];
-    s1=(unsigned char)src[3*i+1];
-    s2=(unsigned char)src[3*i+2];
-    dst[4*i+0]=BASE64_TABLE[s0>>2];
-    dst[4*i+1]=BASE64_TABLE[(s0&3)<<4|s1>>4];
-    dst[4*i+2]=BASE64_TABLE[(s1&15)<<2|s2>>6];
-    dst[4*i+3]=BASE64_TABLE[s2&63];
-  }
-  len-=3*i;
-  if(len==1){
-    s0=(unsigned char)src[3*i+0];
-    dst[4*i+0]=BASE64_TABLE[s0>>2];
-    dst[4*i+1]=BASE64_TABLE[(s0&3)<<4];
-    dst[4*i+2]='=';
-    dst[4*i+3]='=';
-    i++;
-  }
-  else if(len==2){
-    s0=(unsigned char)src[3*i+0];
-    s1=(unsigned char)src[3*i+1];
-    dst[4*i+0]=BASE64_TABLE[s0>>2];
-    dst[4*i+1]=BASE64_TABLE[(s0&3)<<4|s1>>4];
-    dst[4*i+2]=BASE64_TABLE[(s1&15)<<2];
-    dst[4*i+3]='=';
-    i++;
-  }
-  dst[4*i]='\0';
-}
 
 /*A version of strncasecmp() that is guaranteed to only ignore the case of
    ASCII characters.*/

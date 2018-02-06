@@ -191,49 +191,28 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
       }
       break;
     case FLAC__METADATA_TYPE_PICTURE:
-      {
-        char  *buf;
-        char  *b64;
-        size_t mime_type_length;
-        size_t description_length;
-        size_t buf_sz;
-        size_t b64_sz;
-        size_t offs;
-        if(!inopt->copy_pictures)break;
-        mime_type_length=strlen(metadata->data.picture.mime_type);
-        description_length=strlen((char *)metadata->data.picture.description);
-        buf_sz=32+mime_type_length+description_length
-         +metadata->data.picture.data_length;
-        buf=(char *)malloc(buf_sz);
-        offs=0;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.type);
-        offs+=4;
-        WRITE_U32_BE(buf+offs,(FLAC__uint32)mime_type_length);
-        offs+=4;
-        memcpy(buf+offs,metadata->data.picture.mime_type,mime_type_length);
-        offs+=mime_type_length;
-        WRITE_U32_BE(buf+offs,(FLAC__uint32)description_length);
-        offs+=4;
-        memcpy(buf+offs,metadata->data.picture.description,description_length);
-        offs+=description_length;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.width);
-        offs+=4;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.height);
-        offs+=4;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.depth);
-        offs+=4;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.colors);
-        offs+=4;
-        WRITE_U32_BE(buf+offs,metadata->data.picture.data_length);
-        offs+=4;
-        memcpy(buf+offs,metadata->data.picture.data,
-           metadata->data.picture.data_length);
-        b64_sz=BASE64_LENGTH(buf_sz)+1;
-        b64=(char *)malloc(b64_sz);
-        base64_encode(b64,buf,buf_sz);
-        free(buf);
-        ope_comments_add(inopt->comments, "METADATA_BLOCK_PICTURE", b64);
-        free(b64);
+      if(!inopt->copy_pictures)break;
+      if((unsigned)metadata->data.picture.type>20){
+        fprintf(stderr,
+          _("WARNING: Skipping picture with invalid picture type %u\n"),
+          (unsigned)metadata->data.picture.type);
+      }else if(!strcmp(metadata->data.picture.mime_type,"-->")){
+        fprintf(stderr,
+          _("WARNING: Skipping unsupported picture URL (type %u)\n"),
+          (unsigned)metadata->data.picture.type);
+      }else{
+        int ret;
+        ret=ope_comments_add_picture_from_memory(inopt->comments,
+          (const char *)metadata->data.picture.data,
+          (size_t)metadata->data.picture.data_length,
+          (int)metadata->data.picture.type,
+          (const char *)metadata->data.picture.description);
+        if(ret<0){
+          fprintf(stderr,_("WARNING: Skipping picture (%s, type %u): %s\n"),
+            metadata->data.picture.mime_type,
+            (unsigned)metadata->data.picture.type,
+            ope_strerror(ret));
+        }
       }
       break;
     default:
