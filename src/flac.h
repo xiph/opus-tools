@@ -24,7 +24,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 
 #include <stdio.h>
-#include "os_support.h"
 #if defined(HAVE_LIBFLAC)
 # include <FLAC/stream_decoder.h>
 # include <FLAC/metadata.h>

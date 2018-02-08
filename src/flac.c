@@ -248,7 +248,9 @@ static FLAC__StreamDecoderWriteStatus write_callback(
   /*We do allow the bits per sample to change, though this will confound Opus's
     silence detection.*/
   bits_per_sample=frame->header.bits_per_sample;
-  speex_assert(bits_per_sample>0&&bits_per_sample<=32);
+  if(bits_per_sample<1||bits_per_sample>32){
+    return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+  }
   scale=(0x80000000U>>(bits_per_sample-1))*(1.0F/0x80000000U);
   channel_permute=flac->channel_permute;
   block_buf=flac->block_buf;
