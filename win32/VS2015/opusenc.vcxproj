@@ -37,7 +37,6 @@
     <ClInclude Include="..\..\src\encoder.h" />
     <ClInclude Include="..\..\src\flac.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
-    <ClInclude Include="..\..\src\os_support.h" />
     <ClInclude Include="..\..\src\picture.h" />
     <ClInclude Include="..\..\src\stack_alloc.h" />
     <ClInclude Include="..\..\src\wav_io.h" />

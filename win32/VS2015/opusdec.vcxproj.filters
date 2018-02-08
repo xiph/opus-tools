@@ -49,9 +49,6 @@
     <ClInclude Include="..\..\src\opus_header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\os_support.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\resample_sse.h">
       <Filter>Header Files</Filter>
     </ClInclude>

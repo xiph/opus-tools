@@ -35,7 +35,6 @@
     <ClInclude Include="..\..\src\cpusupport.h" />
     <ClInclude Include="..\..\src\diag_range.h" />
     <ClInclude Include="..\..\src\opus_header.h" />
-    <ClInclude Include="..\..\src\os_support.h" />
     <ClInclude Include="..\..\src\resample_sse.h" />
     <ClInclude Include="..\..\src\speex_resampler.h" />
     <ClInclude Include="..\..\src\stack_alloc.h" />
