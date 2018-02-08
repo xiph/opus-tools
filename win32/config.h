@@ -5,6 +5,8 @@
 #define HAVE_LIBFLAC          1
 /* comment to compile with dynamic flac */
 #define FLAC__NO_DLL
+/* comment to use slower resampler that uses less memory */
+#define RESAMPLE_FULL_SINC_TABLE
 
 #define OUTSIDE_SPEEX         1
 #define OPUSTOOLS             1
@@ -13,7 +15,6 @@
 #define alloca _alloca
 #define getpid _getpid
 #define USE_ALLOCA            1
-#define FLOATING_POINT        1
 
 #ifdef HAVE_LIBFLAC
 #ifdef FLAC__NO_DLL
@@ -23,7 +24,6 @@
 #endif
 #endif
 
-#define SPX_RESAMPLE_EXPORT
 #define __SSE__
 
 #define RANDOM_PREFIX opustools

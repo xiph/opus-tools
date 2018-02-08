@@ -304,8 +304,8 @@ AS_IF([test "$enable_pie" = "yes"],
 CFLAGS="$CFLAGS -W"
 
 saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
-AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes])
+CFLAGS="$CFLAGS -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-sign-compare"
+AC_MSG_CHECKING([if ${CC} supports -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-sign-compare])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
     [ AC_MSG_RESULT([yes]) ],
     [ AC_MSG_RESULT([no])

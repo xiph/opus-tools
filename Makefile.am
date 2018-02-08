@@ -49,7 +49,7 @@ EXTRA_DIST = Makefile.unix \
 
 dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
-resampler_CPPFLAGS = -DSPX_RESAMPLE_EXPORT= -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DFLOATING_POINT
+resampler_CPPFLAGS = -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DRESAMPLE_FULL_SINC_TABLE
 
 opusenc_SOURCES = src/opus_header.c src/opusenc.c src/picture.c src/audio-in.c src/diag_range.c src/flac.c win32/unicode_support.c
 opusenc_CPPFLAGS = $(AM_CPPFLAGS)
