@@ -448,7 +448,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         opt->readdata = (void *)aiff;
 
         aiff->channel_permute = malloc(aiff->channels * sizeof(int));
-        if (aiff->channels <= 6)
+        if (!opt->no_surround && (aiff->channels <= 6))
             /* Where we know the mappings, use them. */
             memcpy(aiff->channel_permute, aiff_permute_matrix[aiff->channels-1],
                     sizeof(int) * aiff->channels);
@@ -696,7 +696,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         opt->readdata = (void *)wav;
 
         wav->channel_permute = malloc(wav->channels * sizeof(int));
-        if (wav->channels <= 8)
+        if (!opt->no_surround && (wav->channels <= 8))
             /* Where we know the mappings, use them. */
             memcpy(wav->channel_permute, wav_permute_matrix[wav->channels-1],
                     sizeof(int) * wav->channels);

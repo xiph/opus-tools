@@ -39,6 +39,7 @@ typedef struct
     int comments_length;
     int copy_comments;
     int copy_pictures;
+    int no_surround;
 } oe_enc_opt;
 
 void setup_scaler(oe_enc_opt *opt, float scale);

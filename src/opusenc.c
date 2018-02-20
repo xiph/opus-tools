@@ -140,6 +140,8 @@ void usage(void)
   printf(" --downmix-stereo   Downmix to stereo (if >2 channels)\n");
   printf(" --max-delay n      Set maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
+  printf(" --no-surround      Disable surround sound encoding\n");
+  printf(" --coupled 1:2,4:5  Specify coupled input channel pairs (only for --no-surround)\n");
   printf("\nMetadata options:\n");
   printf(" --title title      Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
@@ -284,6 +286,8 @@ int main(int argc, char **argv)
     {"padding", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
     {"discard-pictures", no_argument, NULL, 0},
+    {"no-surround", no_argument, NULL, 0},
+    {"coupled", required_argument, NULL, 0},
     {0, 0, 0, 0}
   };
   int i, ret;
@@ -345,6 +349,8 @@ int main(int argc, char **argv)
   int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
+  char               *coupling=NULL;
+
 #ifdef WIN_UNICODE
    int argc_utf8;
    char **argv_utf8;
@@ -376,6 +382,7 @@ int main(int argc, char **argv)
   inopt.ignorelength=0;
   inopt.copy_comments=1;
   inopt.copy_pictures=1;
+  inopt.no_surround=0;
 
   start_time = time(NULL);
   srand(((getpid()&65535)<<15)^start_time);
@@ -464,6 +471,11 @@ int main(int argc, char **argv)
             fprintf(stderr,"Expected loss is a percent and must be 0-100.\n");
             exit(1);
           }
+        }else if(strcmp(long_options[option_index].name,"no-surround")==0){
+          inopt.no_surround=1;
+        }else if(strcmp(long_options[option_index].name,"coupled")==0){
+          /* store for later so we can directly parse it into `header.stream_map` */
+          coupling=optarg;
         }else if(strcmp(long_options[option_index].name,"comp")==0 ||
                  strcmp(long_options[option_index].name,"complexity")==0){
           complexity=atoi(optarg);
@@ -698,8 +710,102 @@ int main(int argc, char **argv)
   /*Initialize Opus encoder*/
   /*Frame sizes <10ms can only use the MDCT modes, so we switch on RESTRICTED_LOWDELAY
     to save the extra 4ms of codec lookahead when we'll be using only small frames.*/
-  st=opus_multistream_surround_encoder_create(coding_rate, chan, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
-     header.stream_map, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
+  if (inopt.no_surround) {
+    header.channel_mapping=255;
+
+    /* parse --coupled option if available */
+    header.nb_coupled = 0;
+    if (coupling) {
+      typedef int map_entry[2];
+      const char *delim = ",";
+      char *tmp = coupling;
+      char *last_delim = NULL;
+      map_entry *mapping = NULL;
+      map_entry *mapping_dst = NULL;
+      int j,last_mapped;
+
+      /* count number of coupled channels: */
+      /* e.g. "1:2,4:5" means 1/2 are paired and 4/5 are paired */
+      while (*tmp) {
+        if (delim[0] == *tmp) {
+          header.nb_coupled++;
+          last_delim = tmp;
+        }
+        tmp++;
+      }
+
+      /* count one more for trailing value */
+      header.nb_coupled += last_delim < (coupling + strlen(coupling) - 1);
+
+      /* parse integer values into new array */
+      mapping = (map_entry *)malloc(sizeof(map_entry) * header.nb_coupled);
+      if (mapping == NULL) {
+        fprintf(stderr, "Error allocating mapping buffer.\n");
+        exit(1);
+      }
+
+      tmp = strtok(coupling, delim);
+      mapping_dst = mapping;
+      while (tmp) {
+        /* separate left vs right channel numbers by colon: */
+        char *colon = strchr(tmp, ':');
+        if (colon == NULL) {
+          fprintf(stderr, "Error parsing --coupled argument; must be '1:2,3:4' format");
+          exit(1);
+        }
+        *colon = 0;
+        (*mapping_dst)[0] = atoi(tmp);
+        (*mapping_dst)[1] = atoi(colon+1);
+        mapping_dst++;
+        tmp = strtok(0, delim);
+      }
+
+      /* coupled streams must be mapped in first */
+      for (i = 0; i < header.nb_coupled; i++) {
+        header.stream_map[i*2+0] = mapping[i][0] - 1;
+        header.stream_map[i*2+1] = mapping[i][1] - 1;
+      }
+
+      /* map the remaining channels in */
+      last_mapped = header.nb_coupled * 2;
+      for (i = 0; i < header.channels; i++) {
+        int is_mapped = 0;
+        for (j = 0; j < header.nb_coupled * 2; j++) {
+          if (header.stream_map[j] == i) {
+            is_mapped = 1;
+            break;
+          }
+        }
+
+        if (!is_mapped) {
+          header.stream_map[last_mapped] = i;
+          last_mapped++;
+        }
+      }
+    } else {
+      /* no coupling so direct map of channels: */
+      for (i = 0; i < header.channels; i++) {
+        header.stream_map[i] = i;
+      }
+      for (; i < 255; i++) {
+        header.stream_map[i] = 255;
+      }
+    }
+
+    header.nb_streams = header.channels - header.nb_coupled;
+    st=opus_multistream_encoder_create(
+      coding_rate,
+      header.channels,
+      header.nb_streams,
+      header.nb_coupled,
+      header.stream_map,
+      frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO,
+      &ret
+    );
+  } else {
+    st=opus_multistream_surround_encoder_create(coding_rate, chan, header.channel_mapping, &header.nb_streams, &header.nb_coupled,
+      header.stream_map, frame_size<480/(48000/coding_rate)?OPUS_APPLICATION_RESTRICTED_LOWDELAY:OPUS_APPLICATION_AUDIO, &ret);
+  }
   if(ret!=OPUS_OK){
     fprintf(stderr, "Error cannot create encoder: %s\n", opus_strerror(ret));
     exit(1);
@@ -819,7 +925,12 @@ int main(int argc, char **argv)
     fprintf(stderr,")\n          %0.2gms packets, %0.6gkbit/sec%s\n",
        frame_size/(coding_rate/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
-    fprintf(stderr," Preskip: %d\n",header.preskip);
+    fprintf(stderr," Mapping: family=%d, map: [", header.channel_mapping);
+    for (i = 0; i < header.channels; i++) {
+      fprintf(stderr,"%d", header.stream_map[i]);
+      if (i < header.channels - 1) fprintf(stderr,",");
+    }
+    fprintf(stderr,"]\n Preskip: %d\n",header.preskip);
 
     if(frange!=NULL)fprintf(stderr,"         Writing final range file %s\n",range_file);
     fprintf(stderr,"\n");
