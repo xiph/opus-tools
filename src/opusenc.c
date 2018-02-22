@@ -238,11 +238,17 @@ static inline void print_time(double seconds)
   seconds-=hours*3600.;
   minutes=seconds/60;
   seconds-=minutes*60.;
-  if(hours)fprintf(stderr," %" I64FORMAT " hour%s%s",hours,hours>1?"s":"",
-                   minutes&&!(seconds>0)?" and":"");
-  if(minutes)fprintf(stderr,"%s%" I64FORMAT " minute%s%s",hours?", ":" ",minutes,
-                     minutes>1?"s":"",!hours&&seconds>0?" and":seconds>0?", and":"");
-  if(seconds>0)fprintf(stderr," %0.4g second%s",seconds,seconds!=1?"s":"");
+  if (hours) {
+    fprintf(stderr, " %" I64FORMAT " hour%s%s", hours, hours!=1 ? "s" : "",
+      minutes && seconds>0 ? "," : minutes || seconds>0 ? " and" : "");
+  }
+  if (minutes) {
+    fprintf(stderr, " %" I64FORMAT " minute%s%s", minutes, minutes!=1 ? "s" : "",
+      seconds>0 ? (hours ? ", and" : " and") : "");
+  }
+  if (seconds>0 || (!hours && !minutes)) {
+    fprintf(stderr, " %0.4g second%s", seconds, seconds!=1 ? "s" : "");
+  }
 }
 
 typedef struct {
@@ -960,7 +966,7 @@ int main(int argc, char **argv)
       if(stop_time>last_spin){
         double estbitrate;
         double coded_seconds=data.nb_encoded/48000.;
-        double wall_time=(stop_time-start_time)+1e-6;
+        double wall_time=stop_time-start_time;
         char sbuf[55];
         static const char spinner[]="|/-\\";
         if(with_hard_cbr){
@@ -987,7 +993,7 @@ int main(int argc, char **argv)
           "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s",
           (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
           (int)(coded_seconds)%60,(int)(coded_seconds*100)%100,
-          coded_seconds/wall_time,
+          coded_seconds/(wall_time>0?wall_time:1e-6),
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
         fflush(stderr);
@@ -1009,15 +1015,19 @@ int main(int argc, char **argv)
 
   if(!quiet){
     double coded_seconds=data.nb_encoded/48000.;
-    double wall_time=(stop_time-start_time)+1e-6;
+    double wall_time=stop_time-start_time;
     fprintf(stderr,"Encoding complete\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"       Encoded:");
     print_time(coded_seconds);
     fprintf(stderr,"\n       Runtime:");
     print_time(wall_time);
-    fprintf(stderr,"\n                (%0.4gx realtime)\n",coded_seconds/wall_time);
-    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, %" I64FORMAT " pages\n",data.bytes_written,data.packets_out,data.pages_out);
+    fprintf(stderr,"\n");
+    if(wall_time>0){
+      fprintf(stderr,"                (%0.4gx realtime)\n",coded_seconds/wall_time);
+    }
+    fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, "
+      "%" I64FORMAT " pages\n",data.bytes_written,data.packets_out,data.pages_out);
     if(data.nb_encoded>0){
       fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
               data.total_bytes*8.0/(coded_seconds)/1000.0);
@@ -1027,7 +1037,8 @@ int main(int argc, char **argv)
               data.peak_bytes*(8*48000./frame_size/1000.),data.min_bytes,data.peak_bytes);
     }
     if(data.bytes_written>0){
-      fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",(data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
+      fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",
+        (data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
     }
     fprintf(stderr,"\n");
   }
