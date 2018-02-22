@@ -1,0 +1,27 @@
+build-gcc:
+  tags:
+  - alpine
+  - docker
+
+  stage: build
+
+  before_script:
+  - apk update
+  - apk add musl-dev git make gcc automake autoconf libtool file gzip zip xz
+  - apk add linux-headers libogg-dev opus-dev opusfile-dev flac-dev
+
+  script:
+  # build libopusenc
+  - git clone "https://git.xiph.org/libopusenc.git"
+  - cd libopusenc
+  - ./autogen.sh
+  - ./configure --prefix="$(pwd)/_inst" || cat config.log
+  - make check
+  - make install
+  - export PKG_CONFIG_PATH="$(pwd)/_inst/lib/pkgconfig"
+  - cd ..
+  # build opus-tools
+  - ./autogen.sh
+  - ./configure || cat config.log
+  - make check
+  - make distcheck
