@@ -113,7 +113,7 @@ static void fatal(const char *format, ...)
 static void opustoolsversion(const char *opusversion)
 {
   printf("opusenc %s %s (using %s)\n",PACKAGE_NAME,PACKAGE_VERSION,opusversion);
-  printf("Copyright (C) 2008-2017 Xiph.Org Foundation\n");
+  printf("Copyright (C) 2008-2018 Xiph.Org Foundation\n");
 }
 
 static void opustoolsversion_short(const char *opusversion)

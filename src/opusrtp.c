@@ -936,7 +936,7 @@ int sniff(char *device)
 void opustools_version(void)
 {
   printf("opusrtp %s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
-  printf("Copyright (C) 2012-2017 Xiph.Org Foundation\n");
+  printf("Copyright (C) 2012-2018 Xiph.Org Foundation\n");
 }
 
 void usage(char *exe)
