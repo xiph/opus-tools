@@ -143,7 +143,7 @@ static void usage(void)
   printf(" --help-picture     Show help on attaching album art\n");
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
-  printf(" --bitrate n.nnn    Set target bitrate in kbit/sec (6-256/channel)\n");
+  printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -773,7 +773,7 @@ int main(int argc, char **argv)
   }
 
   if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)){
-    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 16kbit/sec/channel, downmixing.\n");
+    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
     downmix=inopt.channels>8?1:2;
   }
 
@@ -832,7 +832,7 @@ int main(int argc, char **argv)
 
   if(bitrate>(1024000*chan)||bitrate<500){
     fatal("Error: bitrate %d bits/sec is insane\n%s"
-      "--bitrate values from 6 to 256 kbit/sec per channel are meaningful.\n",
+      "--bitrate values from 6 to 256 kbit/s per channel are meaningful.\n",
       bitrate, bitrate>=1000000 ? "Did you mistake bits for kilobits?\n" : "");
   }
   bitrate=IMIN(chan*256000,bitrate);
@@ -910,14 +910,14 @@ int main(int argc, char **argv)
     else if(opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY)fprintf(stderr," (low-delay)\n");
     else fprintf(stderr," (unknown application)\n");
     fprintf(stderr,"-----------------------------------------------------\n");
-    fprintf(stderr,"   Input: %0.6gkHz %d channel%s\n",
+    fprintf(stderr,"   Input: %0.6g kHz, %d channel%s\n",
             rate/1000.,chan,chan<2?"":"s");
     fprintf(stderr,"  Output: %d channel%s (",chan,chan<2?"":"s");
     if(nb_coupled>0)fprintf(stderr,"%d coupled",nb_coupled*2);
     if(nb_streams-nb_coupled>0)fprintf(stderr,
        "%s%d uncoupled",nb_coupled>0?", ":"",
        nb_streams-nb_coupled);
-    fprintf(stderr,")\n          %0.2gms packets, %0.6gkbit/sec%s\n",
+    fprintf(stderr,")\n          %0.2gms packets, %0.6g kbit/s%s\n",
        frame_size/(48000/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
     fprintf(stderr," Preskip: %d\n",lookahead);
@@ -990,7 +990,7 @@ int main(int argc, char **argv)
         }
         last_spin_len=strlen(sbuf);
         snprintf(sbuf+last_spin_len,54-last_spin_len,
-          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4gkbit/s",
+          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4g kbit/s",
           (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
           (int)(coded_seconds)%60,(int)(coded_seconds*100)%100,
           coded_seconds/(wall_time>0?wall_time:1e-6),
@@ -1029,9 +1029,9 @@ int main(int argc, char **argv)
     fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, "
       "%" I64FORMAT " pages\n",data.bytes_written,data.packets_out,data.pages_out);
     if(data.nb_encoded>0){
-      fprintf(stderr,"       Bitrate: %0.6gkbit/s (without overhead)\n",
+      fprintf(stderr,"       Bitrate: %0.6g kbit/s (without overhead)\n",
               data.total_bytes*8.0/(coded_seconds)/1000.0);
-      fprintf(stderr," Instant rates: %0.6gkbit/s to %0.6gkbit/s\n"
+      fprintf(stderr," Instant rates: %0.6g to %0.6g kbit/s\n"
                      "                (%d to %d bytes per packet)\n",
               data.min_bytes*(8*48000./frame_size/1000.),
               data.peak_bytes*(8*48000./frame_size/1000.),data.min_bytes,data.peak_bytes);

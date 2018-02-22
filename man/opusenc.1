@@ -18,7 +18,7 @@ opusenc \- encode audio into the Opus format
 .B --quiet
 ] [
 .B --bitrate
-.I kbit/sec
+.I kbit/s
 ] [
 .B --vbr
 ] [
@@ -122,13 +122,14 @@ Enable quiet mode. No messages are displayed.
 
 .SS "Encoding options"
 .IP "--bitrate N.nnn"
-Set target bitrate in kbit/sec (6-256 per channel)
+Set target bitrate in kbit/s (6-256 per channel)
 
 In VBR mode this specifies the average rate for a large and diverse
 collection of audio. In CVBR and Hard-CBR mode it specifies the specific
 output bitrate.
 
-Default for >=44.1kHz input is 64kbps per mono stream, 96kbps per coupled pair.
+The default for input with a sample rate of 44.1 kHz or higher is
+64 kbit/s per mono stream and 96 kbit/s per coupled pair.
 .IP "--vbr"
 Use variable bitrate encoding (default)
 In VBR mode the bitrate may go up and down freely depending on the content
@@ -324,7 +325,7 @@ opusenc input.wav output.opus
 .RE
 .PP
 
-Produce a very high quality encode with a target rate of 160kbps:
+Produce a very high quality encode with a target rate of 160 kbit/s:
 .RS
 opusenc --bitrate 160 input.wav output.opus
 .RE

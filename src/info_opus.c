@@ -281,7 +281,7 @@ void info_opus_end(stream_processor *stream)
         oi_info(_("\tPre-skip: %d\n"),inf->oh.preskip);
         oi_info(_("\tPlayback gain: %g dB\n"),inf->oh.gain/256.);
         oi_info(_("\tChannels: %d\n"),inf->oh.channels);
-        if(inf->oh.input_sample_rate)oi_info(_("\tOriginal sample rate: %dHz\n"),inf->oh.input_sample_rate);
+        if(inf->oh.input_sample_rate)oi_info(_("\tOriginal sample rate: %d Hz\n"),inf->oh.input_sample_rate);
         if(inf->oh.nb_streams>1)oi_info(_("\tStreams: %d, Coupled: %d\n"),inf->oh.nb_streams,inf->oh.nb_coupled);
         if(inf->oh.channel_mapping>0) {
           oi_info(_("\tChannel Mapping family: %d Map:"),inf->oh.channel_mapping);
@@ -293,7 +293,7 @@ void info_opus_end(stream_processor *stream)
             inf->max_page_duration/48.,inf->total_samples/(double)inf->total_pages/48.,inf->min_page_duration/48.);
         oi_info(_("\tTotal data length: %" PRId64 " bytes (overhead: %0.3g%%)\n"),inf->bytes,(double)inf->overhead_bytes/inf->bytes*100.);
         oi_info(_("\tPlayback length: %ldm:%02ld.%03lds\n"), minutes, seconds, milliseconds);
-        oi_info(_("\tAverage bitrate: %0.4g kb/s, w/o overhead: %.04g kb/s%s\n"),time<=0?0:inf->bytes*8/time/1000.0,
+        oi_info(_("\tAverage bitrate: %0.4g kbit/s, w/o overhead: %.04g kbit/s%s\n"),time<=0?0:inf->bytes*8/time/1000.0,
             time<=0?0:(inf->bytes-inf->overhead_bytes)*8/time/1000.0,
             (inf->min_packet_duration==inf->max_packet_duration)&&(inf->min_packet_bytes==inf->max_packet_bytes)?" (hard-CBR)":"");
     } else {
