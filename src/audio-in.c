@@ -123,7 +123,7 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
     int j=0;
     unsigned char *buf=NULL;
     int buf_size=0, buf_filled=0;
-    int size,ret;
+    int size;
 
     while(formats[j].id_func)
     {
@@ -136,9 +136,7 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
 
         if(size > buf_filled)
         {
-            ret = fread(buf+buf_filled, 1, buf_size-buf_filled, in);
-            buf_filled += ret;
-
+            buf_filled += (int)fread(buf+buf_filled, 1, buf_size-buf_filled, in);
             if(buf_filled < size)
             { /* File truncated */
                 j++;
@@ -718,12 +716,12 @@ long wav_read(void *in, float *buffer, int samples)
     wavfile *f = (wavfile *)in;
     int sampbyte = f->samplesize / 8;
     int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
-        ? f->totalsamples - f->samplesread : samples;
+        ? (int)(f->totalsamples - f->samplesread) : samples;
     signed char *buf = alloca(realsamples*sampbyte*f->channels);
     int i,j;
     int *ch_permute = f->channel_permute;
 
-    realsamples = fread(buf, sampbyte*f->channels, realsamples, f->f);
+    realsamples = (int)fread(buf, sampbyte*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
     if(f->samplesize==8)
@@ -809,11 +807,11 @@ long wav_ieee_read(void *in, float *buffer, int samples)
 {
     wavfile *f = (wavfile *)in;
     int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
-        ? f->totalsamples - f->samplesread : samples;
+        ? (int)(f->totalsamples - f->samplesread) : samples;
     float *buf = alloca(realsamples*4*f->channels); /* de-interleave buffer */
     int i,j;
 
-    realsamples = fread(buf, 4*f->channels, realsamples, f->f);
+    realsamples = (int)fread(buf, 4*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
     for(i=0; i < realsamples; i++)

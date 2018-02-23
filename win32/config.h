@@ -13,7 +13,6 @@
 
 #define inline __inline
 #define alloca _alloca
-#define getpid _getpid
 #define USE_ALLOCA            1
 
 #ifdef HAVE_LIBFLAC

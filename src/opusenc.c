@@ -37,11 +37,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
+#include <math.h>
+
 #if (!defined WIN32 && !defined _WIN32) || defined(__MINGW32__)
 # include <unistd.h>
-# include <time.h>
+#else
+# include <process.h>
+# define getpid _getpid
 #endif
-#include <math.h>
 
 #ifdef HAVE_INTTYPES_H
 # include <inttypes.h>
@@ -64,13 +68,13 @@
 
 #include <opus.h>
 #include <opus_multistream.h>
-#include "wav_io.h"
+#include <opusenc.h>
 
+#include "wav_io.h"
 #include "opus_header.h"
 #include "encoder.h"
 #include "diag_range.h"
 #include "cpusupport.h"
-#include <opusenc.h>
 
 /* printf format specifier for opus_int64 */
 #if !defined opus_int64 && defined PRId64
@@ -234,9 +238,9 @@ static void help_picture(void)
 static inline void print_time(double seconds)
 {
   opus_int64 hours, minutes;
-  hours=seconds/3600;
+  hours=(opus_int64)(seconds/3600);
   seconds-=hours*3600.;
-  minutes=seconds/60;
+  minutes=(opus_int64)(seconds/60);
   seconds-=minutes*60.;
   if (hours) {
     fprintf(stderr, " %" I64FORMAT " hour%s%s", hours, hours!=1 ? "s" : "",
@@ -425,7 +429,7 @@ int main(int argc, char **argv)
   inopt.copy_pictures=1;
 
   start_time = time(NULL);
-  srand(((getpid()&65535)<<15)^start_time);
+  srand((((unsigned)getpid()&65535)<<15)^(unsigned)start_time);
   serialno=rand();
 
   inopt.comments = ope_comments_create();
@@ -460,7 +464,7 @@ int main(int argc, char **argv)
           quiet=1;
           save_cmd=0;
         } else if (strcmp(optname, "bitrate")==0) {
-          bitrate=atof(optarg)*1000.;
+          bitrate=(opus_int32)(atof(optarg)*1000.);
         } else if (strcmp(optname, "hard-cbr")==0) {
           with_hard_cbr=1;
           with_cvbr=0;
@@ -543,19 +547,21 @@ int main(int argc, char **argv)
             ? 120 << (opus_frame_param - OPUS_FRAMESIZE_2_5_MS)
             : (opus_frame_param - OPUS_FRAMESIZE_20_MS + 1) * 960;
         } else if (strcmp(optname, "max-delay")==0) {
-          max_ogg_delay=floor(atof(optarg)*48.);
-          if(max_ogg_delay<0||max_ogg_delay>48000){
+          double val=atof(optarg);
+          if(val<0.||val>1000.){
             fatal("Invalid max-delay: %s\n"
               "Value is in milliseconds and must be in the range 0 to 1000.\n",
               optarg);
           }
+          max_ogg_delay=(int)floor(val*48.);
         } else if (strcmp(optname, "serial")==0) {
           serialno=atoi(optarg);
         } else if (strcmp(optname, "set-ctl-int")==0) {
-          int len=strlen(optarg),target,request;
+          int target,request;
           char *spos,*tpos;
+          size_t len=strlen(optarg);
           spos=strchr(optarg,'=');
-          if(len<3||spos==NULL||(spos-optarg)<1||(spos-optarg)>=len){
+          if(len<3||spos==NULL||(spos-optarg)<1||(size_t)(spos-optarg)>=len){
             fatal("Invalid set-ctl-int: %s\n"
               "Syntax is --set-ctl-int intX=intY\n"
               "       or --set-ctl-int intS:intX=intY\n", optarg);
@@ -966,7 +972,7 @@ int main(int argc, char **argv)
       if(stop_time>last_spin){
         double estbitrate;
         double coded_seconds=data.nb_encoded/48000.;
-        double wall_time=stop_time-start_time;
+        double wall_time=(double)(stop_time-start_time);
         char sbuf[55];
         static const char spinner[]="|/-\\";
         if(with_hard_cbr){
@@ -988,7 +994,7 @@ int main(int argc, char **argv)
         }else{
           snprintf(sbuf,54,"\r[%c] ",spinner[last_spin&3]);
         }
-        last_spin_len=strlen(sbuf);
+        last_spin_len=(int)strlen(sbuf);
         snprintf(sbuf+last_spin_len,54-last_spin_len,
           "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4g kbit/s",
           (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
@@ -997,7 +1003,7 @@ int main(int argc, char **argv)
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
         fflush(stderr);
-        last_spin_len=strlen(sbuf);
+        last_spin_len=(int)strlen(sbuf);
         last_spin=stop_time;
       }
     }
@@ -1015,7 +1021,7 @@ int main(int argc, char **argv)
 
   if(!quiet){
     double coded_seconds=data.nb_encoded/48000.;
-    double wall_time=stop_time-start_time;
+    double wall_time=(double)(stop_time-start_time);
     fprintf(stderr,"Encoding complete\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"       Encoded:");
