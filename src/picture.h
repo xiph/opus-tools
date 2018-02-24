@@ -1,10 +1,10 @@
 #include <ogg/ogg.h>
 
-typedef enum{
+typedef enum {
   PIC_FORMAT_JPEG,
   PIC_FORMAT_PNG,
   PIC_FORMAT_GIF
-}picture_format;
+} picture_format;
 
 int oi_strncasecmp(const char *a, const char *b, int n);
 

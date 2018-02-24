@@ -40,7 +40,8 @@
 /*Callback to read more data for the FLAC decoder.*/
 static FLAC__StreamDecoderReadStatus read_callback(
    const FLAC__StreamDecoder *decoder,FLAC__byte buffer[],size_t *bytes,
-   void *client_data){
+   void *client_data)
+{
   flacfile *flac;
   (void)decoder;
   flac=(flacfile *)client_data;
@@ -74,7 +75,8 @@ static FLAC__StreamDecoderReadStatus read_callback(
 
 /*Callback to test the stream for EOF.*/
 static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder,
-   void *client_data){
+   void *client_data)
+{
   flacfile *flac;
   (void)decoder;
   flac=(flacfile *)client_data;
@@ -83,7 +85,8 @@ static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder,
 
 /*Callback to process a metadata packet.*/
 static void metadata_callback(const FLAC__StreamDecoder *decoder,
-   const FLAC__StreamMetadata *metadata,void *client_data){
+   const FLAC__StreamMetadata *metadata,void *client_data)
+{
   flacfile *flac;
   oe_enc_opt *inopt;
   (void)decoder;
@@ -223,7 +226,8 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
 /*Callback to process an audio frame.*/
 static FLAC__StreamDecoderWriteStatus write_callback(
    const FLAC__StreamDecoder *decoder,const FLAC__Frame *frame,
-   const FLAC__int32 *const buffer[],void *client_data){
+   const FLAC__int32 *const buffer[],void *client_data)
+{
   flacfile *flac;
   int channels;
   opus_int32 blocksize;
@@ -270,13 +274,15 @@ static FLAC__StreamDecoderWriteStatus write_callback(
 
 /*Dummy error callback (required by libFLAC).*/
 static void error_callback(const FLAC__StreamDecoder *decoder,
-   FLAC__StreamDecoderErrorStatus status,void *client_data){
+   FLAC__StreamDecoderErrorStatus status,void *client_data)
+{
   (void)decoder;
   (void)status;
   (void)client_data;
 }
 
-int flac_id(unsigned char *buf,int len){
+int flac_id(unsigned char *buf,int len)
+{
   /*Something screwed up.*/
   if(len<4)return 0;
   /*Not FLAC.*/
@@ -285,7 +291,8 @@ int flac_id(unsigned char *buf,int len){
   return 1;
 }
 
-int oggflac_id(unsigned char *buf,int len){
+int oggflac_id(unsigned char *buf,int len)
+{
   /*Something screwed up.*/
   if(len<33)return 0;
   /*Not Ogg.*/
@@ -297,7 +304,8 @@ int oggflac_id(unsigned char *buf,int len){
 }
 
 /*Read more data for the encoder.*/
-static long flac_read(void *client_data,float *buffer,int samples){
+static long flac_read(void *client_data,float *buffer,int samples)
+{
   flacfile *flac;
   int channels;
   float *block_buf;
@@ -336,7 +344,8 @@ static long flac_read(void *client_data,float *buffer,int samples){
   return ret;
 }
 
-int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
+int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
+{
   flacfile *flac;
   /*Ok. At this point, we know we have a FLAC or an OggFLAC file.
     Set up the FLAC decoder.*/
@@ -381,7 +390,8 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
   return 0;
 }
 
-void flac_close(void *client_data){
+void flac_close(void *client_data)
+{
   flacfile *flac;
   flac=(flacfile *)client_data;
   free(flac->block_buf);
@@ -394,19 +404,22 @@ void flac_close(void *client_data){
 
 /*FLAC support is disabled.*/
 
-int flac_id(unsigned char *buf,int len){
+int flac_id(unsigned char *buf,int len)
+{
   (void)buf;
   (void)len;
   return 0;
 }
 
-int oggflac_id(unsigned char *buf,int len){
+int oggflac_id(unsigned char *buf,int len)
+{
   (void)buf;
   (void)len;
   return 0;
 }
 
-int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
+int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
+{
   (void)in;
   (void)opt;
   (void)oldbuf;
@@ -414,7 +427,8 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen){
   return 0;
 }
 
-void flac_close(void *client_data){
+void flac_close(void *client_data)
+{
   (void)client_data;
 }
 

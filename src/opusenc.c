@@ -294,12 +294,12 @@ static void packet_callback(void *user_data, const unsigned char *packet_ptr, op
   data->nb_encoded += nb_samples;
   data->packets_out++;
   data->last_length = packet_len;
-  if(data->frange!=NULL){
+  if (data->frange!=NULL) {
     int ret;
     opus_uint32 rngs[256];
     OpusEncoder *oe;
     int nb_streams;
-    for(nb_streams=0;;nb_streams++){
+    for (nb_streams=0;;nb_streams++) {
       ret=ope_encoder_ctl(data->enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
       if (ret != OPE_OK || oe == NULL) break;
       ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[nb_streams]));
@@ -402,7 +402,7 @@ int main(int argc, char **argv)
   char **argv_utf8;
 #endif
 
-  if(query_cpu_support()){
+  if (query_cpu_support()) {
     fprintf(stderr,"\n\n** WARNING: This program was compiled with SSE%s\n",query_cpu_support()>1?"2":"");
     fprintf(stderr,"            but this CPU claims to lack these instructions. **\n\n");
   }
@@ -446,17 +446,17 @@ int main(int argc, char **argv)
   /*Process command-line options*/
   cline_size=0;
   data.frange = NULL;
-  while(1){
+  while (1) {
     int c;
     int save_cmd;
     int option_index;
     const char *optname;
 
     c=getopt_long(argc_utf8, argv_utf8, "hV", long_options, &option_index);
-    if(c==-1)
+    if (c==-1)
        break;
 
-    switch(c){
+    switch (c) {
       case 0:
         optname = long_options[option_index].name;
         save_cmd = 1;
@@ -496,7 +496,7 @@ int main(int argc, char **argv)
           inopt.rawmode=1;
           inopt.samplesize=atoi(optarg);
           save_cmd=0;
-          if(inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24){
+          if (inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24) {
             fatal("Invalid bit-depth: %s\n"
               "--raw-bits must be one of 8, 16, or 24\n", optarg);
           }
@@ -520,25 +520,25 @@ int main(int argc, char **argv)
           downmix=-1;
         } else if (strcmp(optname, "expect-loss")==0) {
           expect_loss=atoi(optarg);
-          if(expect_loss>100||expect_loss<0){
+          if (expect_loss>100||expect_loss<0) {
             fatal("Invalid expect-loss: %s\n"
               "Expected loss is a percentage in the range 0 to 100.\n", optarg);
           }
         } else if (strcmp(optname, "comp")==0 ||
                    strcmp(optname, "complexity")==0) {
           complexity=atoi(optarg);
-          if(complexity>10||complexity<0){
+          if (complexity>10||complexity<0) {
             fatal("Invalid complexity: %s\n"
               "Complexity must be in the range 0 to 10.\n", optarg);
           }
         } else if (strcmp(optname, "framesize")==0) {
-          if(strcmp(optarg,"2.5")==0)opus_frame_param=OPUS_FRAMESIZE_2_5_MS;
-          else if(strcmp(optarg,"5")==0)opus_frame_param=OPUS_FRAMESIZE_5_MS;
-          else if(strcmp(optarg,"10")==0)opus_frame_param=OPUS_FRAMESIZE_10_MS;
-          else if(strcmp(optarg,"20")==0)opus_frame_param=OPUS_FRAMESIZE_20_MS;
-          else if(strcmp(optarg,"40")==0)opus_frame_param=OPUS_FRAMESIZE_40_MS;
-          else if(strcmp(optarg,"60")==0)opus_frame_param=OPUS_FRAMESIZE_60_MS;
-          else{
+          if (strcmp(optarg,"2.5")==0) opus_frame_param=OPUS_FRAMESIZE_2_5_MS;
+          else if (strcmp(optarg,"5")==0) opus_frame_param=OPUS_FRAMESIZE_5_MS;
+          else if (strcmp(optarg,"10")==0) opus_frame_param=OPUS_FRAMESIZE_10_MS;
+          else if (strcmp(optarg,"20")==0) opus_frame_param=OPUS_FRAMESIZE_20_MS;
+          else if (strcmp(optarg,"40")==0) opus_frame_param=OPUS_FRAMESIZE_40_MS;
+          else if (strcmp(optarg,"60")==0) opus_frame_param=OPUS_FRAMESIZE_60_MS;
+          else {
             fatal("Invalid framesize: %s\n"
               "Value is in milliseconds and must be 2.5, 5, 10, 20, 40, or 60.\n",
               optarg);
@@ -548,7 +548,7 @@ int main(int argc, char **argv)
             : (opus_frame_param - OPUS_FRAMESIZE_20_MS + 1) * 960;
         } else if (strcmp(optname, "max-delay")==0) {
           double val=atof(optarg);
-          if(val<0.||val>1000.){
+          if (val<0.||val>1000.) {
             fatal("Invalid max-delay: %s\n"
               "Value is in milliseconds and must be in the range 0 to 1000.\n",
               optarg);
@@ -561,22 +561,22 @@ int main(int argc, char **argv)
           char *spos,*tpos;
           size_t len=strlen(optarg);
           spos=strchr(optarg,'=');
-          if(len<3||spos==NULL||(spos-optarg)<1||(size_t)(spos-optarg)>=len){
+          if (len<3||spos==NULL||(spos-optarg)<1||(size_t)(spos-optarg)>=len) {
             fatal("Invalid set-ctl-int: %s\n"
               "Syntax is --set-ctl-int intX=intY\n"
               "       or --set-ctl-int intS:intX=intY\n", optarg);
           }
           tpos=strchr(optarg,':');
-          if(tpos==NULL){
+          if (tpos==NULL) {
             target=-1;
             tpos=optarg-1;
-          }else target=atoi(optarg);
+          } else target=atoi(optarg);
           request=atoi(tpos+1);
           if ((request & 1) != 0 || request == OPE_SET_PACKET_CALLBACK_REQUEST) {
             fatal("Invalid set-ctl-int: %s\n"
               "Set ctl values are even.\n", optarg);
           }
-          if(opt_ctls==0)opt_ctls_ctlval=malloc(sizeof(int)*3);
+          if (opt_ctls==0) opt_ctls_ctlval=malloc(sizeof(int)*3);
           else opt_ctls_ctlval=realloc(opt_ctls_ctlval,sizeof(int)*(opt_ctls+1)*3);
           if (!opt_ctls_ctlval) fatal("Error: failed to allocate memory for ctls\n");
           opt_ctls_ctlval[opt_ctls*3]=target;
@@ -586,7 +586,7 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "save-range")==0) {
           data.frange=fopen_utf8(optarg,"w");
           save_cmd=0;
-          if(data.frange==NULL){
+          if (data.frange==NULL) {
             perror(optarg);
             fatal("Error: cannot open save-range file: %s\n"
               "Must provide a writable file name.\n", optarg);
@@ -594,7 +594,7 @@ int main(int argc, char **argv)
           range_file=optarg;
         } else if (strcmp(optname, "comment")==0) {
           save_cmd=0;
-          if(!strchr(optarg,'=')){
+          if (!strchr(optarg,'=')) {
             fatal("Invalid comment: %s\n"
               "Comments must be of the form name=value\n", optarg);
           }
@@ -628,30 +628,30 @@ int main(int argc, char **argv)
           media_type=media_type_end=description=description_end=filename=spec;
           picture_file=fopen_utf8(filename,"rb");
           description_copy=NULL;
-          if(picture_file==NULL&&strchr(spec,'|')){
+          if (picture_file==NULL&&strchr(spec,'|')) {
             const char *p;
             char       *q;
             unsigned long val;
             /*We don't have a plain file, and there is a pipe character: assume it's
               the full form of the specification.*/
             val=strtoul(spec,&q,10);
-            if(*q!='|'||val>20){
+            if (*q!='|'||val>20) {
               fatal("Invalid picture type: %.*s\n"
                 "Picture type must be in the range 0 to 20; see --help-picture.\n",
                 (int)strcspn(spec,"|"), spec);
             }
             /*An empty field implies a default of 'Cover (front)'.*/
-            if(spec!=q)picture_type=(int)val;
+            if (spec!=q) picture_type=(int)val;
             media_type=q+1;
             media_type_end=media_type+strcspn(media_type,"|");
-            if(*media_type_end=='|'){
+            if (*media_type_end=='|') {
               description=media_type_end+1;
               description_end=description+strcspn(description,"|");
-              if(*description_end=='|'){
+              if (*description_end=='|') {
                 p=description_end+1;
                 /*Ignore WIDTHxHEIGHTxDEPTH/COLORS.*/
                 p+=strcspn(p,"|");
-                if(*p=='|'){
+                if (*p=='|') {
                   filename=p+1;
                 }
               }
@@ -700,14 +700,14 @@ int main(int argc, char **argv)
         if (save_cmd && cline_size<(int)sizeof(ENCODER_string)) {
           ret=snprintf(&ENCODER_string[cline_size], sizeof(ENCODER_string)-cline_size,
             "%s--%s", cline_size==0?"":" ", optname);
-          if(ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)){
+          if (ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)) {
             cline_size=sizeof(ENCODER_string);
           } else {
             cline_size+=ret;
-            if(optarg){
+            if (optarg) {
               ret=snprintf(&ENCODER_string[cline_size],
                 sizeof(ENCODER_string)-cline_size, " %s",optarg);
-              if(ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)){
+              if (ret<0||ret>=((int)sizeof(ENCODER_string)-cline_size)) {
                 cline_size=sizeof(ENCODER_string);
               } else {
                 cline_size+=ret;
@@ -730,7 +730,7 @@ int main(int argc, char **argv)
         break;
     }
   }
-  if(argc_utf8-optind!=2){
+  if (argc_utf8-optind!=2) {
     usage();
     exit(1);
   }
@@ -744,52 +744,52 @@ int main(int argc, char **argv)
     }
   }
 
-  if(strcmp(inFile, "-")==0){
+  if (strcmp(inFile, "-")==0) {
 #if defined WIN32 || defined _WIN32
     _setmode(_fileno(stdin), _O_BINARY);
 #elif defined OS2
     _fsetmode(stdin,"b");
 #endif
     fin=stdin;
-  }else{
+  } else {
     fin=fopen_utf8(inFile, "rb");
-    if(!fin){
+    if (!fin) {
       perror(inFile);
       exit(1);
     }
   }
 
-  if(inopt.rawmode){
+  if (inopt.rawmode) {
     in_format = &raw_format;
     in_format->open_func(fin, &inopt, NULL, 0);
-  }else in_format=open_audio_file(fin,&inopt);
+  } else in_format=open_audio_file(fin,&inopt);
 
-  if(!in_format){
+  if (!in_format) {
     fatal("Error: unsupported input file: %s\n", inFile);
   }
 
-  if(inopt.rate<100||inopt.rate>768000){
+  if (inopt.rate<100||inopt.rate>768000) {
     /*Crazy rates excluded to avoid excessive memory usage for padding/resampling.*/
     fatal("Error: unsupported sample rate in input file: %ld Hz\n", inopt.rate);
   }
 
-  if(inopt.channels>255||inopt.channels<1){
+  if (inopt.channels>255||inopt.channels<1) {
     fatal("Error: unsupported channel count in input file: %d\n"
       "Channel count must be in the range 1 to 255.\n", inopt.channels);
   }
 
-  if(downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)){
-    if(!quiet)fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
+  if (downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)) {
+    if (!quiet) fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
     downmix=inopt.channels>8?1:2;
   }
 
-  if(downmix>0&&downmix<inopt.channels)downmix=setup_downmix(&inopt,downmix);
+  if (downmix>0&&downmix<inopt.channels) downmix=setup_downmix(&inopt,downmix);
   else downmix=0;
 
   rate=inopt.rate;
   chan=inopt.channels;
 
-  if(inopt.total_samples_per_channel && rate!=48000)
+  if (inopt.total_samples_per_channel && rate!=48000)
     inopt.total_samples_per_channel = (opus_int64)
       ((double)inopt.total_samples_per_channel * (48000./(double)rate));
 
@@ -823,20 +823,20 @@ int main(int argc, char **argv)
     fatal("Error: OPE_SET_COMMENT_PADDING failed: %s\n", ope_strerror(ret));
   }
 
-  for(nb_streams=0;;nb_streams++){
+  for (nb_streams=0;;nb_streams++) {
     OpusEncoder *oe;
     ret=ope_encoder_ctl(enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
     if (ret != OPE_OK || oe == NULL) break;
   }
   nb_coupled = chan - nb_streams;
 
-  if(bitrate<0){
+  if (bitrate<0) {
     /*Lower default rate for sampling rates [8000-44100) by a factor of (rate+16k)/(64k)*/
     bitrate=((64000*nb_streams+32000*nb_coupled)*
              (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
   }
 
-  if(bitrate>(1024000*chan)||bitrate<500){
+  if (bitrate>(1024000*chan)||bitrate<500) {
     fatal("Error: bitrate %d bits/sec is insane\n%s"
       "--bitrate values from 6 to 256 kbit/s per channel are meaningful.\n",
       bitrate, bitrate>=1000000 ? "Did you mistake bits for kilobits?\n" : "");
@@ -851,7 +851,7 @@ int main(int argc, char **argv)
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_VBR %d failed: %s\n", !with_hard_cbr, ope_strerror(ret));
   }
-  if(!with_hard_cbr){
+  if (!with_hard_cbr) {
     ret = ope_encoder_ctl(enc, OPUS_SET_VBR_CONSTRAINT(with_cvbr));
     if (ret != OPE_OK) {
       fatal("Error: OPUS_SET_VBR_CONSTRAINT %d failed: %s\n",
@@ -875,15 +875,15 @@ int main(int argc, char **argv)
 #endif
 
   /*This should be the last set of SET ctls, so it can override the defaults.*/
-  for(i=0;i<opt_ctls;i++){
+  for (i=0;i<opt_ctls;i++) {
     int target=opt_ctls_ctlval[i*3];
-    if(target==-1){
+    if (target==-1) {
       ret = ope_encoder_ctl(enc, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
       if (ret != OPE_OK) {
         fatal("Error: failed to set encoder ctl %d=%d: %s\n",
           opt_ctls_ctlval[i*3+1], opt_ctls_ctlval[i*3+2], ope_strerror(ret));
       }
-    }else if(target<nb_streams){
+    } else if (target<nb_streams) {
       OpusEncoder *oe;
       ret = ope_encoder_ctl(enc, OPUS_MULTISTREAM_GET_ENCODER_STATE(target,&oe));
       if (ret != OPE_OK) {
@@ -891,11 +891,11 @@ int main(int argc, char **argv)
           target, ope_strerror(ret));
       }
       ret = opus_encoder_ctl(oe, opt_ctls_ctlval[i*3+1],opt_ctls_ctlval[i*3+2]);
-      if(ret!=OPUS_OK){
+      if (ret!=OPUS_OK) {
         fatal("Error: failed to set stream %d encoder ctl %d=%d: %s\n",
           target, opt_ctls_ctlval[i*3+1], opt_ctls_ctlval[i*3+2], opus_strerror(ret));
       }
-    }else{
+    } else {
       fatal("Error: --set-ctl-int stream %d is higher than the highest stream number %d\n",target,nb_streams-1);
     }
   }
@@ -906,21 +906,21 @@ int main(int argc, char **argv)
     fatal("Error: OPUS_GET_LOOKAHEAD failed: %s\n", ope_strerror(ret));
   }
 
-  if(!quiet){
+  if (!quiet) {
     int opus_app;
     fprintf(stderr,"Encoding using %s",opus_version);
     ret = ope_encoder_ctl(enc, OPUS_GET_APPLICATION(&opus_app));
     if (ret != OPE_OK) fprintf(stderr, "\n");
-    else if(opus_app==OPUS_APPLICATION_VOIP)fprintf(stderr," (VoIP)\n");
-    else if(opus_app==OPUS_APPLICATION_AUDIO)fprintf(stderr," (audio)\n");
-    else if(opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY)fprintf(stderr," (low-delay)\n");
+    else if (opus_app==OPUS_APPLICATION_VOIP) fprintf(stderr," (VoIP)\n");
+    else if (opus_app==OPUS_APPLICATION_AUDIO) fprintf(stderr," (audio)\n");
+    else if (opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY) fprintf(stderr," (low-delay)\n");
     else fprintf(stderr," (unknown application)\n");
     fprintf(stderr,"-----------------------------------------------------\n");
     fprintf(stderr,"   Input: %0.6g kHz, %d channel%s\n",
             rate/1000.,chan,chan<2?"":"s");
     fprintf(stderr,"  Output: %d channel%s (",chan,chan<2?"":"s");
-    if(nb_coupled>0)fprintf(stderr,"%d coupled",nb_coupled*2);
-    if(nb_streams-nb_coupled>0)fprintf(stderr,
+    if (nb_coupled>0) fprintf(stderr,"%d coupled",nb_coupled*2);
+    if (nb_streams-nb_coupled>0) fprintf(stderr,
        "%s%d uncoupled",nb_coupled>0?", ":"",
        nb_streams-nb_coupled);
     fprintf(stderr,")\n          %0.2gms packets, %0.6g kbit/s%s\n",
@@ -933,14 +933,14 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n");
   }
 
-  if(strcmp(outFile,"-")==0){
+  if (strcmp(outFile,"-")==0) {
 #if defined WIN32 || defined _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
     data.fout=stdout;
-  }else{
+  } else {
     data.fout=fopen_utf8(outFile, "wb");
-    if(!data.fout){
+    if (!data.fout) {
       perror(outFile);
       exit(1);
     }
@@ -956,42 +956,42 @@ int main(int argc, char **argv)
   data.last_length = 0;
 
   input=malloc(sizeof(float)*frame_size*chan);
-  if(input==NULL){
+  if (input==NULL) {
     fatal("Error: failed to allocate sample buffer\n");
   }
 
   /*Main encoding loop (one frame per iteration)*/
-  while(1){
+  while (1) {
     nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
     total_samples+=nb_samples;
     ret = ope_encoder_write_float(enc, input, nb_samples);
     if (ret != OPE_OK || nb_samples < frame_size) break;
 
-    if(!quiet){
+    if (!quiet) {
       stop_time = time(NULL);
-      if(stop_time>last_spin){
+      if (stop_time>last_spin) {
         double estbitrate;
         double coded_seconds=data.nb_encoded/48000.;
         double wall_time=(double)(stop_time-start_time);
         char sbuf[55];
         static const char spinner[]="|/-\\";
-        if(with_hard_cbr){
+        if (with_hard_cbr) {
           estbitrate=data.last_length*(8*48000./frame_size);
-        }else if(data.nb_encoded<=0){
+        } else if (data.nb_encoded<=0) {
           estbitrate=0;
-        }else{
+        } else {
           double tweight=1./(1+exp(-((coded_seconds/10.)-3.)));
           estbitrate=(data.total_bytes*8.0/coded_seconds)*tweight+
                       bitrate*(1.-tweight);
         }
         fprintf(stderr,"\r");
-        for(i=0;i<last_spin_len;i++)fprintf(stderr," ");
+        for (i=0;i<last_spin_len;i++) fprintf(stderr," ");
         if (inopt.total_samples_per_channel>0 &&
             data.nb_encoded<inopt.total_samples_per_channel+lookahead) {
           snprintf(sbuf,54,"\r[%c] %2d%% ",spinner[last_spin&3],
             (int)floor(data.nb_encoded
               /(double)(inopt.total_samples_per_channel+lookahead)*100.));
-        }else{
+        } else {
           snprintf(sbuf,54,"\r[%c] ",spinner[last_spin&3]);
         }
         last_spin_len=(int)strlen(sbuf);
@@ -1019,7 +1019,7 @@ int main(int argc, char **argv)
   if (ret != OPE_OK) fatal("Encoding aborted: %s\n", ope_strerror(ret));
   stop_time = time(NULL);
 
-  if(!quiet){
+  if (!quiet) {
     double coded_seconds=data.nb_encoded/48000.;
     double wall_time=(double)(stop_time-start_time);
     fprintf(stderr,"Encoding complete\n");
@@ -1029,12 +1029,12 @@ int main(int argc, char **argv)
     fprintf(stderr,"\n       Runtime:");
     print_time(wall_time);
     fprintf(stderr,"\n");
-    if(wall_time>0){
+    if (wall_time>0) {
       fprintf(stderr,"                (%0.4gx realtime)\n",coded_seconds/wall_time);
     }
     fprintf(stderr,"         Wrote: %" I64FORMAT " bytes, %" I64FORMAT " packets, "
       "%" I64FORMAT " pages\n",data.bytes_written,data.packets_out,data.pages_out);
-    if(data.nb_encoded>0){
+    if (data.nb_encoded>0) {
       fprintf(stderr,"       Bitrate: %0.6g kbit/s (without overhead)\n",
               data.total_bytes*8.0/(coded_seconds)/1000.0);
       fprintf(stderr," Instant rates: %0.6g to %0.6g kbit/s\n"
@@ -1042,7 +1042,7 @@ int main(int argc, char **argv)
               data.min_bytes*(8*48000./frame_size/1000.),
               data.peak_bytes*(8*48000./frame_size/1000.),data.min_bytes,data.peak_bytes);
     }
-    if(data.bytes_written>0){
+    if (data.bytes_written>0) {
       fprintf(stderr,"      Overhead: %0.3g%% (container+metadata)\n",
         (data.bytes_written-data.total_bytes)/(double)data.bytes_written*100.);
     }
@@ -1052,12 +1052,12 @@ int main(int argc, char **argv)
   ope_encoder_destroy(enc);
   ope_comments_destroy(inopt.comments);
   free(input);
-  if(opt_ctls)free(opt_ctls_ctlval);
+  if (opt_ctls) free(opt_ctls_ctlval);
 
-  if(downmix)clear_downmix(&inopt);
+  if (downmix) clear_downmix(&inopt);
   in_format->close_func(inopt.readdata);
-  if(fin)fclose(fin);
-  if(data.frange)fclose(data.frange);
+  if (fin) fclose(fin);
+  if (data.frange) fclose(data.frange);
 #ifdef WIN_UNICODE
   free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif

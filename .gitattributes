@@ -1,7 +1,7 @@
-.gitignore		export-ignore
-.gitattributes		export-ignore
+.gitignore              export-ignore
+.gitattributes          export-ignore
 
-update_version		export-ignore
+update_version          export-ignore
 
 *.sln text eol=crlf
 *.vcxproj text eol=crlf

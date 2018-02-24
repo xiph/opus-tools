@@ -125,29 +125,29 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
     int buf_size=0, buf_filled=0;
     int size;
 
-    while(formats[j].id_func)
+    while (formats[j].id_func)
     {
         size = formats[j].id_data_len;
-        if(size >= buf_size)
+        if (size >= buf_size)
         {
             buf = realloc(buf, size);
             buf_size = size;
         }
 
-        if(size > buf_filled)
+        if (size > buf_filled)
         {
             buf_filled += (int)fread(buf+buf_filled, 1, buf_size-buf_filled, in);
-            if(buf_filled < size)
+            if (buf_filled < size)
             { /* File truncated */
                 j++;
                 continue;
             }
         }
 
-        if(formats[j].id_func(buf, buf_filled))
+        if (formats[j].id_func(buf, buf_filled))
         {
             /* ok, we now have something that can handle the file */
-            if(formats[j].open_func(in, opt, buf, buf_filled)) {
+            if (formats[j].open_func(in, opt, buf, buf_filled)) {
                 free(buf);
                 return &formats[j];
             }
@@ -163,15 +163,15 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
 static void sanitize_fourcc(unsigned char *buf)
 {
     int i;
-    for(i = 0; i < 4; ++i)
-        if(buf[i] < ' ' || buf[i] > '~')
+    for (i = 0; i < 4; ++i)
+        if (buf[i] < ' ' || buf[i] > '~')
             buf[i] = '?';
 }
 
 static int seek_forward(FILE *in, ogg_int64_t length)
 {
     ogg_int64_t remaining = length;
-    while(remaining > 0)
+    while (remaining > 0)
     {
         /* When OFF_T is 64 bits, only one seek is needed and the comparison
          * will always be false. When OFF_T is not large enough, seek LONG_MAX
@@ -180,14 +180,14 @@ static int seek_forward(FILE *in, ogg_int64_t length)
         OFF_T seekstep = (OFF_T)remaining;
         if (seekstep != remaining)
             seekstep = LONG_MAX;
-        if(FSEEK(in, seekstep, SEEK_CUR))
+        if (FSEEK(in, seekstep, SEEK_CUR))
         {
             /* Failed to seek; do it by reading. */
             unsigned char buf[1024];
             do {
                 size_t readstep = remaining > 1024 ? 1024 : (size_t)remaining;
                 readstep = fread(buf, 1, readstep, in);
-                if(!readstep)
+                if (!readstep)
                     return 0; /* Couldn't read more, can't read file */
                 remaining -= readstep;
             } while (remaining);
@@ -203,20 +203,20 @@ static int find_wav_chunk(FILE *in, char *type, unsigned int *len)
     unsigned char buf[8];
     unsigned int chunklen;
 
-    while(1)
+    while (1)
     {
-        if(fread(buf,1,8,in) < 8) /* Suck down a chunk specifier */
+        if (fread(buf,1,8,in) < 8) /* Suck down a chunk specifier */
             return 0; /* EOF before reaching the appropriate chunk */
 
         chunklen = READ_U32_LE(buf+4);
 
-        if(memcmp(buf, type, 4))
+        if (memcmp(buf, type, 4))
         {
             sanitize_fourcc(buf);
             fprintf(stderr, _("Skipping chunk of type \"%.4s\", length %u\n"),
                 buf, chunklen);
 
-            if(!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
+            if (!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
                 return 0;
         }
         else
@@ -233,15 +233,15 @@ static int find_aiff_chunk(FILE *in, char *type, unsigned int *len)
     unsigned int chunklen;
     int restarted = 0;
 
-    while(1)
+    while (1)
     {
-        if(fread(buf,1,8,in) < 8)
+        if (fread(buf,1,8,in) < 8)
         {
-            if(!restarted) {
+            if (!restarted) {
                 /* Handle out of order chunks by seeking back to the start
                  * to retry */
                 restarted = 1;
-                if(!FSEEK(in, 12, SEEK_SET))
+                if (!FSEEK(in, 12, SEEK_SET))
                     continue;
             }
             return 0;
@@ -249,9 +249,9 @@ static int find_aiff_chunk(FILE *in, char *type, unsigned int *len)
 
         chunklen = READ_U32_BE(buf+4);
 
-        if(memcmp(buf,type,4))
+        if (memcmp(buf,type,4))
         {
-            if(!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
+            if (!seek_forward(in, (ogg_int64_t)chunklen + (chunklen & 1)))
                 return 0;
         }
         else
@@ -273,10 +273,10 @@ static int read_chunk(FILE *in, unsigned char *buf, unsigned int bufsize,
     unsigned int chunklen = *len;
     unsigned int readlen = chunklen > bufsize ? bufsize : chunklen;
 
-    if(fread(buf, 1, readlen, in) != readlen)
+    if (fread(buf, 1, readlen, in) != readlen)
         return 0;
 
-    if(!seek_forward(in, (ogg_int64_t)(chunklen - readlen) + (chunklen & 1)))
+    if (!seek_forward(in, (ogg_int64_t)(chunklen - readlen) + (chunklen & 1)))
         return 0;
 
     *len = readlen;
@@ -287,7 +287,7 @@ static double read_IEEE80(unsigned char *buf)
 {
     int e = READ_U16_BE(buf) & 0x7fff;
     double f;
-    if(e==32767)
+    if (e==32767)
         /* NaNs and infinities -- their format can vary among implementations,
            but for our purposes they can all be treated as infinite. */
         f = HUGE_VAL;
@@ -299,15 +299,15 @@ static double read_IEEE80(unsigned char *buf)
 /* AIFF/AIFC support adapted from the old OggSQUISH application */
 int aiff_id(unsigned char *buf, int len)
 {
-    if(len<12) return 0; /* Truncated file, probably */
+    if (len<12) return 0; /* Truncated file, probably */
 
-    if(memcmp(buf, "FORM", 4))
+    if (memcmp(buf, "FORM", 4))
         return 0;
 
-    if(memcmp(buf+8, "AIF",3))
+    if (memcmp(buf+8, "AIF",3))
         return 0;
 
-    if(buf[11]!='C' && buf[11]!='F')
+    if (buf[11]!='C' && buf[11]!='F')
         return 0;
 
     return 1;
@@ -315,12 +315,12 @@ int aiff_id(unsigned char *buf, int len)
 
 static int aiff_permute_matrix[6][6] =
 {
-  {0},              /* 1.0 mono   */
-  {0,1},            /* 2.0 stereo */
-  {0,2,1},          /* 3.0 channel ('wide') stereo */
-  {0,1,2,3},        /* 4.0 discrete quadraphonic (WARN) */
-  {0,2,1,3,4},      /* 5.0 surround (WARN) */
-  {0,1,2,3,4,5},    /* 5.1 surround (WARN)*/
+    {0},            /* 1.0 mono   */
+    {0,1},          /* 2.0 stereo */
+    {0,2,1},        /* 3.0 channel ('wide') stereo */
+    {0,1,2,3},      /* 4.0 discrete quadraphonic (WARN) */
+    {0,2,1,3,4},    /* 5.0 surround (WARN) */
+    {0,1,2,3,4,5},  /* 5.1 surround (WARN)*/
 };
 
 int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
@@ -335,18 +335,18 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     int i;
     (void)buflen;/*unused*/
 
-    if(buf[11]=='C')
+    if (buf[11]=='C')
         aifc=1;
     else
         aifc=0;
 
-    if(!find_aiff_chunk(in, "COMM", &len))
+    if (!find_aiff_chunk(in, "COMM", &len))
     {
         fprintf(stderr, _("ERROR: No common chunk found in AIFF file\n"));
         return 0; /* EOF before COMM chunk */
     }
 
-    if(len < 18 || !read_chunk(in, buffer, sizeof(buffer), &len))
+    if (len < 18 || !read_chunk(in, buffer, sizeof(buffer), &len))
     {
         fprintf(stderr, _("ERROR: Incomplete common chunk in AIFF header\n"));
         return 0;
@@ -357,25 +357,25 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     format.samplesize = (short)READ_U16_BE(buffer+6);
     format.rate = read_IEEE80(buffer+8);
 
-    if(format.channels <= 0)
+    if (format.channels <= 0)
     {
         fprintf(stderr, _("ERROR: Invalid channel count in AIFF header\n"));
         return 0;
     }
 
-    if(aifc)
+    if (aifc)
     {
-        if(len < 22)
+        if (len < 22)
         {
             fprintf(stderr, _("ERROR: AIFF-C header truncated.\n"));
             return 0;
         }
 
-        if(!memcmp(buffer+18, "NONE", 4))
+        if (!memcmp(buffer+18, "NONE", 4))
         {
             bigendian = 1;
         }
-        else if(!memcmp(buffer+18, "sowt", 4))
+        else if (!memcmp(buffer+18, "sowt", 4))
         {
             bigendian = 0;
         }
@@ -388,26 +388,26 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         }
     }
 
-    if(!(format.rate >= 1 && format.rate <= INT_MAX))
+    if (!(format.rate >= 1 && format.rate <= INT_MAX))
     {
         fprintf(stderr, _("ERROR: Preposterous sample rate in AIFF header: %g Hz\n"),
             format.rate);
         return 0;
     }
 
-    if(!find_aiff_chunk(in, "SSND", &len))
+    if (!find_aiff_chunk(in, "SSND", &len))
     {
         fprintf(stderr, _("ERROR: No SSND chunk found in AIFF file\n"));
         return 0; /* No SSND chunk -> no actual audio */
     }
 
-    if(len < 8)
+    if (len < 8)
     {
         fprintf(stderr, _("ERROR: Corrupted SSND chunk in AIFF header\n"));
         return 0;
     }
 
-    if(fread(buf2,1,8, in) < 8)
+    if (fread(buf2,1,8, in) < 8)
     {
         fprintf(stderr, _("ERROR: Unexpected EOF reading AIFF header\n"));
         return 0;
@@ -416,7 +416,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     format.offset = READ_U32_BE(buf2);
     format.blocksize = READ_U32_BE(buf2+4);
 
-    if( format.blocksize == 0 &&
+    if (format.blocksize == 0 &&
         (format.samplesize == 16 || format.samplesize == 8))
     {
         /* From here on, this is very similar to the wav code. Oh well. */
@@ -436,7 +436,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         aiff->bigendian = bigendian;
         aiff->unsigned8bit = 0;
 
-        if(aiff->channels>3)
+        if (aiff->channels>3)
           fprintf(stderr, _("WARNING: AIFF[-C] files with more than three channels use\n"
                   "speaker locations incompatible with Vorbis surround definitions.\n"
                   "Not performing channel location mapping.\n"));
@@ -466,14 +466,14 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
 
 int wav_id(unsigned char *buf, int len)
 {
-    if(len<12) return 0; /* Something screwed up */
+    if (len<12) return 0; /* Something screwed up */
 
-    if(memcmp(buf, "RIFF", 4))
+    if (memcmp(buf, "RIFF", 4))
         return 0; /* Not wave */
 
     /*flen = READ_U32_LE(buf+4);*/ /* We don't use this */
 
-    if(memcmp(buf+8, "WAVE",4))
+    if (memcmp(buf+8, "WAVE",4))
         return 0; /* RIFF, but not wave */
 
     return 1;
@@ -497,13 +497,13 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
      * as a wav file (oldbuf)
      */
 
-    if(!find_wav_chunk(in, "fmt ", &len))
+    if (!find_wav_chunk(in, "fmt ", &len))
     {
         fprintf(stderr, _("ERROR: No format chunk found in WAV file\n"));
         return 0;
     }
 
-    if(len < 16)
+    if (len < 16)
     {
         fprintf(stderr, _("ERROR: Unrecognised format chunk in WAV header\n"));
         return 0; /* Weird format chunk */
@@ -516,12 +516,12 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
      * sizes other than 16 or 18 bytes in size, report a bug to the
      * author.
      */
-    if(len!=16 && len!=18 && len!=40)
+    if (len!=16 && len!=18 && len!=40)
         fprintf(stderr,
                 _("Warning: INVALID format chunk in wav header.\n"
                 " Trying to read anyway (may not work)...\n"));
 
-    if(!read_chunk(in, buf, sizeof(buf), &len))
+    if (!read_chunk(in, buf, sizeof(buf), &len))
     {
         fprintf(stderr, _("ERROR: Incomplete format chunk in WAV header\n"));
         return 0;
@@ -534,72 +534,72 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     format.align =       READ_U16_LE(buf+12);
     format.samplesize =  READ_U16_LE(buf+14);
 
-    if(format.channels == 0)
+    if (format.channels == 0)
     {
         fprintf(stderr, _("ERROR: Zero channels in WAV header\n"));
         return 0;
     }
 
-    if(format.format == 0xfffe) /* WAVE_FORMAT_EXTENSIBLE */
+    if (format.format == 0xfffe) /* WAVE_FORMAT_EXTENSIBLE */
     {
-      if(len<40)
-      {
-        fprintf(stderr, _("ERROR: Extended WAV format header invalid (too small)\n"));
-        return 0;
-      }
+        if (len<40)
+        {
+            fprintf(stderr, _("ERROR: Extended WAV format header invalid (too small)\n"));
+            return 0;
+        }
 
-      validbits = READ_U16_LE(buf+18);
-      if(validbits < 1 || validbits > format.samplesize)
-        validbits = format.samplesize;
+        validbits = READ_U16_LE(buf+18);
+        if (validbits < 1 || validbits > format.samplesize)
+            validbits = format.samplesize;
 
-      format.mask = READ_U32_LE(buf+20);
-      /* warn the user if the format mask is not a supported/expected type */
-      switch(format.mask){
-      case 1539: /* 4.0 using side surround instead of back */
-        fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for quadraphonic;\n"
+        format.mask = READ_U32_LE(buf+20);
+        /* warn the user if the format mask is not a supported/expected type */
+        switch (format.mask) {
+        case 1539: /* 4.0 using side surround instead of back */
+            fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for quadraphonic;\n"
                 "remapping side speakers to rear in encoding.\n"));
-        break;
-      case 1551: /* 5.1 using side instead of rear */
-        fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for 5.1;\n"
+            break;
+        case 1551: /* 5.1 using side instead of rear */
+            fprintf(stderr, _("WARNING: WAV file uses side surround instead of rear for 5.1;\n"
                 "remapping side speakers to rear in encoding.\n"));
-        break;
-      case 319:  /* 6.1 using rear instead of side */
-        fprintf(stderr, _("WARNING: WAV file uses rear surround instead of side for 6.1;\n"
+            break;
+        case 319:  /* 6.1 using rear instead of side */
+            fprintf(stderr, _("WARNING: WAV file uses rear surround instead of side for 6.1;\n"
                 "remapping rear speakers to side in encoding.\n"));
-        break;
-      case 255:  /* 7.1 'Widescreen' */
-        fprintf(stderr, _("WARNING: WAV file is a 7.1 'Widescreen' channel mapping;\n"
+            break;
+        case 255:  /* 7.1 'Widescreen' */
+            fprintf(stderr, _("WARNING: WAV file is a 7.1 'Widescreen' channel mapping;\n"
                 "remapping speakers to Vorbis 7.1 format.\n"));
-        break;
-      case 0:    /* default/undeclared */
-      case 1:    /* mono (left only) */
-      case 4:    /* mono (center only) */
-      case 3:    /* stereo */
-      case 51:   /* quad */
-      case 55:   /* 5.0 */
-      case 63:   /* 5.1 */
-      case 1807: /* 6.1 */
-      case 1599: /* 7.1 */
-        break;
-      default:
-        fprintf(stderr, _("WARNING: Unknown WAV surround channel mask: %u\n"
-                "Blindly mapping speakers using default SMPTE/ITU ordering.\n"),
-                format.mask);
-        break;
-      }
-      format.format = READ_U16_LE(buf+24);
+            break;
+        case 0:    /* default/undeclared */
+        case 1:    /* mono (left only) */
+        case 4:    /* mono (center only) */
+        case 3:    /* stereo */
+        case 51:   /* quad */
+        case 55:   /* 5.0 */
+        case 63:   /* 5.1 */
+        case 1807: /* 6.1 */
+        case 1599: /* 7.1 */
+            break;
+        default:
+            fprintf(stderr, _("WARNING: Unknown WAV surround channel mask: %u\n"
+                    "Blindly mapping speakers using default SMPTE/ITU ordering.\n"),
+                    format.mask);
+            break;
+        }
+        format.format = READ_U16_LE(buf+24);
     }
     else
     {
-      validbits = format.samplesize;
+        validbits = format.samplesize;
     }
 
-    if(format.format == 1)
+    if (format.format == 1)
     {
         samplesize = format.samplesize/8;
         opt->read_samples = wav_read;
     }
-    else if(format.format == 3)
+    else if (format.format == 3)
     {
         validbits = 24;
         samplesize = 4;
@@ -612,20 +612,20 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
         return 0;
     }
 
-    if(format.samplerate > INT_MAX)
+    if (format.samplerate > INT_MAX)
     {
         fprintf(stderr, _("ERROR: Preposterous sample rate in WAV header: %u Hz\n"),
             format.samplerate);
         return 0;
     }
 
-    if(!find_wav_chunk(in, "data", &len))
+    if (!find_wav_chunk(in, "data", &len))
     {
         fprintf(stderr, _("ERROR: No data chunk found in WAV file\n"));
         return 0;
     }
 
-    if(format.align != format.channels * samplesize) {
+    if (format.align != format.channels * samplesize) {
         /* This is incorrect according to the spec. Warn loudly, then ignore
          * this value.
          */
@@ -634,7 +634,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                     "The software that created this file is incorrect.\n"));
     }
 
-    if(format.samplesize == samplesize*8 &&
+    if (format.samplesize == samplesize*8 &&
             (format.samplesize == 24 || format.samplesize == 16 ||
              format.samplesize == 8 ||
          (format.samplesize == 32 && format.format == 3)))
@@ -661,7 +661,7 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
             /* Assume audio data continues until EOF.
                No percent progress will be reported. */
         }
-        else if(len>(format.channels*samplesize*4U) && len<((1U<<31)-65536))
+        else if (len>(format.channels*samplesize*4U) && len<((1U<<31)-65536))
         {
             /* Chunk length is plausible.  Limit the audio data read to
                this length so that we do not misinterpret any additional
@@ -680,11 +680,11 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
                read until EOF even if the file grows while reading. */
             OFF_T pos[2];
             pos[0] = FTELL(in);
-            if(pos[0] >= 0 && !FSEEK(in, 0, SEEK_END))
+            if (pos[0] >= 0 && !FSEEK(in, 0, SEEK_END))
             {
                 pos[1] = FTELL(in);
                 FSEEK(in, pos[0], SEEK_SET);
-                if(pos[1] > pos[0])
+                if (pos[1] > pos[0])
                     opt->total_samples_per_channel = (pos[1]-pos[0])/(format.channels*samplesize);
             }
         }
@@ -724,14 +724,14 @@ long wav_read(void *in, float *buffer, int samples)
     realsamples = (int)fread(buf, sampbyte*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
-    if(f->samplesize==8)
+    if (f->samplesize==8)
     {
-        if(f->unsigned8bit)
+        if (f->unsigned8bit)
         {
             unsigned char *bufu = (unsigned char *)buf;
-            for(i = 0; i < realsamples; i++)
+            for (i = 0; i < realsamples; i++)
             {
-                for(j=0; j < f->channels; j++)
+                for (j=0; j < f->channels; j++)
                 {
                     buffer[i*f->channels+j]=((int)(bufu[i*f->channels + ch_permute[j]])-128)/128.0f;
                 }
@@ -739,22 +739,22 @@ long wav_read(void *in, float *buffer, int samples)
         }
         else
         {
-            for(i = 0; i < realsamples; i++)
+            for (i = 0; i < realsamples; i++)
             {
-                for(j=0; j < f->channels; j++)
+                for (j=0; j < f->channels; j++)
                 {
                     buffer[i*f->channels+j]=buf[i*f->channels + ch_permute[j]]/128.0f;
                 }
             }
         }
     }
-    else if(f->samplesize==16)
+    else if (f->samplesize==16)
     {
-        if(!f->bigendian)
+        if (!f->bigendian)
         {
-            for(i = 0; i < realsamples; i++)
+            for (i = 0; i < realsamples; i++)
             {
-                for(j=0; j < f->channels; j++)
+                for (j=0; j < f->channels; j++)
                 {
                     buffer[i*f->channels+j] = ((buf[i*2*f->channels + 2*ch_permute[j] + 1]<<8) |
                                     (buf[i*2*f->channels + 2*ch_permute[j]] & 0xff))/32768.0f;
@@ -763,9 +763,9 @@ long wav_read(void *in, float *buffer, int samples)
         }
         else
         {
-            for(i = 0; i < realsamples; i++)
+            for (i = 0; i < realsamples; i++)
             {
-                for(j=0; j < f->channels; j++)
+                for (j=0; j < f->channels; j++)
                 {
                     buffer[i*f->channels+j]=((buf[i*2*f->channels + 2*ch_permute[j]]<<8) |
                                   (buf[i*2*f->channels + 2*ch_permute[j] + 1] & 0xff))/32768.0f;
@@ -773,12 +773,12 @@ long wav_read(void *in, float *buffer, int samples)
             }
         }
     }
-    else if(f->samplesize==24)
+    else if (f->samplesize==24)
     {
-        if(!f->bigendian) {
-            for(i = 0; i < realsamples; i++)
+        if (!f->bigendian) {
+            for (i = 0; i < realsamples; i++)
             {
-                for(j=0; j < f->channels; j++)
+                for (j=0; j < f->channels; j++)
                 {
                     buffer[i*f->channels+j] = ((buf[i*3*f->channels + 3*ch_permute[j] + 2] << 16) |
                       (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 1] << 8) |
@@ -814,8 +814,8 @@ long wav_ieee_read(void *in, float *buffer, int samples)
     realsamples = (int)fread(buf, 4*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
-    for(i=0; i < realsamples; i++)
-        for(j=0; j < f->channels; j++)
+    for (i=0; i < realsamples; i++)
+        for (j=0; j < f->channels; j++)
             buffer[i*f->channels+j] = buf[i*f->channels + f->channel_permute[j]];
 
     return realsamples;
@@ -860,19 +860,21 @@ typedef struct {
     float scale_factor;
 } scaler;
 
-static long read_scaler(void *data, float *buffer, int samples) {
+static long read_scaler(void *data, float *buffer, int samples)
+{
     scaler *d = data;
     long in_samples = d->real_reader(d->real_readdata, buffer, samples);
     int i;
 
-    for(i=0; i < d->channels*in_samples; i++) {
+    for (i=0; i < d->channels*in_samples; i++) {
        buffer[i] *= d->scale_factor;
     }
 
     return in_samples;
 }
 
-void setup_scaler(oe_enc_opt *opt, float scale) {
+void setup_scaler(oe_enc_opt *opt, float scale)
+{
     scaler *d = calloc(1, sizeof(scaler));
 
     d->real_reader = opt->read_samples;
@@ -902,12 +904,12 @@ static long read_downmix(void *data, float *buffer, int samples)
     in_ch=d->in_channels;
     out_ch=d->out_channels;
 
-    for(i=0;i<in_samples;i++){
-      for(j=0;j<out_ch;j++){
+    for (i=0;i<in_samples;i++) {
+      for (j=0;j<out_ch;j++) {
         float *samp;
         samp=&buffer[i*out_ch+j];
         *samp=0;
-        for(k=0;k<in_ch;k++){
+        for (k=0;k<in_ch;k++) {
           *samp+=d->bufs[i*in_ch+k]*d->matrix[in_ch*j+k];
         }
       }
@@ -915,8 +917,9 @@ static long read_downmix(void *data, float *buffer, int samples)
     return in_samples;
 }
 
-int setup_downmix(oe_enc_opt *opt, int out_channels) {
-    static const float stupid_matrix[7][8][2]={
+int setup_downmix(oe_enc_opt *opt, int out_channels)
+{
+    static const float stupid_matrix[7][8][2] = {
       /*2*/  {{1,0},{0,1}},
       /*3*/  {{1,0},{0.7071f,0.7071f},{0,1}},
       /*4*/  {{1,0},{0,1},{0.866f,0.5f},{0.5f,0.866f}},
@@ -929,12 +932,12 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
     downmix *d;
     int i,j;
 
-    if(opt->channels<=out_channels || out_channels>2 || opt->channels<=0 || out_channels<=0) {
+    if (opt->channels<=out_channels || out_channels>2 || opt->channels<=0 || out_channels<=0) {
         fprintf(stderr, _("Downmix must actually downmix and only knows mono/stereo out.\n"));
         return 0;
     }
 
-    if(out_channels==2 && opt->channels>8) {
+    if (out_channels==2 && opt->channels>8) {
         fprintf(stderr, _("Downmix only knows how to mix >8ch to mono.\n"));
         return 0;
     }
@@ -947,21 +950,21 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
     d->in_channels=opt->channels;
     d->out_channels=out_channels;
 
-    if(out_channels==1&&d->in_channels>8){
-      for(i=0;i<d->in_channels;i++)d->matrix[i]=1.0f/d->in_channels;
-    }else if(out_channels==2){
-      for(j=0;j<d->out_channels;j++)
-        for(i=0;i<d->in_channels;i++)d->matrix[d->in_channels*j+i]=
+    if (out_channels==1&&d->in_channels>8) {
+      for (i=0;i<d->in_channels;i++)d->matrix[i]=1.0f/d->in_channels;
+    } else if (out_channels==2) {
+      for (j=0;j<d->out_channels;j++)
+        for (i=0;i<d->in_channels;i++)d->matrix[d->in_channels*j+i]=
           stupid_matrix[opt->channels-2][i][j];
-    }else{
-      for(i=0;i<d->in_channels;i++)d->matrix[i]=
+    } else {
+      for (i=0;i<d->in_channels;i++)d->matrix[i]=
         (stupid_matrix[opt->channels-2][i][0])+
         (stupid_matrix[opt->channels-2][i][1]);
     }
     sum=0;
-    for(i=0;i<d->in_channels*d->out_channels;i++)sum+=d->matrix[i];
+    for (i=0;i<d->in_channels*d->out_channels;i++)sum+=d->matrix[i];
     sum=(float)out_channels/sum;
-    for(i=0;i<d->in_channels*d->out_channels;i++)d->matrix[i]*=sum;
+    for (i=0;i<d->in_channels*d->out_channels;i++)d->matrix[i]*=sum;
     opt->read_samples = read_downmix;
     opt->readdata = d;
 
@@ -969,7 +972,8 @@ int setup_downmix(oe_enc_opt *opt, int out_channels) {
     return out_channels;
 }
 
-void clear_downmix(oe_enc_opt *opt) {
+void clear_downmix(oe_enc_opt *opt)
+{
     downmix *d = opt->readdata;
 
     opt->read_samples = d->real_reader;

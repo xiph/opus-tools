@@ -208,7 +208,8 @@ static int opus_packet_parse_impl(const unsigned char *data, opus_int32 len,
    return count;
 }
 
-void save_range(FILE *frange, int frame_size, const unsigned char *packet, opus_int32 nbBytes, opus_uint32 *rngs, int nb_streams){
+void save_range(FILE *frange, int frame_size, const unsigned char *packet, opus_int32 nbBytes, opus_uint32 *rngs, int nb_streams)
+{
   int i;
   opus_int32 parsed_size;
   const unsigned char *subpkt;
@@ -217,7 +218,7 @@ void save_range(FILE *frange, int frame_size, const unsigned char *packet, opus_
   fprintf(frange,"%d, %ld, ",frame_size,(long)nbBytes);
   subpkt=packet;
   parsed_size=nbBytes;
-  for(i=0;i<nb_streams;i++){
+  for (i=0;i<nb_streams;i++) {
     int j,payload_offset,nf;
     opus_int32 packet_offset;
     opus_int16 size[48];

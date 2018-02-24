@@ -129,7 +129,8 @@ struct shapestate {
 };
 
 static unsigned int rngseed = 22222;
-static inline unsigned int fast_rand(void) {
+static inline unsigned int fast_rand(void)
+{
   rngseed = (rngseed * 96314165) + 907633515;
   return rngseed;
 }
@@ -142,7 +143,8 @@ static inline unsigned int fast_rand(void) {
 # define fmaxf(_x,_y) ((_x)>(_y)?(_x):(_y))
 #endif
 
-static void quit(int _x) {
+static void quit(int _x)
+{
 #ifdef WIN_UNICODE
   uninit_console_utf8();
 #endif
@@ -358,7 +360,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
          quit(1);
       }
       fout = fdopen(audio_fd, "w");
-      if(!fout)
+      if (!fout)
       {
         perror("Cannot open output");
         quit(1);
@@ -389,7 +391,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
          quit(1);
       }
       fout = fdopen(audio_fd, "w");
-      if(!fout)
+      if (!fout)
       {
         perror("Cannot open output");
         quit(1);
@@ -507,7 +509,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
    maxout=((link_read/48000)*rate + (link_read%48000)*rate/48000) - link_out;
    maxout=maxout<0?0:maxout;
    do {
-     if (resampler){
+     if (resampler) {
        unsigned in_len;
        output=buf;
        in_len = frame_size;
@@ -522,7 +524,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
        frame_size=0;
      }
 
-     if(!file||!fp)
+     if (!file||!fp)
      {
         /*Convert to short and save to output file*/
 #if defined(HAVE_SOFT_CLIP)
@@ -530,32 +532,32 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
 #else
         (void)clipmem;
 #endif
-        if (shapemem){
+        if (shapemem) {
           shape_dither_toshort(shapemem,out,output,out_len,channels);
-        }else{
+        } else {
           for (i=0;i<(int)out_len*channels;i++)
             out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
         }
-        if ((le_short(1)!=1)&&file){
+        if ((le_short(1)!=1)&&file) {
           for (i=0;i<(int)out_len*channels;i++)
             out[i]=le_short(out[i]);
         }
      }
 
-     if(maxout>0)
+     if (maxout>0)
      {
 #if defined WIN32 || defined _WIN32
-       if(!file){
+       if (!file) {
          ret=WIN_Play_Samples(out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
-         if(ret>0)ret/=sizeof(short)*channels;
+         if (ret>0) ret/=sizeof(short)*channels;
          else fprintf(stderr, "Error playing audio.\n");
-       }else
+       } else
 #elif defined HAVE_LIBSNDIO
-       if(!file){
+       if (!file) {
          ret=sio_write(hdl, out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
-         if(ret>0)ret/=sizeof(short)*channels;
+         if (ret>0) ret/=sizeof(short)*channels;
          else fprintf(stderr, "Error playing audio.\n");
-       }else
+       } else
 #endif
          ret=fwrite(fp?(char *)output:(char *)out,
           (fp?sizeof(float):sizeof(short))*channels,
@@ -568,7 +570,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
 }
 
 typedef struct decode_cb_ctx decode_cb_ctx;
-struct decode_cb_ctx{
+struct decode_cb_ctx {
    FILE *frange;
    float loss_percent;
 };
@@ -582,7 +584,7 @@ static int decode_cb(decode_cb_ctx *ctx, OpusMSDecoder *decoder, void *pcm,
    (void)li;
    lost = ctx->loss_percent>0
     && 100*((float)rand())/RAND_MAX<ctx->loss_percent;
-   switch(format)
+   switch (format)
    {
       case OP_DEC_FORMAT_SHORT:
       {
@@ -632,7 +634,7 @@ static int decode_cb(decode_cb_ctx *ctx, OpusMSDecoder *decoder, void *pcm,
             /*This will fail with OPUS_BAD_ARG the first time we ask for a
               stream that isn't there, which is currently the only way to find
               out how many streams there are using the libopus API.*/
-            if(err<0)break;
+            if (err<0) break;
             opus_decoder_ctl(od,OPUS_GET_FINAL_RANGE(&rngs[si]));
          }
          save_range(ctx->frange, nsamples, op->packet, op->bytes, rngs, si);
@@ -720,7 +722,7 @@ int main(int argc, char **argv)
    char **argv_utf8;
 #endif
 
-   if(query_cpu_support()){
+   if (query_cpu_support()) {
      fprintf(stderr,"\n\n** WARNING: This program with compiled with SSE%s\n",query_cpu_support()>1?"2":"");
      fprintf(stderr,"            but this CPU claims to lack these instructions. **\n\n");
    }
@@ -740,14 +742,14 @@ int main(int argc, char **argv)
    shapemem.fs=0;
 
    /*Process options*/
-   while(1)
+   while (1)
    {
       c = getopt_long(argc_utf8, argv_utf8, "hV",
                        long_options, &option_index);
       if (c==-1)
          break;
 
-      switch(c)
+      switch (c)
       {
       case 0:
          if (strcmp(long_options[option_index].name,"help")==0)
@@ -783,14 +785,15 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"gain")==0)
          {
             manual_gain=atof(optarg);
-         }else if(strcmp(long_options[option_index].name,"save-range")==0){
-          frange=fopen_utf8(optarg,"w");
-          if(frange==NULL){
-            perror(optarg);
-            fprintf(stderr,"Could not open save-range file: %s\n",optarg);
-            fprintf(stderr,"Must provide a writable file name.\n");
-            quit(1);
-          }
+         } else if (strcmp(long_options[option_index].name,"save-range")==0)
+         {
+            frange=fopen_utf8(optarg,"w");
+            if (frange==NULL) {
+               perror(optarg);
+               fprintf(stderr,"Could not open save-range file: %s\n",optarg);
+               fprintf(stderr,"Must provide a writable file name.\n");
+               quit(1);
+            }
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
             loss_percent = atof(optarg);
@@ -819,7 +822,7 @@ int main(int argc, char **argv)
 
    /*Output to a file or playback?*/
    file_output=argc_utf8-optind==2;
-   if (file_output){
+   if (file_output) {
      /*If we're outputting to a file, should we apply a wav header?*/
      int i;
      char *ext;
@@ -827,11 +830,11 @@ int main(int argc, char **argv)
      ext=".wav";
      i=strlen(outFile)-4;
      wav_format=i>=0;
-     while(wav_format&&ext&&outFile[i]) {
+     while (wav_format&&ext&&outFile[i]) {
        wav_format&=tolower(outFile[i++])==*ext++;
      }
      wav_format|=forcewav;
-   }else {
+   } else {
      outFile="";
      wav_format=0;
      /*If playing to audio out, default the rate to 48000
@@ -840,12 +843,12 @@ int main(int argc, char **argv)
        of output files and preserving length, which aren't
        relevant for playback. Many audio devices sound
        better at 48kHz and not resampling also saves CPU.*/
-     if(rate==0)rate=48000;
+     if (rate==0) rate=48000;
      /*Playback is 16-bit only.*/
      fp=0;
    }
    /*If the output is floating point, don't dither.*/
-   if(fp)dither=0;
+   if (fp) dither=0;
 
    /*Open input file*/
    if (strcmp(inFile, "-")==0)
@@ -958,9 +961,9 @@ int main(int argc, char **argv)
    channels=requested_channels;
    fout=out_file_open(outFile, file_output,
     &wav_format, rate, head->mapping_family, &channels, fp);
-   if(channels!=requested_channels)force_stereo=1;
+   if (channels!=requested_channels) force_stereo=1;
    /*Setup the memory for the dithered output*/
-   if(!shapemem.a_buf)
+   if (!shapemem.a_buf)
    {
       shapemem.a_buf=calloc(channels,sizeof(float)*4);
       shapemem.b_buf=calloc(channels,sizeof(float)*4);
@@ -968,7 +971,7 @@ int main(int argc, char **argv)
    }
    output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
    permuted_output=NULL;
-   if(wav_format&&(channels==3||channels>4))
+   if (wav_format&&(channels==3||channels>4))
    {
       int ci;
       for (ci=0;ci<channels;ci++)
@@ -977,7 +980,7 @@ int main(int argc, char **argv)
       }
       adjust_wav_mapping(head->mapping_family, channels, channel_map);
       permuted_output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
-      if(!permuted_output)
+      if (!permuted_output)
       {
          fprintf(stderr, "Memory allocation failure.\n");
          quit(1);

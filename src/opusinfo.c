@@ -52,7 +52,8 @@ static int flawed;
 #define CONSTRAINT_PAGE_AFTER_EOS   1
 #define CONSTRAINT_MUXING_VIOLATED  2
 
-static stream_set *create_stream_set(void) {
+static stream_set *create_stream_set(void)
+{
     stream_set *set = calloc(1, sizeof(stream_set));
 
     set->streams = calloc(5, sizeof(stream_processor));
@@ -225,8 +226,8 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          }
 
          if(broken) {
-             char *simple = malloc (comment_length + 1);
-             char *seq = malloc (comment_length * 3 + 1);
+             char *simple = malloc(comment_length + 1);
+             char *seq = malloc(comment_length * 3 + 1);
              static char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                                   '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
              int k, c1 = 0, c2 = 0;
@@ -246,8 +247,8 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
                    "%d (stream %d): invalid sequence \"%s\": %s\n"), i,
                    stream->num, simple, seq);
              broken = 1;
-             free (simple);
-             free (seq);
+             free(simple);
+             free(seq);
              break;
          }
 
@@ -825,7 +826,8 @@ static int get_next_page(FILE *f, ogg_sync_state *ogsync, ogg_page *page,
     return 1;
 }
 
-static void process_file(char *filename) {
+static void process_file(char *filename)
+{
     FILE *file = fopen_utf8(filename, "rb");
     ogg_sync_state ogsync;
     ogg_page page;
@@ -923,13 +925,15 @@ static void process_file(char *filename) {
     fclose(file);
 }
 
-static void version (void) {
-    printf (_("opusinfo from %s %s\n"), PACKAGE_NAME, PACKAGE_VERSION);
+static void version(void)
+{
+    printf(_("opusinfo from %s %s\n"), PACKAGE_NAME, PACKAGE_VERSION);
 }
 
-static void usage(void) {
-    version ();
-    printf (_(" by the Xiph.Org Foundation (https://www.xiph.org/)\n\n"));
+static void usage(void)
+{
+    version();
+    printf(_(" by the Xiph.Org Foundation (https://www.xiph.org/)\n\n"));
     printf(_("(c) 2003-2005 Michael Smith <msmith@xiph.org>\n"
              "(c) 2012 Gregory Maxwell <greg@xiph.org>\n\n"
              "Opusinfo is a fork of ogginfo from the vorbis-tools package\n"
@@ -941,7 +945,7 @@ static void usage(void) {
              "\t   messages, twice will remove warnings.\n"
              "\t-v Make more verbose. This may enable more detailed checks\n"
              "\t   for some stream types.\n"));
-    printf (_("\t-V Output version information and exit.\n"));
+    printf(_("\t-V Output version information and exit.\n"));
 }
 
 int main(int argc, char **argv)

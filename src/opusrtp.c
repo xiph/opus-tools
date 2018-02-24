@@ -189,7 +189,8 @@ ogg_packet *op_from_pkt(const unsigned char *pkt, int len)
 }
 
 /* free a packet and its contents */
-void op_free(ogg_packet *op) {
+void op_free(ogg_packet *op)
+{
   if (op) {
     if (op->packet) {
       free(op->packet);

@@ -43,9 +43,9 @@ void adjust_wav_mapping(int mapping_family, int channels, unsigned char *stream_
    int i;
    /* If we aren't using one of the defined semantic channel maps, or we have
       more channels than we know what to do with, use a default 1-1 mapping. */
-   if(mapping_family != 1 || channels > 8)
+   if (mapping_family != 1 || channels > 8)
       return;
-   for(i = 0; i < channels; i++)
+   for (i = 0; i < channels; i++)
    {
       new_stream_map[wav_permute_matrix[channels-1][i]] = stream_map[i];
    }
@@ -82,35 +82,35 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
    /* >16 bit audio also requires WAVEFORMATEXTENSIBLE. */
    extensible |= fp;
 
-   ret = fprintf (file, "RIFF") >= 0;
-   ret &= fwrite_le32 (0x7fffffff, file);
+   ret = fprintf(file, "RIFF") >= 0;
+   ret &= fwrite_le32(0x7fffffff, file);
 
-   ret &= fprintf (file, "WAVEfmt ") >= 0;
-   ret &= fwrite_le32 (extensible ? 40 : 16, file);
-   ret &= fwrite_le16 (extensible ? 0xfffe : (fp?3:1), file);
-   ret &= fwrite_le16 (channels, file);
-   ret &= fwrite_le32 (rate, file);
-   ret &= fwrite_le32 ((fp?4:2)*channels*rate, file);
-   ret &= fwrite_le16 ((fp?4:2)*channels, file);
-   ret &= fwrite_le16 (fp?32:16, file);
+   ret &= fprintf(file, "WAVEfmt ") >= 0;
+   ret &= fwrite_le32(extensible ? 40 : 16, file);
+   ret &= fwrite_le16(extensible ? 0xfffe : (fp?3:1), file);
+   ret &= fwrite_le16(channels, file);
+   ret &= fwrite_le32(rate, file);
+   ret &= fwrite_le32((fp?4:2)*channels*rate, file);
+   ret &= fwrite_le16((fp?4:2)*channels, file);
+   ret &= fwrite_le16(fp?32:16, file);
 
-   if(extensible)
+   if (extensible)
    {
-      static const unsigned char ksdataformat_subtype_pcm[16]=
+      static const unsigned char ksdataformat_subtype_pcm[16] =
       {
-        0x01, 0x00, 0x00, 0x00,
-        0x00, 0x00,
-        0x10, 0x00,
-        0x80, 0x00,
-        0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+         0x01, 0x00, 0x00, 0x00,
+         0x00, 0x00,
+         0x10, 0x00,
+         0x80, 0x00,
+         0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
       };
-      static const unsigned char ksdataformat_subtype_float[16]=
+      static const unsigned char ksdataformat_subtype_float[16] =
       {
-        0x03, 0x00, 0x00, 0x00,
-        0x00, 0x00,
-        0x10, 0x00,
-        0x80, 0x00,
-        0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+         0x03, 0x00, 0x00, 0x00,
+         0x00, 0x00,
+         0x10, 0x00,
+         0x80, 0x00,
+         0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
       };
       static const int wav_channel_masks[8] =
       {
@@ -123,19 +123,19 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
          1|2|4|8|256|512|1024,   /* 6.1 */
          1|2|4|8|16|32|512|1024, /* 7.1 */
       };
-      ret &= fwrite_le16 (22, file);
-      ret &= fwrite_le16 (fp?32:16, file);
-      ret &= fwrite_le32 (wav_channel_masks[channels-1], file);
+      ret &= fwrite_le16(22, file);
+      ret &= fwrite_le16(fp?32:16, file);
+      ret &= fwrite_le32(wav_channel_masks[channels-1], file);
       if (!fp)
       {
-         ret &= fwrite (ksdataformat_subtype_pcm, 16, 1, file);
+         ret &= fwrite(ksdataformat_subtype_pcm, 16, 1, file);
       } else {
-         ret &= fwrite (ksdataformat_subtype_float, 16, 1, file);
+         ret &= fwrite(ksdataformat_subtype_float, 16, 1, file);
       }
    }
 
-   ret &= fprintf (file, "data") >= 0;
-   ret &= fwrite_le32 (0x7fffffff, file);
+   ret &= fprintf(file, "data") >= 0;
+   ret &= fwrite_le32(0x7fffffff, file);
 
    return !ret ? -1 : extensible ? 40 : 16;
 }

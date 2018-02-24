@@ -37,7 +37,8 @@
 
 /*A version of strncasecmp() that is guaranteed to only ignore the case of
    ASCII characters.*/
-int oi_strncasecmp(const char *a, const char *b, int n){
+int oi_strncasecmp(const char *a, const char *b, int n)
+{
   int i;
   for(i=0;i<n;i++){
     int aval;
@@ -59,15 +60,18 @@ int oi_strncasecmp(const char *a, const char *b, int n){
   return 0;
 }
 
-int is_jpeg(const unsigned char *buf, size_t length){
+int is_jpeg(const unsigned char *buf, size_t length)
+{
   return length>=3&&memcmp(buf,"\xFF\xD8\xFF",3)==0;
 }
 
-int is_png(const unsigned char *buf, size_t length){
+int is_png(const unsigned char *buf, size_t length)
+{
   return length>=8&&memcmp(buf,"\x89PNG\x0D\x0A\x1A\x0A",8)==0;
 }
 
-int is_gif(const unsigned char *buf, size_t length){
+int is_gif(const unsigned char *buf, size_t length)
+{
   return length>=6
    &&(memcmp(buf,"GIF87a",6)==0||memcmp(buf,"GIF89a",6)==0);
 }
@@ -81,7 +85,8 @@ int is_gif(const unsigned char *buf, size_t length){
 void extract_png_params(const unsigned char *data, size_t data_length,
                         ogg_uint32_t *width, ogg_uint32_t *height,
                         ogg_uint32_t *depth, ogg_uint32_t *colors,
-                        int *has_palette){
+                        int *has_palette)
+{
   if(is_png(data,data_length)){
     size_t offs;
     offs=8;
@@ -125,7 +130,8 @@ void extract_png_params(const unsigned char *data, size_t data_length,
 void extract_gif_params(const unsigned char *data, size_t data_length,
                         ogg_uint32_t *width, ogg_uint32_t *height,
                         ogg_uint32_t *depth, ogg_uint32_t *colors,
-                        int *has_palette){
+                        int *has_palette)
+{
   if(is_gif(data,data_length)&&data_length>=14){
     *width=data[6]|data[7]<<8;
     *height=data[8]|data[9]<<8;
@@ -143,7 +149,8 @@ void extract_gif_params(const unsigned char *data, size_t data_length,
 void extract_jpeg_params(const unsigned char *data, size_t data_length,
                          ogg_uint32_t *width, ogg_uint32_t *height,
                          ogg_uint32_t *depth, ogg_uint32_t *colors,
-                         int *has_palette){
+                         int *has_palette)
+{
   if(is_jpeg(data,data_length)){
     size_t offs;
     offs=2;

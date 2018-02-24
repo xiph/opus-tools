@@ -30,7 +30,7 @@
 
 typedef struct flacfile flacfile;
 
-struct flacfile{
+struct flacfile {
   FLAC__StreamDecoder *decoder;
   oe_enc_opt *inopt;
   short channels;
