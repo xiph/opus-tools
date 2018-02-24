@@ -252,7 +252,7 @@ AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
     ])
  ])
 
-dnl Enable stack-protector-all only on x86 where it's well supported.
+dnl Enable stack-protector-strong only on x86 where it's well supported.
 dnl on some platforms it causes crashes. Hopefully the OS's default's
 dnl include this on platforms that work but have been missed here.
 AC_ARG_ENABLE([stack-protector],
@@ -265,8 +265,8 @@ AC_ARG_ENABLE([stack-protector],
 AS_IF([test "$enable_stack_protector" = "yes"],
  [
   saved_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS -fstack-protector-all"
-  AC_MSG_CHECKING([if ${CC} supports -fstack-protector-all])
+  CFLAGS="$CFLAGS -fstack-protector-strong"
+  AC_MSG_CHECKING([if ${CC} supports -fstack-protector-strong])
   AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[char foo;]])],
     [ AC_MSG_RESULT([yes]) ],
     [
