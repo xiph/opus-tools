@@ -583,71 +583,71 @@ int rtp_send_file(const char *filename, const char *dest, int port)
     return ret;
   }
   while (!feof(in)) {
-  in_data = ogg_sync_buffer(&oy, in_size);
-  if (!in_data) {
-    fprintf(stderr, "ogg_sync_buffer failed\n");
-    fclose(in);
-    return -1;
-  }
-  in_read = fread(in_data, 1, in_size, in);
-  ret = ogg_sync_wrote(&oy, in_read);
-  if (ret < 0) {
-    fprintf(stderr, "ogg_sync_wrote failed\n");
-    fclose(in);
-    return ret;
-  }
-  while (ogg_sync_pageout(&oy, &og) == 1) {
-    if (headers == 0) {
-      if (is_opus(&og)) {
-        /* this is the start of an Opus stream */
-        ret = ogg_stream_init(&os, ogg_page_serialno(&og));
-        if (ret < 0) {
-          fprintf(stderr, "ogg_stream_init failed\n");
-          fclose(in);
-          return ret;
-        }
-        headers++;
-      } else if (!ogg_page_bos(&og)) {
-        /* We're past the header and haven't found an Opus stream.
-         * Time to give up. */
-        fclose(in);
-        return 1;
-      } else {
-        /* try again */
-        continue;
-      }
+    in_data = ogg_sync_buffer(&oy, in_size);
+    if (!in_data) {
+      fprintf(stderr, "ogg_sync_buffer failed\n");
+      fclose(in);
+      return -1;
     }
-    /* submit the page for packetization */
-    ret = ogg_stream_pagein(&os, &og);
+    in_read = fread(in_data, 1, in_size, in);
+    ret = ogg_sync_wrote(&oy, in_read);
     if (ret < 0) {
-      fprintf(stderr, "ogg_stream_pagein failed\n");
+      fprintf(stderr, "ogg_sync_wrote failed\n");
       fclose(in);
       return ret;
     }
-    /* read and process available packets */
-    while (ogg_stream_packetout(&os,&op) == 1) {
-      int samples;
-      /* skip header packets */
-      if (headers == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
-        headers++;
-        continue;
+    while (ogg_sync_pageout(&oy, &og) == 1) {
+      if (headers == 0) {
+        if (is_opus(&og)) {
+          /* this is the start of an Opus stream */
+          ret = ogg_stream_init(&os, ogg_page_serialno(&og));
+          if (ret < 0) {
+            fprintf(stderr, "ogg_stream_init failed\n");
+            fclose(in);
+            return ret;
+          }
+          headers++;
+        } else if (!ogg_page_bos(&og)) {
+          /* We're past the header and haven't found an Opus stream.
+           * Time to give up. */
+          fclose(in);
+          return 1;
+        } else {
+          /* try again */
+          continue;
+        }
       }
-      if (headers == 2 && op.bytes >= 16 && !memcmp(op.packet, "OpusTags", 8)) {
-        headers++;
-        continue;
+      /* submit the page for packetization */
+      ret = ogg_stream_pagein(&os, &og);
+      if (ret < 0) {
+        fprintf(stderr, "ogg_stream_pagein failed\n");
+        fclose(in);
+        return ret;
       }
-      /* get packet duration */
-      samples = opus_samples(op.packet, op.bytes);
-      /* update the rtp header and send */
-      rtp.seq++;
-      rtp.time += samples;
-      rtp.payload_size = op.bytes;
-      fprintf(stderr, "rtp %d %d %d %3d ms %5d bytes\n",
-          rtp.type, rtp.seq, rtp.time, samples/48, rtp.payload_size);
-      send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
-      usleep(samples*1000/48);
+      /* read and process available packets */
+      while (ogg_stream_packetout(&os,&op) == 1) {
+        int samples;
+        /* skip header packets */
+        if (headers == 1 && op.bytes >= 19 && !memcmp(op.packet, "OpusHead", 8)) {
+          headers++;
+          continue;
+        }
+        if (headers == 2 && op.bytes >= 16 && !memcmp(op.packet, "OpusTags", 8)) {
+          headers++;
+          continue;
+        }
+        /* get packet duration */
+        samples = opus_samples(op.packet, op.bytes);
+        /* update the rtp header and send */
+        rtp.seq++;
+        rtp.time += samples;
+        rtp.payload_size = op.bytes;
+        fprintf(stderr, "rtp %d %d %d %3d ms %5d bytes\n",
+            rtp.type, rtp.seq, rtp.time, samples/48, rtp.payload_size);
+        send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
+        usleep(samples*1000/48);
+      }
     }
-  }
   }
 
   if (headers > 0)
