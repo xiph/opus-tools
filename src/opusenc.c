@@ -266,6 +266,8 @@ typedef struct {
   opus_int32 peak_bytes;
   opus_int32 min_bytes;
   opus_int32 last_length;
+  opus_int32 nb_streams;
+  opus_int32 nb_coupled;
   FILE *frange;
 } EncData;
 
@@ -298,15 +300,16 @@ static void packet_callback(void *user_data, const unsigned char *packet_ptr, op
     int ret;
     opus_uint32 rngs[256];
     OpusEncoder *oe;
-    int nb_streams;
-    for (nb_streams=0;;nb_streams++) {
-      ret=ope_encoder_ctl(data->enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
-      if (ret != OPE_OK || oe == NULL) break;
-      ret=opus_encoder_ctl(oe,OPUS_GET_FINAL_RANGE(&rngs[nb_streams]));
-      if (ret != OPE_OK) break;
+    int s;
+    for (s = 0; s < data->nb_streams; ++s) {
+      rngs[s] = 0;
+      ret = ope_encoder_ctl(data->enc, OPUS_MULTISTREAM_GET_ENCODER_STATE(s, &oe));
+      if (ret == OPE_OK && oe != NULL) {
+          (void)opus_encoder_ctl(oe, OPUS_GET_FINAL_RANGE(&rngs[s]));
+      }
     }
     save_range(data->frange,nb_samples,packet_ptr,packet_len,
-               rngs,nb_streams);
+               rngs,data->nb_streams);
   }
   (void)flags;
 }
@@ -370,7 +373,6 @@ int main(int argc, char **argv)
   FILE               *fin;
   char               ENCODER_string[1024];
   /*Counters*/
-  opus_int64         total_samples=0;
   opus_int32         nb_samples;
   time_t             start_time;
   time_t             stop_time;
@@ -395,8 +397,6 @@ int main(int argc, char **argv)
   int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
-  int                nb_streams;
-  int                nb_coupled;
 #ifdef WIN_UNICODE
   int argc_utf8;
   char **argv_utf8;
@@ -443,9 +443,22 @@ int main(int argc, char **argv)
     fatal("Error: failed to add ENCODER comment: %s\n", ope_strerror(ret));
   }
 
+  data.enc = NULL;
+  data.fout = NULL;
+  data.total_bytes = 0;
+  data.bytes_written = 0;
+  data.nb_encoded = 0;
+  data.pages_out = 0;
+  data.packets_out = 0;
+  data.peak_bytes = 0;
+  data.min_bytes = 256*1275*6;
+  data.last_length = 0;
+  data.nb_streams = 1;
+  data.nb_coupled = 0;
+  data.frange = NULL;
+
   /*Process command-line options*/
   cline_size=0;
-  data.frange = NULL;
   while (1) {
     int c;
     int save_cmd;
@@ -797,6 +810,7 @@ int main(int argc, char **argv)
   enc = ope_encoder_create_callbacks(&callbacks, &data, inopt.comments, rate,
     chan, chan>8?255:chan>2, &ret);
   if (enc == NULL) fatal("Error: failed to create encoder: %s\n", ope_strerror(ret));
+  data.enc = enc;
 
   ret = ope_encoder_ctl(enc, OPUS_SET_EXPERT_FRAME_DURATION(opus_frame_param));
   if (ret != OPE_OK) {
@@ -823,16 +837,18 @@ int main(int argc, char **argv)
     fatal("Error: OPE_SET_COMMENT_PADDING failed: %s\n", ope_strerror(ret));
   }
 
-  for (nb_streams=0;;nb_streams++) {
-    OpusEncoder *oe;
-    ret=ope_encoder_ctl(enc,OPUS_MULTISTREAM_GET_ENCODER_STATE(nb_streams,&oe));
-    if (ret != OPE_OK || oe == NULL) break;
+  ret = ope_encoder_ctl(enc, OPE_GET_NB_STREAMS(&data.nb_streams));
+  if (ret != OPE_OK) {
+    fatal("Error: OPE_GET_NB_STREAMS failed: %s\n", ope_strerror(ret));
   }
-  nb_coupled = chan - nb_streams;
+  ret = ope_encoder_ctl(enc, OPE_GET_NB_COUPLED_STREAMS(&data.nb_coupled));
+  if (ret != OPE_OK) {
+    fatal("Error: OPE_GET_NB_COUPLED_STREAMS failed: %s\n", ope_strerror(ret));
+  }
 
   if (bitrate<0) {
     /*Lower default rate for sampling rates [8000-44100) by a factor of (rate+16k)/(64k)*/
-    bitrate=((64000*nb_streams+32000*nb_coupled)*
+    bitrate=((64000*data.nb_streams+32000*data.nb_coupled)*
              (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
   }
 
@@ -883,7 +899,7 @@ int main(int argc, char **argv)
         fatal("Error: failed to set encoder ctl %d=%d: %s\n",
           opt_ctls_ctlval[i*3+1], opt_ctls_ctlval[i*3+2], ope_strerror(ret));
       }
-    } else if (target<nb_streams) {
+    } else if (target<data.nb_streams) {
       OpusEncoder *oe;
       ret = ope_encoder_ctl(enc, OPUS_MULTISTREAM_GET_ENCODER_STATE(target,&oe));
       if (ret != OPE_OK) {
@@ -896,7 +912,8 @@ int main(int argc, char **argv)
           target, opt_ctls_ctlval[i*3+1], opt_ctls_ctlval[i*3+2], opus_strerror(ret));
       }
     } else {
-      fatal("Error: --set-ctl-int stream %d is higher than the highest stream number %d\n",target,nb_streams-1);
+      fatal("Error: --set-ctl-int stream %d is higher than the highest "
+        "stream number %d\n", target, data.nb_streams-1);
     }
   }
 
@@ -919,10 +936,10 @@ int main(int argc, char **argv)
     fprintf(stderr,"   Input: %0.6g kHz, %d channel%s\n",
             rate/1000.,chan,chan<2?"":"s");
     fprintf(stderr,"  Output: %d channel%s (",chan,chan<2?"":"s");
-    if (nb_coupled>0) fprintf(stderr,"%d coupled",nb_coupled*2);
-    if (nb_streams-nb_coupled>0) fprintf(stderr,
-       "%s%d uncoupled",nb_coupled>0?", ":"",
-       nb_streams-nb_coupled);
+    if (data.nb_coupled>0) fprintf(stderr,"%d coupled",data.nb_coupled*2);
+    if (data.nb_streams-data.nb_coupled>0) fprintf(stderr,
+       "%s%d uncoupled",data.nb_coupled>0?", ":"",
+       data.nb_streams-data.nb_coupled);
     fprintf(stderr,")\n          %0.2gms packets, %0.6g kbit/s%s\n",
        frame_size/(48000/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
@@ -945,15 +962,6 @@ int main(int argc, char **argv)
       exit(1);
     }
   }
-  data.enc = enc;
-  data.total_bytes = 0;
-  data.bytes_written = 0;
-  data.nb_encoded = 0;
-  data.packets_out = 0;
-  data.peak_bytes = 0;
-  data.min_bytes = 256*1275*6;
-  data.pages_out = 0;
-  data.last_length = 0;
 
   input=malloc(sizeof(float)*frame_size*chan);
   if (input==NULL) {
@@ -963,7 +971,6 @@ int main(int argc, char **argv)
   /*Main encoding loop (one frame per iteration)*/
   while (1) {
     nb_samples = inopt.read_samples(inopt.readdata,input,frame_size);
-    total_samples+=nb_samples;
     ret = ope_encoder_write_float(enc, input, nb_samples);
     if (ret != OPE_OK || nb_samples < frame_size) break;
 
