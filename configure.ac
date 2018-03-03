@@ -333,6 +333,8 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
     ])
 
 AC_FUNC_FSEEKO
+AC_CHECK_FUNCS([clock_gettime mach_absolute_time])
+AC_CHECK_FUNCS([usleep nanosleep clock_nanosleep])
 
 saved_LIBS="$LIBS"
 LIBS="$LIBS $LIBM"

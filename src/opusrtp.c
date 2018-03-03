@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -48,6 +49,13 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <errno.h>
+
+# if defined HAVE_MACH_ABSOLUTE_TIME
+#  include <mach/mach_time.h>
+# elif !(defined HAVE_CLOCK_GETTIME && defined CLOCK_REALTIME && \
+         defined HAVE_NANOSLEEP)
+#  include <sys/time.h>
+# endif
 #endif
 
 #ifdef HAVE_PCAP
@@ -500,6 +508,116 @@ int update_rtp_header(rtp_header *rtp)
 }
 
 #ifndef _WIN32
+/*
+ * Wait for the next time slot, which begins delta nanoseconds after the
+ * start of the previous time slot, or in the case of the first call at
+ * the time of the call.  delta must be in the range 0..999999999.
+ */
+void wait_for_time_slot(int delta)
+{
+# if defined HAVE_MACH_ABSOLUTE_TIME
+  /* Apple */
+  static mach_timebase_info_data_t tbinfo;
+  static uint64_t target;
+
+  if (tbinfo.numer == 0) {
+    mach_timebase_info(&tbinfo);
+    target = mach_absolute_time();
+  } else {
+    target += tbinfo.numer == tbinfo.denom
+      ? (uint64_t)delta : (uint64_t)delta * tbinfo.denom / tbinfo.numer;
+    mach_wait_until(target);
+  }
+# elif defined HAVE_CLOCK_GETTIME && defined CLOCK_REALTIME && \
+       defined HAVE_NANOSLEEP
+  /* try to use POSIX monotonic clock */
+  static int initialized = 0;
+  static clockid_t clock_id;
+  static struct timespec target;
+
+  if (!initialized) {
+#  if defined CLOCK_MONOTONIC && \
+      defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK >= 0
+    if (
+#   if _POSIX_MONOTONIC_CLOCK == 0
+        sysconf(_SC_MONOTONIC_CLOCK) > 0 &&
+#   endif
+        clock_gettime(CLOCK_MONOTONIC, &target) == 0) {
+      clock_id = CLOCK_MONOTONIC;
+      initialized = 1;
+    } else
+#  endif
+    if (clock_gettime(CLOCK_REALTIME, &target) == 0) {
+      clock_id = CLOCK_REALTIME;
+      initialized = 1;
+    }
+  } else {
+    target.tv_nsec += delta;
+    if (target.tv_nsec >= 1000000000) {
+      ++target.tv_sec;
+      target.tv_nsec -= 1000000000;
+    }
+#  if defined HAVE_CLOCK_NANOSLEEP && \
+      defined _POSIX_CLOCK_SELECTION && _POSIX_CLOCK_SELECTION > 0
+    clock_nanosleep(clock_id, TIMER_ABSTIME, &target, NULL);
+#  else
+    {
+      /* convert to relative time */
+      struct timespec rel;
+      if (clock_gettime(clock_id, &rel) == 0) {
+        rel.tv_sec = target.tv_sec - rel.tv_sec;
+        rel.tv_nsec = target.tv_nsec - rel.tv_nsec;
+        if (rel.tv_nsec < 0) {
+          rel.tv_nsec += 1000000000;
+          --rel.tv_sec;
+        }
+        if (rel.tv_sec >= 0 && (rel.tv_sec > 0 || rel.tv_nsec > 0)) {
+          nanosleep(&rel, NULL);
+        }
+      }
+    }
+#  endif
+  }
+# else
+  /* fall back to the old non-monotonic gettimeofday() */
+  static int initialized = 0;
+  static struct timeval target;
+  struct timeval now;
+  int nap;
+
+  if (!initialized) {
+    gettimeofday(&target, NULL);
+    initialized = 1;
+  } else {
+    delta /= 1000;
+    target.tv_usec += delta;
+    if (target.tv_usec >= 1000000) {
+      ++target.tv_sec;
+      target.tv_usec -= 1000000;
+    }
+
+    gettimeofday(&now, NULL);
+    nap = target.tv_usec - now.tv_usec;
+    if (now.tv_sec != target.tv_sec) {
+      if (now.tv_sec > target.tv_sec) nap = 0;
+      else if (target.tv_sec - now.tv_sec == 1) nap += 1000000;
+      else nap = 1000000;
+    }
+    if (nap > delta) nap = delta;
+    if (nap > 0) {
+#  if defined HAVE_USLEEP
+      usleep(nap);
+#  else
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = nap;
+      select(0, NULL, NULL, NULL, &timeout);
+#  endif
+    }
+  }
+# endif
+}
+
 int send_rtp_packet(int fd, struct sockaddr *sin,
     rtp_header *rtp, const unsigned char *opus)
 {
@@ -645,7 +763,8 @@ int rtp_send_file(const char *filename, const char *dest, int port)
         fprintf(stderr, "rtp %d %d %d %3d ms %5d bytes\n",
             rtp.type, rtp.seq, rtp.time, samples/48, rtp.payload_size);
         send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
-        usleep(samples*1000/48);
+        /* convert number of 48 kHz samples to nanoseconds without overflow */
+        wait_for_time_slot(samples*62500/3);
       }
     }
   }
