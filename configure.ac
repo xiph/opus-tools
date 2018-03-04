@@ -233,6 +233,13 @@ i[[3456]]86 | x86_64)
   ;;
 esac
 
+on_windows=no
+case $host in
+*cygwin*|*mingw*)
+  on_windows=yes
+  ;;
+esac
+
 dnl check for sse
 AC_ARG_ENABLE([sse],
     [AS_HELP_STRING([--enable-sse],[Build binaries that require SSE])],,
@@ -252,13 +259,14 @@ AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
     ])
  ])
 
-dnl Enable stack-protector-strong only on x86 where it's well supported.
-dnl on some platforms it causes crashes. Hopefully the OS's default's
-dnl include this on platforms that work but have been missed here.
+dnl Enable stack-protector-strong only on x86 where it's well supported,
+dnl but not on Windows because it creates a dependency on libssp.dll.
+dnl On some platforms it causes crashes. Hopefully the OS defaults to
+dnl enabling this on platforms that work but have been missed here.
 AC_ARG_ENABLE([stack-protector],
     [AS_HELP_STRING([--disable-stack-protector],[Disable compiler stack hardening])],,
     [
-      AS_IF([test "$ac_cv_c_compiler_gnu" = "yes" && test "$on_x86" = "yes"],
+      AS_IF([test "$ac_cv_c_compiler_gnu" = "yes" && test "$on_x86" = "yes" && test "$on_windows" = "no"],
             [enable_stack_protector=yes],[enable_stack_protector=no])
     ])
 
