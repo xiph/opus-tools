@@ -227,17 +227,6 @@ int is_opus(ogg_page *og)
   return 0;
 }
 
-/* calculate the number of samples in an opus packet */
-int opus_samples(const unsigned char *packet, int size)
-{
-  /* number of samples per frame at 48 kHz */
-  int samples = opus_packet_get_samples_per_frame(packet, 48000);
-  /* number "frames" in this packet */
-  int frames = opus_packet_get_nb_frames(packet, size);
-
-  return samples*frames;
-}
-
 /* helper, write out available ogg pages */
 int ogg_write(state *params)
 {
@@ -621,10 +610,11 @@ void wait_for_time_slot(int delta)
 int send_rtp_packet(int fd, struct sockaddr *sin,
     rtp_header *rtp, const unsigned char *opus)
 {
-  update_rtp_header(rtp);
-  unsigned char *packet = malloc(rtp->header_size + rtp->payload_size);
+  unsigned char *packet;
   int ret;
 
+  update_rtp_header(rtp);
+  packet = malloc(rtp->header_size + rtp->payload_size);
   if (!packet) {
     fprintf(stderr, "Couldn't allocate packet buffer\n");
     return -1;
@@ -648,6 +638,15 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   struct sockaddr_in sin;
   int optval = 0;
   int ret;
+  FILE *in;
+  ogg_sync_state oy;
+  ogg_stream_state os;
+  ogg_page og;
+  ogg_packet op;
+  int headers = 0;
+  char *in_data;
+  const long in_size = 8192;
+  size_t in_read;
 
   if (fd < 0) {
     fprintf(stderr, "Couldn't create socket\n");
@@ -680,15 +679,7 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   rtp.payload_size = 0;
 
   fprintf(stderr, "Sending %s...\n", filename);
-  FILE *in = fopen(filename, "rb");
-  ogg_sync_state oy;
-  ogg_stream_state os;
-  ogg_page og;
-  ogg_packet op;
-  int headers = 0;
-  char *in_data;
-  const long in_size = 8192;
-  size_t in_read;
+  in = fopen(filename, "rb");
 
   if (!in) {
     fprintf(stderr, "Couldn't open input file '%s'\n", filename);
@@ -755,7 +746,11 @@ int rtp_send_file(const char *filename, const char *dest, int port)
           continue;
         }
         /* get packet duration */
-        samples = opus_samples(op.packet, op.bytes);
+        samples = opus_packet_get_nb_samples(op.packet, op.bytes, 48000);
+        if (samples <= 0) {
+          fprintf(stderr, "skipping invalid packet\n");
+          continue;
+        }
         /* update the rtp header and send */
         rtp.seq++;
         rtp.time += samples;
@@ -798,6 +793,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   ip_header ip;
   udp_header udp;
   rtp_header rtp;
+  ogg_packet *op;
+  int samples;
 
   fprintf(stderr, "Got %d byte packet (%d bytes captured)\n",
           header->len, header->caplen);
@@ -901,9 +898,10 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
 
   /* write the payload to our opus file */
-  ogg_packet *op = op_from_pkt(packet, size);
+  op = op_from_pkt(packet, size);
   op->packetno = rtp.seq;
-  params->granulepos += opus_samples(packet, size);
+  samples = opus_packet_get_nb_samples(packet, size, 48000);
+  if (samples > 0) params->granulepos += samples;
   op->granulepos = params->granulepos;
   ogg_stream_packetin(params->stream, op);
   free(op);
@@ -912,6 +910,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   if (size < rtp.payload_size) {
     fprintf(stderr, "!! truncated %d uncaptured bytes\n",
             rtp.payload_size - size);
+  } else if (samples <= 0) {
+    fprintf(stderr, "!! invalid opus packet\n");
   }
 }
 
