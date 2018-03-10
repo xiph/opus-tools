@@ -597,6 +597,7 @@ int main(int argc, char **argv)
           opt_ctls_ctlval[opt_ctls*3+2]=atoi(spos+1);
           opt_ctls++;
         } else if (strcmp(optname, "save-range")==0) {
+          if (data.frange) fclose(data.frange);
           data.frange=fopen_utf8(optarg,"w");
           save_cmd=0;
           if (data.frange==NULL) {
