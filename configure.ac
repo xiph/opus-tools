@@ -147,7 +147,12 @@ AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
 
 dnl check for opusfile (specifically, we need libopusurl)
 AS_IF([test "$HAVE_PKG_CONFIG" = "yes"],
- [PKG_CHECK_MODULES([OPUSURL],[opusurl >= 0.5])],
+ [
+  dnl checking for opusfile first will offer a more helpful message if it is
+  dnl not installed, since the package that is needed is likely opusfile
+  PKG_CHECK_MODULES([OPUSFILE],[opusfile >= 0.5])
+  PKG_CHECK_MODULES([OPUSURL],[opusurl >= 0.5])
+ ],
  [
   dnl fall back to the old school test
   XIPH_PATH_OPUSFILE(, AC_MSG_ERROR([
