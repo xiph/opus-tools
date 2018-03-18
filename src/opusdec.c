@@ -478,6 +478,7 @@ void usage(void)
    printf(" --force-wav           Force Wave header on output\n");
    printf(" --packet-loss n       Simulate n %% random packet loss\n");
    printf(" --save-range file     Save check values for every frame to a file\n");
+   printf(" --resample-quality n  Resampler quality for non-48kHz output (0-10, default 5)\n");
    printf("\n");
 }
 
@@ -700,6 +701,7 @@ int main(int argc, char **argv)
       {"force-wav", no_argument, NULL, 0},
       {"packet-loss", required_argument, NULL, 0},
       {"save-range", required_argument, NULL, 0},
+      {"resample-quality", required_argument, NULL, 0},
       {0, 0, 0, 0}
    };
    opus_int64 audio_size=0;
@@ -713,6 +715,7 @@ int main(int argc, char **argv)
    int rate=0;
    int wav_format=0;
    int dither=1;
+   int resamp_q=5;
    int fp=0;
    shapestate shapemem;
    SpeexResamplerState *resampler=NULL;
@@ -797,6 +800,16 @@ int main(int argc, char **argv)
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
             loss_percent = atof(optarg);
+         } else if (strcmp(long_options[option_index].name,"resample-quality")==0)
+         {
+            char* end;
+            long val=strtol(optarg, &end, 10);
+            if (end==optarg||*end!='\0'||val<0||val>10) {
+                perror(optarg);
+                fprintf(stderr,"Resampling quality must be a number from 0 to 10.\n");
+                quit(1);
+            }
+            resamp_q=val;
          }
          break;
       case 'h':
@@ -1134,7 +1147,7 @@ int main(int argc, char **argv)
       if (rate!=48000 && resampler==NULL)
       {
          int err;
-         resampler = speex_resampler_init(channels, 48000, rate, 5, &err);
+         resampler = speex_resampler_init(channels, 48000, rate, resamp_q, &err);
          if (err!=0)
          {
             fprintf(stderr, "resampler error: %s\n",
