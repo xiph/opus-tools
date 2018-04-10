@@ -261,7 +261,7 @@ void info_opus_end(stream_processor *stream)
     oi_info(_("Opus stream %d:\n"),stream->num);
 
     if(inf && inf->total_packets>0){
-        int i;
+        int i, j;
         long minutes, seconds, milliseconds;
         double time;
         time = (inf->lastgranulepos-inf->firstgranule-inf->oh.preskip) / 48000.;
@@ -284,8 +284,25 @@ void info_opus_end(stream_processor *stream)
         if(inf->oh.input_sample_rate)oi_info(_("\tOriginal sample rate: %d Hz\n"),inf->oh.input_sample_rate);
         if(inf->oh.nb_streams>1)oi_info(_("\tStreams: %d, Coupled: %d\n"),inf->oh.nb_streams,inf->oh.nb_coupled);
         if(inf->oh.channel_mapping>0) {
-          oi_info(_("\tChannel Mapping family: %d Map:"),inf->oh.channel_mapping);
-          for(i=0;i<inf->oh.channels;i++)oi_info("%s%d%s",i==0?" [":", ",inf->oh.stream_map[i],i==inf->oh.channels-1?"]\n":"");
+          oi_info(_("\tChannel Mapping Family: %d"),inf->oh.channel_mapping);
+          if(inf->oh.channel_mapping==3) {
+            oi_info(_("\n"));
+            if(inf->oh.channels*(inf->oh.nb_streams+inf->oh.nb_coupled)*2 <= OPUS_DEMIXING_MATRIX_SIZE_MAX) {
+              oi_info(_("\tDemixing Matrix [%dx%d]:\n"),inf->oh.nb_streams+inf->oh.nb_coupled,inf->oh.channels);
+              for(i=0;i<inf->oh.nb_streams+inf->oh.nb_coupled;i++) {
+                for(j=0;j<inf->oh.channels;j++) {
+                  int k=j*(inf->oh.nb_streams+inf->oh.nb_coupled)+i;
+                  int s=inf->oh.dmatrix[2*k + 1] << 8 | inf->oh.dmatrix[2*k];
+                  s = ((s & 0xFFFF) ^ 0x8000) - 0x8000;
+                  oi_info("%s%6d%s",j==0?"\t[":", ",s,j==inf->oh.channels-1?"]\n":"");
+                }
+              }
+            }
+          }
+          else {
+            oi_info(_(" Map:"));
+            for(i=0;i<inf->oh.channels;i++)oi_info("%s%d%s",i==0?" [":", ",inf->oh.stream_map[i],i==inf->oh.channels-1?"]\n":"");
+          }
         }
         if(inf->total_packets)oi_info(_("\tPacket duration: %6.1fms (max), %6.1fms (avg), %6.1fms (min)\n"),
             inf->max_packet_duration/48.,inf->total_samples/(double)inf->total_packets/48.,inf->min_packet_duration/48.);

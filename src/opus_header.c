@@ -156,12 +156,28 @@ int opus_header_parse(const unsigned char *packet, int len, OpusHeader *h)
       h->nb_coupled = ch;
 
       /* Multi-stream support */
-      for (i=0;i<h->channels;i++)
+      if (h->channel_mapping == 3)
       {
-         if (!read_chars(&p, &h->stream_map[i], 1))
+         int dmatrix_size = h->channels * (h->nb_streams + h->nb_coupled) * 2;
+         if (dmatrix_size > len - p.pos)
             return 0;
-         if (h->stream_map[i]>(h->nb_streams+h->nb_coupled) && h->stream_map[i]!=255)
+         if (dmatrix_size > OPUS_DEMIXING_MATRIX_SIZE_MAX)
+            p.pos += dmatrix_size;
+         else if (!read_chars(&p, h->dmatrix, dmatrix_size))
             return 0;
+         for (i=0;i<h->channels;i++) {
+            h->stream_map[i] = i;
+         }
+      }
+      else
+      {
+         for (i=0;i<h->channels;i++)
+         {
+            if (!read_chars(&p, &h->stream_map[i], 1))
+               return 0;
+            if (h->stream_map[i]>(h->nb_streams+h->nb_coupled) && h->stream_map[i]!=255)
+               return 0;
+         }
       }
    } else {
       if(h->channels>2)
