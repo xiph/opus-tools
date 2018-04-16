@@ -26,6 +26,10 @@ opusenc \- encode audio into the Opus format
 ] [
 .B --hard-cbr
 ] [
+.B --music
+] [
+.B --speech
+] [
 .B --comp
 .I complexity
 ] [
@@ -38,6 +42,8 @@ opusenc \- encode audio into the Opus format
 .B --downmix-mono
 ] [
 .B --downmix-stereo
+] [
+.B --no-phase-inv
 ] [
 .B --max-delay
 .I ms
@@ -132,6 +138,7 @@ The default for input with a sample rate of 44.1 kHz or higher is
 64 kbit/s per mono stream and 96 kbit/s per coupled pair.
 .IP "--vbr"
 Use variable bitrate encoding (default)
+
 In VBR mode the bitrate may go up and down freely depending on the content
 to achieve more consistent quality.
 .IP "--cvbr"
@@ -147,6 +154,22 @@ With hard-cbr every frame will be exactly the same size, similar to how
 speech codecs work. This delivers lower overall quality but is useful
 where bitrate changes might leak data in encrypted channels or on
 synchronous transports.
+.IP "--music"
+Override automatic detection and tune low bitrate encoding for music.
+By default, music is detected automatically and the classification
+may vary over time.
+
+Tuning impacts lower bitrates that involve tradeoffs between speech
+clarity and musical accuracy, and has no impact at bitrates typically
+used for high quality music encoding.
+.IP "--speech"
+Override automatic detection and tune low bitrate encoding for speech.
+By default, speech is detected automatically and the classification
+may vary over time.
+
+Tuning impacts lower bitrates that involve tradeoffs between speech
+clarity and musical accuracy, and has no impact at bitrates typically
+used for high quality music encoding.
 .IP "--comp N"
 Set encoding computational complexity (0-10, default: 10). Zero gives the
 fastest encodes but lower quality, while 10 gives the highest quality
@@ -165,6 +188,10 @@ Set expected packet loss in percent (default: 0)
 Downmix to mono
 .IP "--downmix-stereo"
 Downmix to stereo (if >2 channels input)
+.IP "--no-phase-inv"
+Disable use of phase inversion for intensity stereo. This trades some
+stereo quality for a higher quality mono downmix, and is useful when
+encoding stereo audio that is likely to be downmixed to mono after decoding.
 .IP "--max-delay N"
 Set maximum container delay in milliseconds (0-1000, default: 1000)
 

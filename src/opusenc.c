@@ -151,12 +151,17 @@ static void usage(void)
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
+  printf(" --music            Tune low bitrates for music (override automatic detection)\n");
+  printf(" --speech           Tune low bitrates for speech (override automatic detection)\n");
   printf(" --comp n           Set encoding complexity (0-10, default: 10 (slowest))\n");
   printf(" --framesize n      Set maximum frame size in milliseconds\n");
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
   printf(" --expect-loss n    Set expected packet loss in percent (default: 0)\n");
   printf(" --downmix-mono     Downmix to mono\n");
   printf(" --downmix-stereo   Downmix to stereo (if >2 channels)\n");
+#ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
+  printf(" --no-phase-inv     Disable use of phase inversion for intensity stereo\n");
+#endif
   printf(" --max-delay n      Set maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
   printf("\nMetadata options:\n");
@@ -324,6 +329,8 @@ int main(int argc, char **argv)
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
+    {"music", no_argument, NULL, 0},
+    {"speech", no_argument, NULL, 0},
     {"comp", required_argument, NULL, 0},
     {"complexity", required_argument, NULL, 0},
     {"framesize", required_argument, NULL, 0},
@@ -331,6 +338,7 @@ int main(int argc, char **argv)
     {"downmix-mono",no_argument,NULL, 0},
     {"downmix-stereo",no_argument,NULL, 0},
     {"no-downmix",no_argument,NULL, 0},
+    {"no-phase-inv", no_argument, NULL, 0},
     {"max-delay", required_argument, NULL, 0},
     {"serial", required_argument, NULL, 0},
     {"save-range", required_argument, NULL, 0},
@@ -387,9 +395,11 @@ int main(int argc, char **argv)
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
+  int                signal_type=OPUS_AUTO;
   int                expect_loss=0;
   int                complexity=10;
   int                downmix=0;
+  int                no_phase_inv=0;
   int                *opt_ctls_ctlval;
   int                opt_ctls=0;
   int                max_ogg_delay=48000; /*48kHz samples*/
@@ -531,6 +541,12 @@ int main(int argc, char **argv)
           downmix=2;
         } else if (strcmp(optname, "no-downmix")==0) {
           downmix=-1;
+        } else if (strcmp(optname, "no-phase-inv")==0) {
+          no_phase_inv=1;
+        } else if (strcmp(optname, "music")==0) {
+          signal_type=OPUS_SIGNAL_MUSIC;
+        } else if (strcmp(optname, "speech")==0) {
+          signal_type=OPUS_SIGNAL_VOICE;
         } else if (strcmp(optname, "expect-loss")==0) {
           expect_loss=atoi(optarg);
           if (expect_loss>100||expect_loss<0) {
@@ -875,6 +891,10 @@ int main(int argc, char **argv)
         with_cvbr, ope_strerror(ret));
     }
   }
+  ret = ope_encoder_ctl(enc, OPUS_SET_SIGNAL(signal_type));
+  if (ret != OPE_OK) {
+    fatal("Error: OPUS_SET_SIGNAL failed: %s\n", ope_strerror(ret));
+  }
   ret = ope_encoder_ctl(enc, OPUS_SET_COMPLEXITY(complexity));
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_COMPLEXITY %d failed: %s\n", complexity, ope_strerror(ret));
@@ -890,6 +910,17 @@ int main(int argc, char **argv)
     fprintf(stderr, "Warning: OPUS_SET_LSB_DEPTH failed: %s\n", ope_strerror(ret));
   }
 #endif
+  if (no_phase_inv) {
+#ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
+    ret = ope_encoder_ctl(enc, OPUS_SET_PHASE_INVERSION_DISABLED(1));
+    if (ret != OPE_OK) {
+      fprintf(stderr, "Warning: OPUS_SET_PHASE_INVERSION_DISABLED failed: %s\n",
+        ope_strerror(ret));
+    }
+#else
+    fprintf(stderr,"Warning: Disabling phase inversion is not supported.\n");
+#endif
+  }
 
   /*This should be the last set of SET ctls, so it can override the defaults.*/
   for (i=0;i<opt_ctls;i++) {
