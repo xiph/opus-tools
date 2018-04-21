@@ -319,6 +319,44 @@ static void packet_callback(void *user_data, const unsigned char *packet_ptr, op
   (void)flags;
 }
 
+static int is_valid_ctl(int request)
+{
+  /*
+   * These encoder ctls can be overridden for testing purposes without any
+   * special handling in opusenc.  Some have their own option that should
+   * be preferred but can still be overridden on a per-stream basis.  The
+   * default settings are tuned to produce the best quality at the chosen
+   * bitrate, so in general lower quality should be expected if these
+   * settings are overridden.
+   */
+  switch (request) {
+  case OPUS_SET_APPLICATION_REQUEST:
+  case OPUS_SET_BITRATE_REQUEST:
+  case OPUS_SET_MAX_BANDWIDTH_REQUEST:
+  case OPUS_SET_VBR_REQUEST:
+  case OPUS_SET_BANDWIDTH_REQUEST:
+  case OPUS_SET_COMPLEXITY_REQUEST:
+  case OPUS_SET_INBAND_FEC_REQUEST:
+  case OPUS_SET_PACKET_LOSS_PERC_REQUEST:
+  case OPUS_SET_DTX_REQUEST:
+  case OPUS_SET_VBR_CONSTRAINT_REQUEST:
+  case OPUS_SET_FORCE_CHANNELS_REQUEST:
+  case OPUS_SET_SIGNAL_REQUEST:
+  case OPUS_SET_LSB_DEPTH_REQUEST:
+  case OPUS_SET_PREDICTION_DISABLED_REQUEST:
+#ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
+  case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
+#endif
+  case OPE_SET_DECISION_DELAY_REQUEST:
+  case OPE_SET_MUXING_DELAY_REQUEST:
+  case OPE_SET_COMMENT_PADDING_REQUEST:
+  case OPE_SET_SERIALNO_REQUEST:
+  case OPE_SET_HEADER_GAIN_REQUEST:
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
   static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
@@ -601,9 +639,8 @@ int main(int argc, char **argv)
             tpos=optarg-1;
           } else target=atoi(optarg);
           request=atoi(tpos+1);
-          if ((request & 1) != 0 || request == OPE_SET_PACKET_CALLBACK_REQUEST) {
-            fatal("Invalid set-ctl-int: %s\n"
-              "Set ctl values are even.\n", optarg);
+          if (!is_valid_ctl(request)) {
+            fatal("Invalid set-ctl-int: %s\n", optarg);
           }
           if (opt_ctls==0) opt_ctls_ctlval=malloc(sizeof(int)*3);
           else opt_ctls_ctlval=realloc(opt_ctls_ctlval,sizeof(int)*(opt_ctls+1)*3);
