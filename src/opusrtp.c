@@ -57,6 +57,8 @@
 #include <ogg/ogg.h>
 
 #define OPUS_PAYLOAD_TYPE 120
+#define DYNAMIC_PAYLOAD_TYPE_MIN 96
+#define DYNAMIC_PAYLOAD_TYPE_MAX 127
 
 /* state struct for passing around our handles */
 typedef struct {
@@ -768,7 +770,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
   params->seq = rtp.seq;
 
-  if (rtp.type != OPUS_PAYLOAD_TYPE) {
+  if (rtp.type < DYNAMIC_PAYLOAD_TYPE_MIN || rtp.type > DYNAMIC_PAYLOAD_TYPE_MAX) {
     fprintf(stderr, "skipping non-opus packet\n");
     return;
   }
