@@ -65,6 +65,7 @@
 #include <ogg/ogg.h>
 
 #define SNIFF_DEVICE "lo0"
+#define DYNAMIC_PAYLOAD_TYPE_MIN 96
 
 /* state struct for passing around our handles */
 typedef struct {
@@ -897,8 +898,19 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
   params->seq = rtp.seq;
 
+  /* look for first plausible payload_type if no payload type specified */
+  if (params->payload_type < 0 && rtp.type >= DYNAMIC_PAYLOAD_TYPE_MIN) {
+    const unsigned char *frames[48];
+    opus_int16 fsizes[48];
+    if (opus_packet_parse(packet, size, NULL, frames, fsizes, NULL) > 0) {
+      /* this could be a valid Opus packet */
+      fprintf(stderr, "recording stream with payload type %d\n", rtp.type);
+      params->payload_type = rtp.type;
+    }
+  }
+
   if (rtp.type != params->payload_type) {
-    fprintf(stderr, "skipping non-opus packet\n");
+    fprintf(stderr, "skipping packet with payload type %d\n", rtp.type);
     return;
   }
 
@@ -1054,7 +1066,7 @@ int main(int argc, char *argv[])
   int pcap_mode = 0;
 #endif
   int port = 1234;
-  int payload_type = 120;
+  int payload_type = -1;
   int samplerate = 48000;
   int channels = 2;
   struct option long_options[] = {
@@ -1148,6 +1160,7 @@ int main(int argc, char *argv[])
       return 1;
     }
 #endif
+    if (payload_type < 0) payload_type = 120;
     for (i = optind; i < argc; i++) {
       rtp_send_file(argv[i], dest, port, payload_type);
     }
