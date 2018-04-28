@@ -66,8 +66,6 @@
 
 #define SNIFF_DEVICE "lo0"
 
-static uint8_t opus_payload_type = 120;
-
 /* state struct for passing around our handles */
 typedef struct {
   ogg_stream_state *stream;
@@ -75,6 +73,7 @@ typedef struct {
   int seq;
   ogg_int64_t granulepos;
   int linktype;
+  int payload_type;
 } state;
 
 /* helper, write a little-endian 32 bit int to memory */
@@ -109,11 +108,8 @@ void be16(unsigned char *p, int v)
   p[1] = v & 0xff;
 }
 
-static int samplerate = 48000;
-static int channels = 2;
-
 /* manufacture a generic OpusHead packet */
-ogg_packet *op_opushead(void)
+ogg_packet *op_opushead(int samplerate, int channels)
 {
   int size = 19;
   unsigned char *data = malloc(size);
@@ -633,7 +629,8 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
   return ret;
 }
 
-int rtp_send_file(const char *filename, const char *dest, int port)
+int rtp_send_file(const char *filename, const char *dest, int port,
+        int payload_type)
 {
   rtp_header rtp;
   int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -668,7 +665,7 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   }
 
   rtp.version = 2;
-  rtp.type = opus_payload_type;
+  rtp.type = payload_type;
   rtp.pad = 0;
   rtp.ext = 0;
   rtp.cc = 0;
@@ -773,10 +770,12 @@ int rtp_send_file(const char *filename, const char *dest, int port)
   return 0;
 }
 #else /* _WIN32 */
-int rtp_send_file(const char *filename, const char *addr, int port)
+int rtp_send_file(const char *filename, const char *dest, int port,
+        int payload_type)
 {
   fprintf(stderr, "Cannot send '%s to %s:%d'. Socket support not available.\n",
-          filename, addr, port);
+          filename, dest, port);
+  (void)payload_type;
   return -2;
 }
 #endif
@@ -898,7 +897,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
   params->seq = rtp.seq;
 
-  if (rtp.type != opus_payload_type) {
+  if (rtp.type != params->payload_type) {
     fprintf(stderr, "skipping non-opus packet\n");
     return;
   }
@@ -922,7 +921,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
 }
 
 /* use libpcap to capture packets and write them to a file */
-int sniff(const char *input_file, const char *output_file)
+int sniff(const char *input_file, const char *output_file, int payload_type,
+        int samplerate, int channels)
 {
   state *params;
   pcap_t *pcap;
@@ -968,6 +968,7 @@ int sniff(const char *input_file, const char *output_file)
   params->out = NULL;
   params->seq = 0;
   params->granulepos = 0;
+  params->payload_type = payload_type;
 
   if (output_file) {
     if (strcmp(output_file, "-") == 0) {
@@ -983,7 +984,7 @@ int sniff(const char *input_file, const char *output_file)
       return 1;
     }
     /* write stream headers */
-    op = op_opushead();
+    op = op_opushead(samplerate, channels);
     ogg_stream_packetin(params->stream, op);
     op_free(op);
     op = op_opustags();
@@ -1053,6 +1054,9 @@ int main(int argc, char *argv[])
   int pcap_mode = 0;
 #endif
   int port = 1234;
+  int payload_type = 120;
+  int samplerate = 48000;
+  int channels = 2;
   struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'V'},
@@ -1123,7 +1127,7 @@ int main(int argc, char *argv[])
         break;
       case 't':
         if (optarg)
-            opus_payload_type = atoi(optarg);
+            payload_type = atoi(optarg);
         break;
       case 'h':
         usage(argv[0]);
@@ -1145,14 +1149,14 @@ int main(int argc, char *argv[])
     }
 #endif
     for (i = optind; i < argc; i++) {
-      rtp_send_file(argv[i], dest, port);
+      rtp_send_file(argv[i], dest, port, payload_type);
     }
     return 0;
   }
 
 #ifdef HAVE_PCAP
   if (pcap_mode) {
-    return sniff(input_pcap, output_file);
+    return sniff(input_pcap, output_file, payload_type, samplerate, channels);
   }
 #endif
 
