@@ -27,9 +27,6 @@
  */
 
 /* dump opus rtp packets into an ogg file
- *
- * compile with: cc -g -Wall -o opusrtc opusrtp.c -lpcap -logg
- *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -49,7 +46,7 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <errno.h>
-
+# include <netdb.h>
 # if defined HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
 # elif !(defined HAVE_CLOCK_GETTIME && defined CLOCK_REALTIME && \
@@ -290,11 +287,13 @@ typedef struct {
 } loop_header;
 
 #define IP_HEADER_MIN 20
+#define IP6_HEADER_MIN 40
 typedef struct {
   int version;
   int header_size;
-  unsigned char src[4], dst[4]; /* ipv4 addrs */
   int protocol;
+  char src[46];
+  char dst[46];
 } ip_header;
 
 #define UDP_HEADER_LEN 8
@@ -341,6 +340,7 @@ static int rne32(const unsigned char *p)
 
 int parse_eth_header(const unsigned char *packet, int size, eth_header *eth)
 {
+  int header_size = ETH_HEADER_LEN;
   if (!packet || !eth) {
     return -2;
   }
@@ -350,9 +350,17 @@ int parse_eth_header(const unsigned char *packet, int size, eth_header *eth)
   }
   memcpy(eth->src, packet + 0, 6);
   memcpy(eth->dst, packet + 6, 6);
-  eth->type = rbe16(packet + 12);
-
-  return 0;
+  while (1) {
+    eth->type = rbe16(packet + header_size - 2);
+    if (eth->type != 0x8100 && eth->type != 0x88a8) break;
+    /* 802.1Q */
+    header_size += 4;
+    if (header_size > size) {
+      fprintf(stderr, "Packet too short for eth extension header\n");
+      return -1;
+    }
+  }
+  return header_size;
 }
 
 /* used by the darwin loopback interface, at least */
@@ -371,6 +379,18 @@ int parse_loop_header(const unsigned char *packet, int size, loop_header *loop)
   return 0;
 }
 
+void format_ipv6_addr(const unsigned char *addr, char *buf, size_t bufsize)
+{
+#ifdef HAVE_INET_NTOP
+  if (inet_ntop(AF_INET6, addr, buf, bufsize)) return;
+#endif
+  snprintf(buf, bufsize, "%x:%x:%x:%x:%x:%x:%x:%x",
+    (addr[0]  << 8) | addr[1],  (addr[2]  << 8) | addr[3],
+    (addr[4]  << 8) | addr[5],  (addr[6]  << 8) | addr[7],
+    (addr[8]  << 8) | addr[9],  (addr[10] << 8) | addr[11],
+    (addr[12] << 8) | addr[13], (addr[14] << 8) | addr[15]);
+}
+
 int parse_ip_header(const unsigned char *packet, int size, ip_header *ip)
 {
   if (!packet || !ip) {
@@ -382,22 +402,71 @@ int parse_ip_header(const unsigned char *packet, int size, ip_header *ip)
   }
 
   ip->version = (packet[0] >> 4) & 0x0f;
-  if (ip->version != 4) {
+  if (ip->version == 4) {
+    /* ipv4 header */
+    ip->header_size = 4 * (packet[0] & 0x0f);
+    ip->protocol = packet[9];
+    snprintf(ip->src, sizeof(ip->src), "%u.%u.%u.%u",
+      packet[12], packet[13], packet[14], packet[15]);
+    snprintf(ip->dst, sizeof(ip->dst), "%u.%u.%u.%u",
+      packet[16], packet[17], packet[18], packet[19]);
+
+    if (size < ip->header_size) {
+      fprintf(stderr, "Packet too short for ipv4 with options\n");
+      return -1;
+    }
+  } else if (ip->version == 6) {
+    /* ipv6 header */
+    if (size < IP6_HEADER_MIN) {
+      fprintf(stderr, "Packet too short for IPv6\n");
+      return -1;
+    }
+    ip->header_size = IP6_HEADER_MIN;
+    ip->protocol = packet[6];
+
+    format_ipv6_addr(packet + 8, ip->src, sizeof(ip->src));
+    format_ipv6_addr(packet + 24, ip->dst, sizeof(ip->dst));
+
+    while (1) {
+      int ext_pos;
+      int ext_size;
+
+      switch (ip->protocol) {
+      case 0:   /* hop-by-hop options header */
+      case 43:  /* routing header */
+      case 51:  /* authentication header */
+      case 60:  /* destination options header */
+        break;
+      default:
+        return 0;
+      }
+      ext_pos = ip->header_size;
+      if (ext_pos + 8 > size ||
+          ext_pos + (ext_size = (packet[ext_pos+1]+1)*8) > size) {
+        fprintf(stderr, "Packet too short for IPv6 extension headers\n");
+        return -1;
+      }
+      if (ip->protocol == 0 || ip->protocol == 60) {
+        /* parse options */
+        int opt_pos = ext_pos + 2;
+        while (opt_pos + 1 < ext_pos + ext_size) {
+          int opt_type = packet[opt_pos];
+          if (opt_type == 0) opt_pos += 1;
+          else if (opt_type < 0x40) opt_pos += 2 + packet[opt_pos+1];
+          else {
+            fprintf(stderr, "unsupported IPv6 %s option %#x\n",
+              ip->protocol == 0 ? "hop-by-hop" : "destination", opt_type);
+            return 1;
+          }
+        }
+      }
+      ip->protocol = packet[ext_pos];
+      ip->header_size = ext_pos + ext_size;
+    }
+  } else {
     fprintf(stderr, "unhandled ip version %d\n", ip->version);
     return 1;
   }
-
-  /* ipv4 header */
-  ip->header_size = 4 * (packet[0] & 0x0f);
-  ip->protocol = packet[9];
-  memcpy(ip->src, packet + 12, 4);
-  memcpy(ip->dst, packet + 16, 4);
-
-  if (size < ip->header_size) {
-    fprintf(stderr, "Packet too short for ipv4 with options\n");
-    return -1;
-  }
-
   return 0;
 }
 
@@ -606,8 +675,8 @@ void wait_for_time_slot(int delta)
 # endif
 }
 
-int send_rtp_packet(int fd, struct sockaddr *sin,
-    rtp_header *rtp, const unsigned char *opus)
+int send_rtp_packet(int fd, struct sockaddr *addr, socklen_t addrlen,
+    rtp_header *rtp, const unsigned char *opus_packet)
 {
   unsigned char *packet;
   int ret;
@@ -619,9 +688,9 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
     return -1;
   }
   serialize_rtp_header(packet, rtp->header_size, rtp);
-  memcpy(packet + rtp->header_size, opus, rtp->payload_size);
+  memcpy(packet + rtp->header_size, opus_packet, rtp->payload_size);
   ret = sendto(fd, packet, rtp->header_size + rtp->payload_size, 0,
-      sin, sizeof(*sin));
+      addr, addrlen);
   if (ret < 0) {
     fprintf(stderr, "error sending: %s\n", strerror(errno));
   }
@@ -630,12 +699,11 @@ int send_rtp_packet(int fd, struct sockaddr *sin,
   return ret;
 }
 
-int rtp_send_file(const char *filename, const char *dest, int port,
-        int payload_type)
+int rtp_send_file_to_addr(const char *filename, struct sockaddr *addr,
+    socklen_t addrlen, int payload_type)
 {
   rtp_header rtp;
-  int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  struct sockaddr_in sin;
+  int fd;
   int optval = 0;
   int ret;
   FILE *in;
@@ -648,17 +716,11 @@ int rtp_send_file(const char *filename, const char *dest, int port,
   const long in_size = 8192;
   size_t in_read;
 
+  fd = socket(addr->sa_family, SOCK_DGRAM, IPPROTO_UDP);
   if (fd < 0) {
     fprintf(stderr, "Couldn't create socket\n");
     return fd;
   }
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(port);
-  if ((sin.sin_addr.s_addr = inet_addr(dest)) == INADDR_NONE) {
-    fprintf(stderr, "Invalid address %s\n", dest);
-    return -1;
-  }
-
   ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int));
   if (ret < 0) {
     fprintf(stderr, "Couldn't set socket options\n");
@@ -757,7 +819,7 @@ int rtp_send_file(const char *filename, const char *dest, int port,
         rtp.payload_size = op.bytes;
         fprintf(stderr, "rtp %d %d %d %3d ms %5d bytes\n",
             rtp.type, rtp.seq, rtp.time, samples/48, rtp.payload_size);
-        send_rtp_packet(fd, (struct sockaddr *)&sin, &rtp, op.packet);
+        send_rtp_packet(fd, addr, addrlen, &rtp, op.packet);
         /* convert number of 48 kHz samples to nanoseconds without overflow */
         wait_for_time_slot(samples*62500/3);
       }
@@ -770,17 +832,40 @@ int rtp_send_file(const char *filename, const char *dest, int port,
   fclose(in);
   return 0;
 }
-#else /* _WIN32 */
-int rtp_send_file(const char *filename, const char *dest, int port,
+
+int rtp_send_file(const char *filename, const char *dest, const char *port,
         int payload_type)
 {
-  fprintf(stderr, "Cannot send '%s to %s:%d'. Socket support not available.\n",
+  int ret;
+  struct addrinfo *addrs;
+  struct addrinfo hints;
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = 0;
+  hints.ai_protocol = IPPROTO_UDP;
+  ret = getaddrinfo(dest, port, &hints, &addrs);
+  if (ret != 0 || !addrs) {
+    fprintf(stderr, "Cannot resolve host %s port %s: %s\n",
+      dest, port, gai_strerror(ret));
+    return -1;
+  }
+  ret = rtp_send_file_to_addr(filename, addrs->ai_addr, addrs->ai_addrlen,
+    payload_type);
+  freeaddrinfo(addrs);
+  return ret;
+}
+#else /* _WIN32 */
+int rtp_send_file(const char *filename, const char *dest, const char *port,
+        int payload_type)
+{
+  fprintf(stderr, "Cannot send %s to %s:%s'. Socket support not available.\n",
           filename, dest, port);
   (void)payload_type;
   return -2;
 }
 #endif
-
 
 #ifdef HAVE_PCAP
 /* pcap 'got_packet' callback */
@@ -797,6 +882,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   rtp_header rtp;
   ogg_packet *op;
   int samples;
+  int header_size;
 
   fprintf(stderr, "Got %d byte packet (%d bytes captured)\n",
           header->len, header->caplen);
@@ -806,7 +892,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   /* parse the link-layer header */
   switch (params->linktype) {
     case DLT_EN10MB:
-      if (parse_eth_header(packet, size, &eth)) {
+      header_size = parse_eth_header(packet, size, &eth);
+      if (header_size < 0) {
         fprintf(stderr, "error parsing eth header\n");
         return;
       }
@@ -817,20 +904,20 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
       fprintf(stderr, " %02x:%02x:%02x:%02x:%02x:%02x\n",
               eth.dst[0], eth.dst[1], eth.dst[2],
               eth.dst[3], eth.dst[4], eth.dst[5]);
-      if (eth.type != 0x0800) {
-        fprintf(stderr, "skipping packet: no IPv4\n");
+      if (eth.type != 0x0800 && eth.type != 0x86dd) {
+        fprintf(stderr, "skipping packet: not IP\n");
         return;
       }
-      packet += ETH_HEADER_LEN;
-      size -= ETH_HEADER_LEN;
+      packet += header_size;
+      size -= header_size;
       break;
     case DLT_NULL:
       if (parse_loop_header(packet, size, &loop)) {
         fprintf(stderr, "error parsing loopback header\n");
         return;
       }
-      fprintf(stderr, " loopback family %d\n", loop.family);
-      if (loop.family != PF_INET) {
+      fprintf(stderr, "  loopback family %d\n", loop.family);
+      if (loop.family != PF_INET && loop.family != PF_INET6) {
         fprintf(stderr, "skipping packet: not IP\n");
         return;
       }
@@ -847,12 +934,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
     fprintf(stderr, "error parsing ip header\n");
     return;
   }
-  fprintf(stderr, " ipv%d protocol %d", ip.version, ip.protocol);
-  fprintf(stderr, " %d.%d.%d.%d ->",
-          ip.src[0], ip.src[1], ip.src[2], ip.src[3]);
-  fprintf(stderr, " %d.%d.%d.%d",
-          ip.dst[0], ip.dst[1], ip.dst[2], ip.dst[3]);
-  fprintf(stderr, " header %d bytes\n", ip.header_size);
+  fprintf(stderr, "  ipv%d protocol %d", ip.version, ip.protocol);
+  fprintf(stderr, " %s -> %s\n", ip.src, ip.dst);
   if (ip.protocol != 17) {
     fprintf(stderr, "skipping packet: not UDP\n");
     return;
@@ -1063,7 +1146,7 @@ int main(int argc, char *argv[])
   const char *input_pcap = NULL;
   const char *output_file = NULL;
   int pcap_mode = 0;
-  int port = 1234;
+  const char *port = "1234";
   int payload_type = -1;
   int samplerate = 48000;
   int channels = 2;
@@ -1115,7 +1198,7 @@ int main(int argc, char *argv[])
         break;
       case 'p':
         if (optarg)
-            port = atoi(optarg);
+            port = optarg;
         break;
       case 'r':
         if (optarg)
