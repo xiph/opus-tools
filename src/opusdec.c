@@ -513,7 +513,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
        unsigned in_len;
        output=buf;
        in_len = frame_size;
-       out_len = 1024<maxout?1024:maxout;
+       out_len = 1024<maxout?1024:(unsigned)maxout;
        speex_resampler_process_interleaved_float(resampler,
         pcm, &in_len, buf, &out_len);
        pcm += channels*(in_len);
@@ -538,7 +538,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
           for (i=0;i<(int)out_len*channels;i++)
             out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
         }
-        if ((le_short(1)!=1)&&file) {
+        if ((le_short(1)!=(1))&&file) {
           for (i=0;i<(int)out_len*channels;i++)
             out[i]=le_short(out[i]);
         }
@@ -1162,14 +1162,14 @@ int main(int argc, char **argv)
       if (fseek(fout,4,SEEK_SET)==0)
       {
          int tmp;
-         tmp=le_int(audio_size+20+wav_format);
+         tmp=le_int((opus_int32)(audio_size+20+wav_format));
          if (fwrite(&tmp,4,1,fout)!=1)
          {
             fprintf(stderr,"Error writing end length.\n");
          }
          if (fseek(fout,16+wav_format,SEEK_CUR)==0)
          {
-            tmp=le_int(audio_size);
+            tmp=le_int((opus_int32)audio_size);
             if (fwrite(&tmp,4,1,fout)!=1)
             {
                fprintf(stderr,"Error writing header length.\n");
