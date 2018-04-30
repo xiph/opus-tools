@@ -1060,11 +1060,9 @@ int main(int argc, char *argv[])
 {
   int option, i;
   const char *dest = "127.0.0.1";
-#ifdef HAVE_PCAP
   const char *input_pcap = NULL;
   const char *output_file = NULL;
   int pcap_mode = 0;
-#endif
   int port = 1234;
   int payload_type = -1;
   int samplerate = 48000;
@@ -1090,12 +1088,7 @@ int main(int argc, char *argv[])
     switch (option) {
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
-#ifdef HAVE_PCAP
           pcap_mode = 1;
-#else
-          fprintf(stderr, "pcap support disabled, sorry.\n");
-          return 1;
-#endif
         } else {
           fprintf(stderr, "Unknown option - try %s --help.\n", argv[0]);
           return -1;
@@ -1115,16 +1108,11 @@ int main(int argc, char *argv[])
             dest = optarg;
         break;
       case 'e':
-#ifdef HAVE_PCAP
         if (optarg) {
             input_pcap = optarg;
             pcap_mode = 1;
         }
         break;
-#else
-        fprintf(stderr, "pcap support disabled, sorry.\n");
-        return 1;
-#endif
       case 'p':
         if (optarg)
             port = atoi(optarg);
@@ -1153,13 +1141,11 @@ int main(int argc, char *argv[])
 
   if (optind < argc) {
     /* files to transmit were specified */
-#ifdef HAVE_PCAP
     if (pcap_mode) {
       fprintf(stderr, "Ogg Opus input files cannot be used with %s.\n",
         input_pcap ? "--extract" : "--sniff");
       return 1;
     }
-#endif
     if (payload_type < 0) payload_type = 120;
     for (i = optind; i < argc; i++) {
       rtp_send_file(argv[i], dest, port, payload_type);
@@ -1167,11 +1153,18 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-#ifdef HAVE_PCAP
   if (pcap_mode) {
+#ifdef HAVE_PCAP
     return sniff(input_pcap, output_file, payload_type, samplerate, channels);
-  }
+#else
+    (void)input_pcap;
+    (void)output_file;
+    (void)samplerate;
+    (void)channels;
+    fprintf(stderr, "Sorry, pcap support is disabled.\n");
+    return 1;
 #endif
+  }
 
   usage(argv[0]);
   return 1;
