@@ -251,17 +251,13 @@ static void print_comments(const OpusTags *_tags)
             if (pic.format==OP_PIC_FORMAT_URL) {
                fprintf(stderr, "|%s\n", pic.data);
             } else {
-               /*We use separate strings for each of these to simplify i18n in
-                 the future someday.*/
-               static const char *PIC_FORMAT_STR[4] = {
-                  "|<%u bytes of image data>\n",
-                  "|<%u bytes of JPEG data>\n",
-                  "|<%u bytes of PNG data>\n",
-                  "|<%u bytes of GIF data>\n"
+               static const char *pic_format_str[4] = {
+                  "image", "JPEG", "PNG", "GIF"
                };
                int format_idx;
                format_idx = pic.format < 1 || pic.format >= 4 ? 0 : pic.format;
-               fprintf(stderr, PIC_FORMAT_STR[format_idx], pic.data_length);
+               fprintf(stderr, "|<%u bytes of %s data>\n", pic.data_length,
+                pic_format_str[format_idx]);
             }
             opus_picture_tag_clear(&pic);
          }
