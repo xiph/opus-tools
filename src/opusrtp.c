@@ -71,6 +71,7 @@ typedef struct {
   int seq;
   ogg_int64_t granulepos;
   int linktype;
+  int dst_port;
   int payload_type;
 } state;
 
@@ -975,27 +976,37 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
     return;
   }
 
+  if (params->dst_port >= 0 && udp.dst != params->dst_port) {
+    fprintf(stderr, "skipping packet with destination port %d\n", udp.dst);
+    return;
+  }
+
+  if (params->payload_type >= 0
+      ? rtp.type != params->payload_type
+      : rtp.type < DYNAMIC_PAYLOAD_TYPE_MIN) {
+    fprintf(stderr, "skipping packet with payload type %d\n", rtp.type);
+    return;
+  }
+
+  /* lock onto first plausible port and payload_type if unspecified */
+  if (params->dst_port < 0 || params->payload_type < 0) {
+    const unsigned char *frames[48];
+    opus_int16 fsizes[48];
+    if (opus_packet_parse(packet, size, NULL, frames, fsizes, NULL) <= 0) {
+      fprintf(stderr, "skipping non-Opus packet\n");
+      return;
+    }
+    /* this could be a valid Opus packet */
+    fprintf(stderr, "recording stream with payload type %d\n", rtp.type);
+    if (params->dst_port < 0) params->dst_port = udp.dst;
+    if (params->payload_type < 0) params->payload_type = rtp.type;
+  }
+
   if (rtp.seq < params->seq) {
     fprintf(stderr, "skipping out-of-sequence packet\n");
     return;
   }
   params->seq = rtp.seq;
-
-  /* look for first plausible payload_type if no payload type specified */
-  if (params->payload_type < 0 && rtp.type >= DYNAMIC_PAYLOAD_TYPE_MIN) {
-    const unsigned char *frames[48];
-    opus_int16 fsizes[48];
-    if (opus_packet_parse(packet, size, NULL, frames, fsizes, NULL) > 0) {
-      /* this could be a valid Opus packet */
-      fprintf(stderr, "recording stream with payload type %d\n", rtp.type);
-      params->payload_type = rtp.type;
-    }
-  }
-
-  if (rtp.type != params->payload_type) {
-    fprintf(stderr, "skipping packet with payload type %d\n", rtp.type);
-    return;
-  }
 
   /* write the payload to our opus file */
   op = op_from_pkt(packet, size);
@@ -1016,8 +1027,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
 }
 
 /* use libpcap to capture packets and write them to a file */
-int sniff(const char *input_file, const char *output_file, int payload_type,
-        int samplerate, int channels)
+int sniff(const char *input_file, const char *output_file, int dst_port,
+        int payload_type, int samplerate, int channels)
 {
   state *params;
   pcap_t *pcap;
@@ -1063,6 +1074,7 @@ int sniff(const char *input_file, const char *output_file, int payload_type,
   params->out = NULL;
   params->seq = 0;
   params->granulepos = 0;
+  params->dst_port = dst_port;
   params->payload_type = payload_type;
 
   if (output_file) {
@@ -1146,7 +1158,7 @@ int main(int argc, char *argv[])
   const char *input_pcap = NULL;
   const char *output_file = NULL;
   int pcap_mode = 0;
-  const char *port = "1234";
+  const char *port = NULL;
   int payload_type = -1;
   int samplerate = 48000;
   int channels = 2;
@@ -1229,6 +1241,7 @@ int main(int argc, char *argv[])
         input_pcap ? "--extract" : "--sniff");
       return 1;
     }
+    if (!port) port = "1234";
     if (payload_type < 0) payload_type = 120;
     for (i = optind; i < argc; i++) {
       rtp_send_file(argv[i], dest, port, payload_type);
@@ -1238,7 +1251,12 @@ int main(int argc, char *argv[])
 
   if (pcap_mode) {
 #ifdef HAVE_PCAP
-    return sniff(input_pcap, output_file, payload_type, samplerate, channels);
+    int port_num = -1;
+    if (port && ((port_num = atoi(port)) <= 0 || port_num > 65535)) {
+      fprintf(stderr, "Invalid port number %s\n", port);
+      return 1;
+    }
+    return sniff(input_pcap, output_file, port_num, payload_type, samplerate, channels);
 #else
     (void)input_pcap;
     (void)output_file;
