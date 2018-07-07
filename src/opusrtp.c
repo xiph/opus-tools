@@ -911,6 +911,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
       packet += header_size;
       size -= header_size;
       break;
+
     case DLT_NULL:
       if (parse_loop_header(packet, size, &loop)) {
         fprintf(stderr, "error parsing loopback header\n");
@@ -924,6 +925,35 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
       packet += LOOP_HEADER_LEN;
       size -= LOOP_HEADER_LEN;
       break;
+
+# ifdef DLT_LINUX_SLL
+    case DLT_LINUX_SLL:
+      if (size < 16) {
+        fprintf(stderr, "Packet too short for LINUX_SLL\n");
+        return;
+      } else {
+        int packet_type = rbe16(packet);
+        int arphrd_type = rbe16(packet + 2);
+        int addr_len = rbe16(packet + 4);
+        int proto_type = rbe16(packet + 14);
+        int i;
+        fprintf(stderr, "  LINUX_SLL %d %d %#04x",
+                packet_type, arphrd_type, proto_type);
+        if (addr_len > 8) addr_len = 8;
+        for (i = 0; i < addr_len; ++i) {
+          fprintf(stderr, "%c%02x", i ? ':' : ' ', packet[6 + i]);
+        }
+        fprintf(stderr, "\n");
+        if (proto_type != 0x0800 && proto_type != 0x86dd) {
+          fprintf(stderr, "skipping packet: not IP\n");
+          return;
+        }
+        packet += 16;
+        size -= 16;
+      }
+      break;
+# endif
+
     default:
       fprintf(stderr, "skipping packet: unrecognized linktype %d\n",
           params->linktype);
