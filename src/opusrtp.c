@@ -61,7 +61,6 @@
 #include <opus.h>
 #include <ogg/ogg.h>
 
-#define SNIFF_DEVICE "lo0"
 #define DYNAMIC_PAYLOAD_TYPE_MIN 96
 
 /* state struct for passing around our handles */
@@ -1027,8 +1026,8 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
 }
 
 /* use libpcap to capture packets and write them to a file */
-int sniff(const char *input_file, const char *output_file, int dst_port,
-        int payload_type, int samplerate, int channels)
+int sniff(const char *input_file, const char *device, const char *output_file,
+        int dst_port, int payload_type, int samplerate, int channels)
 {
   state *params;
   pcap_t *pcap;
@@ -1043,11 +1042,34 @@ int sniff(const char *input_file, const char *output_file, int dst_port,
       return 1;
     }
   } else {
-    pcap = pcap_open_live(SNIFF_DEVICE, 9600, 0, 1000, errbuf);
+    pcap = pcap_open_live(device, 9600, 0, 1000, errbuf);
     if (pcap == NULL) {
-      fprintf(stderr, "Cannot open device %s\n%s\n", SNIFF_DEVICE, errbuf);
+      pcap_if_t *alldevs;
+      fprintf(stderr, "Cannot open device %s\n%s\n", device, errbuf);
+      /* display available devices */
+      if (pcap_findalldevs(&alldevs, errbuf) == 0) {
+        if (!alldevs) {
+          fprintf(stderr, "No devices available\n");
+        } else {
+          size_t col = 80;
+          pcap_if_t *curdev;
+          fprintf(stderr, "Available devices:");
+          for (curdev = alldevs; curdev; curdev = curdev->next) {
+            size_t len = 1 + strlen(curdev->name);
+            if (col + len > 78) {
+              col = 3;
+              fprintf(stderr, "\n   ");
+            }
+            col += len;
+            fprintf(stderr, " %s", curdev->name);
+          }
+          fprintf(stderr, "\n");
+          pcap_freealldevs(alldevs);
+        }
+      }
       return 1;
     }
+    fprintf(stderr, "Capturing packets from %s\n", device);
   }
 
   params = malloc(sizeof(state));
@@ -1102,7 +1124,6 @@ int sniff(const char *input_file, const char *output_file, int dst_port,
 
   /* start capture loop */
   /* if reading from an input file, continue until EOF */
-  fprintf(stderr, "Capturing packets\n");
   pcap_loop(pcap, input_file ? 0 : 300, write_packet, (u_char *)params);
 
   /* write outstanding data */
@@ -1132,7 +1153,7 @@ void opustools_version(void)
 
 void usage(char *exe)
 {
-  printf("Usage: %s [--extract file.pcap] [--sniff] <file.opus> [<file2.opus>]\n", exe);
+  printf("Usage: %s [--extract file.pcap] [--sniff <device>] <file.opus> [<file2.opus>]\n", exe);
   printf("\n");
   printf("Sends and receives Opus audio RTP streams.\n");
   printf("\nGeneral Options:\n");
@@ -1145,7 +1166,7 @@ void usage(char *exe)
   printf(" -r, --rate n           Set output file sample rate (default 48000)\n");
   printf(" -c, --channels n       Set output file channel count (default 2)\n");
   printf(" -t, --type n           Set RTP payload type (default 120)\n");
-  printf(" --sniff                Sniff loopback interface for Opus RTP streams\n");
+  printf(" --sniff device         Sniff device for Opus RTP streams\n");
   printf(" -e, --extract in.pcap  Extract from input pcap file\n");
   printf("\n");
   printf("By default, the given file(s) will be sent over RTP.\n");
@@ -1155,6 +1176,7 @@ int main(int argc, char *argv[])
 {
   int option, i;
   const char *dest = "127.0.0.1";
+  const char *device = NULL;
   const char *input_pcap = NULL;
   const char *output_file = NULL;
   int pcap_mode = 0;
@@ -1172,7 +1194,7 @@ int main(int argc, char *argv[])
     {"rate", required_argument, NULL, 'r'},
     {"channels", required_argument, NULL, 'c'},
     {"type", required_argument, NULL, 't'},
-    {"sniff", no_argument, NULL, 0},
+    {"sniff", required_argument, NULL, 0},
     {"extract", required_argument, NULL, 'e'},
     {0, 0, 0, 0}
   };
@@ -1183,6 +1205,7 @@ int main(int argc, char *argv[])
     switch (option) {
       case 0:
         if (!strcmp(long_options[i].name, "sniff")) {
+          device = optarg;
           pcap_mode = 1;
         } else {
           fprintf(stderr, "Unknown option - try %s --help.\n", argv[0]);
@@ -1256,9 +1279,11 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Invalid port number %s\n", port);
       return 1;
     }
-    return sniff(input_pcap, output_file, port_num, payload_type, samplerate, channels);
+    return sniff(input_pcap, device, output_file, port_num, payload_type,
+      samplerate, channels);
 #else
     (void)input_pcap;
+    (void)device;
     (void)output_file;
     (void)samplerate;
     (void)channels;
