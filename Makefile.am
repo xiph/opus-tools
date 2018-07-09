@@ -69,7 +69,7 @@ opusinfo_LDADD = $(OGG_LIBS)
 opusinfo_MANS = man/opusinfo.1
 
 opusrtp_SOURCES = src/opusrtp.c
-opusrtp_LDADD = $(OPUS_LIBS) $(OGG_LIBS) @LIBPCAP@
+opusrtp_LDADD = $(OPUS_LIBS) $(OGG_LIBS) $(OPUSRTP_LIBS)
 
 #TESTS = FIXME
 

@@ -40,7 +40,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#ifndef _WIN32
+#ifdef HAVE_SOCKETS
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <netinet/in.h>
@@ -564,7 +564,7 @@ int update_rtp_header(rtp_header *rtp)
   return 0;
 }
 
-#ifndef _WIN32
+#ifdef HAVE_SOCKETS
 /*
  * Wait for the next time slot, which begins delta nanoseconds after the
  * start of the previous time slot, or in the case of the first call at
@@ -856,7 +856,7 @@ int rtp_send_file(const char *filename, const char *dest, const char *port,
   freeaddrinfo(addrs);
   return ret;
 }
-#else /* _WIN32 */
+#else /* !HAVE_SOCKETS */
 int rtp_send_file(const char *filename, const char *dest, const char *port,
         int payload_type)
 {

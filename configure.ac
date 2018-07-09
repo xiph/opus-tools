@@ -110,6 +110,43 @@ fi
 LT_LIB_M
 AC_CHECK_LIB([winmm], [main])
 
+on_x86=no
+case "$host_cpu" in
+i[[3456]]86 | x86_64)
+  on_x86=yes
+  ;;
+esac
+
+dnl check for sse
+AC_ARG_ENABLE([sse],
+    [AS_HELP_STRING([--enable-sse],[Build binaries that require SSE])],,
+    [enable_sse=no])
+
+AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
+ [
+  saved_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS -msse"
+  AC_MSG_CHECKING([if ${CC} supports -msse])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[char foo;]])],
+    [ AC_MSG_RESULT([yes]) ],
+    [
+      AC_MSG_RESULT([no])
+      enable_sse=no
+      CFLAGS="$saved_CFLAGS"
+    ])
+ ])
+
+saved_LIBS="$LIBS"
+LIBS="$LIBS $LIBM"
+AC_CHECK_FUNCS([lrintf])
+AC_CHECK_FUNCS([fminf])
+AC_CHECK_FUNCS([fmaxf])
+LIBS="$saved_LIBS"
+
+AC_FUNC_FSEEKO
+AC_CHECK_FUNCS([clock_gettime mach_absolute_time])
+AC_CHECK_FUNCS([usleep nanosleep clock_nanosleep])
+
 dnl check for pkg-config itself so we don't try the m4 macro without pkg-config
 AC_CHECK_PROG(HAVE_PKG_CONFIG, pkg-config, yes)
 
@@ -220,56 +257,53 @@ AS_IF([test "$with_flac" = "yes"],
       ]
     )
    ])
-
   AC_DEFINE([HAVE_LIBFLAC],[1],[FLAC])
  ])
 
-dnl check for pcap
-AC_CHECK_LIB([pcap], [pcap_open_live], [
+dnl opusrtp socket and pcap support
+saved_LIBS="$LIBS"
+AC_SEARCH_LIBS([setsockopt], [bsd socket inet])
+AC_SEARCH_LIBS([pcap_open_live], [pcap wpcap], [
   AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
-  LIBPCAP="-lpcap"
 ])
-
-dnl check for wpcap
-AC_CHECK_LIB(wpcap, pcap_open_live, [
-  AC_DEFINE([HAVE_PCAP], 1, [Define if building with libwpcap support])
-  LIBPCAP="-lwpcap"
-])
-
-AC_SUBST(LIBPCAP)
-
-on_x86=no
-case "$host_cpu" in
-i[[3456]]86 | x86_64)
-  on_x86=yes
-  ;;
-esac
+AC_MSG_CHECKING([socket support])
+AC_LINK_IFELSE([
+  AC_LANG_PROGRAM(
+    [[
+      #include <sys/socket.h>
+      #include <netinet/in.h>
+      #include <arpa/inet.h>
+      #include <netdb.h>
+    ]],
+    [[
+      struct addrinfo *addrs;
+      struct addrinfo hints = { 0 };
+      hints.ai_family = AF_UNSPEC;
+      hints.ai_socktype = SOCK_DGRAM;
+      hints.ai_flags = 0;
+      hints.ai_protocol = IPPROTO_UDP;
+      if (getaddrinfo("localhost", "1234", &hints, &addrs) == 0)
+        socket(addrs->ai_addr->sa_family, SOCK_DGRAM, IPPROTO_UDP);
+      freeaddrinfo(addrs);
+    ]])],
+  [
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([HAVE_SOCKETS], [1], [Define if building with socket support])
+  ],
+  [
+    AC_MSG_RESULT([no])
+  ])
+AC_CHECK_FUNCS([inet_ntop])
+OPUSRTP_LIBS="$LIBS"
+LIBS="$saved_LIBS"
+AC_SUBST(OPUSRTP_LIBS)
 
 on_windows=no
-case $host in
+case "$host" in
 *cygwin*|*mingw*)
   on_windows=yes
   ;;
 esac
-
-dnl check for sse
-AC_ARG_ENABLE([sse],
-    [AS_HELP_STRING([--enable-sse],[Build binaries that require SSE])],,
-    [enable_sse=no])
-
-AS_IF([test "$on_x86" = "yes" && test "$enable_sse" = "yes"],
- [
-  saved_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS -msse"
-  AC_MSG_CHECKING([if ${CC} supports -msse])
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[char foo;]])],
-    [ AC_MSG_RESULT([yes]) ],
-    [
-      AC_MSG_RESULT([no])
-      enable_sse=no
-      CFLAGS="$saved_CFLAGS"
-    ])
- ])
 
 dnl Enable stack-protector-strong only on x86 where it's well supported,
 dnl but not on Windows because it creates a dependency on libssp.dll.
@@ -331,18 +365,6 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
     [ AC_MSG_RESULT([no])
       CFLAGS="$saved_CFLAGS"
     ])
-
-AC_FUNC_FSEEKO
-AC_CHECK_FUNCS([clock_gettime mach_absolute_time])
-AC_CHECK_FUNCS([usleep nanosleep clock_nanosleep])
-AC_CHECK_FUNCS([inet_ntop])
-
-saved_LIBS="$LIBS"
-LIBS="$LIBS $LIBM"
-AC_CHECK_FUNCS([lrintf])
-AC_CHECK_FUNCS([fminf])
-AC_CHECK_FUNCS([fmaxf])
-LIBS="$saved_LIBS"
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_HEADERS([config.h])
