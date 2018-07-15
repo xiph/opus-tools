@@ -12,8 +12,6 @@
 #define OPUSTOOLS             1
 
 #define inline __inline
-#define alloca _alloca
-#define USE_ALLOCA            1
 
 #ifdef HAVE_LIBFLAC
 #ifdef FLAC__NO_DLL

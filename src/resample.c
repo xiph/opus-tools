@@ -976,8 +976,7 @@ EXPORT int speex_resampler_process_int(SpeexResamplerState *st, spx_uint32_t cha
    const spx_uint32_t xlen = st->mem_alloc_size - (st->filt_len - 1);
 #ifdef VAR_ARRAYS
    const unsigned int ylen = (olen < FIXED_STACK_ALLOC) ? olen : FIXED_STACK_ALLOC;
-   VARDECL(spx_word16_t *ystack);
-   ALLOC(ystack, ylen, spx_word16_t);
+   spx_word16_t ystack[ylen];
 #else
    const unsigned int ylen = FIXED_STACK_ALLOC;
    spx_word16_t ystack[FIXED_STACK_ALLOC];
