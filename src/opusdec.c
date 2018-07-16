@@ -111,11 +111,6 @@
 /* 120ms at 48000 */
 #define MAX_FRAME_SIZE (960*6)
 
-#define readint(buf, base) (((buf[base+3]<<24)&0xff000000)| \
-                           ((buf[base+2]<<16)&0xff0000)| \
-                           ((buf[base+1]<<8)&0xff00)| \
-                           (buf[base]&0xff))
-
 #ifdef HAVE_LIBSNDIO
 struct sio_hdl *hdl;
 #endif

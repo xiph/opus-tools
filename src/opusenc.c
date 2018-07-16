@@ -85,15 +85,6 @@
 # define I64FORMAT "lld"
 #endif
 
-#ifdef VALGRIND
-# include <valgrind/memcheck.h>
-# define VG_UNDEF(x,y) VALGRIND_MAKE_MEM_UNDEFINED((x),(y))
-# define VG_CHECK(x,y) VALGRIND_CHECK_MEM_IS_DEFINED((x),(y))
-#else
-# define VG_UNDEF(x,y)
-# define VG_CHECK(x,y)
-#endif
-
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
