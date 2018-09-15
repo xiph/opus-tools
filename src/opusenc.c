@@ -156,6 +156,7 @@ static void usage(void)
   printf("                      (0-1000, default: 1000)\n");
   printf("\nMetadata options:\n");
   printf(" --title title      Set track title\n");
+  printf(" --tracknumber n    Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
   printf(" --album album      Set album or collection\n");
   printf(" --genre genre      Set genre, may be used multiple times\n");
@@ -384,6 +385,7 @@ int main(int argc, char **argv)
     {"comment", required_argument, NULL, 0},
     {"artist", required_argument, NULL, 0},
     {"title", required_argument, NULL, 0},
+	{"tracknumber", required_argument, NULL, 0},
     {"album", required_argument, NULL, 0},
     {"date", required_argument, NULL, 0},
     {"genre", required_argument, NULL, 0},
@@ -661,6 +663,7 @@ int main(int argc, char **argv)
           }
         } else if (strcmp(optname, "artist") == 0 ||
                    strcmp(optname, "title") == 0 ||
+			       strcmp(optname, "tracknumber") == 0 ||
                    strcmp(optname, "album") == 0 ||
                    strcmp(optname, "date") == 0 ||
                    strcmp(optname, "genre") == 0) {
