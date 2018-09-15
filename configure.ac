@@ -270,6 +270,7 @@ AC_MSG_CHECKING([socket support])
 AC_LINK_IFELSE([
   AC_LANG_PROGRAM(
     [[
+      #include <sys/types.h>
       #include <sys/socket.h>
       #include <netinet/in.h>
       #include <arpa/inet.h>

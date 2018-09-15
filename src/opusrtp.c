@@ -1055,6 +1055,36 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   }
 }
 
+/* display available devices if possible */
+void show_devices(void)
+{
+#ifdef PCAP_IF_LOOPBACK  /* pcap version >= 0.7 */
+  char errbuf[PCAP_ERRBUF_SIZE];
+  pcap_if_t *alldevs;
+
+  if (pcap_findalldevs(&alldevs, errbuf) == 0) {
+    if (!alldevs) {
+      fprintf(stderr, "No devices available\n");
+    } else {
+      size_t col = 80;
+      pcap_if_t *curdev;
+      fprintf(stderr, "Available devices:");
+      for (curdev = alldevs; curdev; curdev = curdev->next) {
+        size_t len = 1 + strlen(curdev->name);
+        if (col + len > 78) {
+          col = 3;
+          fprintf(stderr, "\n   ");
+        }
+        col += len;
+        fprintf(stderr, " %s", curdev->name);
+      }
+      fprintf(stderr, "\n");
+      pcap_freealldevs(alldevs);
+    }
+  }
+#endif
+}
+
 /* use libpcap to capture packets and write them to a file */
 int sniff(const char *input_file, const char *device, const char *output_file,
         int dst_port, int payload_type, int samplerate, int channels)
@@ -1074,29 +1104,8 @@ int sniff(const char *input_file, const char *device, const char *output_file,
   } else {
     pcap = pcap_open_live(device, 9600, 0, 1000, errbuf);
     if (pcap == NULL) {
-      pcap_if_t *alldevs;
       fprintf(stderr, "Cannot open device %s\n%s\n", device, errbuf);
-      /* display available devices */
-      if (pcap_findalldevs(&alldevs, errbuf) == 0) {
-        if (!alldevs) {
-          fprintf(stderr, "No devices available\n");
-        } else {
-          size_t col = 80;
-          pcap_if_t *curdev;
-          fprintf(stderr, "Available devices:");
-          for (curdev = alldevs; curdev; curdev = curdev->next) {
-            size_t len = 1 + strlen(curdev->name);
-            if (col + len > 78) {
-              col = 3;
-              fprintf(stderr, "\n   ");
-            }
-            col += len;
-            fprintf(stderr, " %s", curdev->name);
-          }
-          fprintf(stderr, "\n");
-          pcap_freealldevs(alldevs);
-        }
-      }
+      show_devices();
       return 1;
     }
     fprintf(stderr, "Capturing packets from %s\n", device);
