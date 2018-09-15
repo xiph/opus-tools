@@ -511,7 +511,7 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
        frame_size -= in_len;
      } else {
        output=pcm;
-       out_len=frame_size;
+       out_len=frame_size<maxout?(unsigned)frame_size:(unsigned)maxout;
        frame_size=0;
      }
 
@@ -534,25 +534,30 @@ opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
             out[i]=le_short(out[i]);
         }
      }
+     else if (le_short(1)!=(1)) {
+       /* ensure the floats are little endian */
+       for (i=0;i<(int)out_len*channels;i++)
+         put_le_float(buf+i, output[i]);
+       output = buf;
+     }
 
      if (maxout>0)
      {
 #if defined WIN32 || defined _WIN32
        if (!file) {
-         ret=WIN_Play_Samples(out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
+         ret=WIN_Play_Samples(out, sizeof(short) * channels * out_len);
          if (ret>0) ret/=sizeof(short)*channels;
          else fprintf(stderr, "Error playing audio.\n");
        } else
 #elif defined HAVE_LIBSNDIO
        if (!file) {
-         ret=sio_write(hdl, out, sizeof(short) * channels * (out_len<maxout?out_len:maxout));
+         ret=sio_write(hdl, out, sizeof(short) * channels * out_len);
          if (ret>0) ret/=sizeof(short)*channels;
          else fprintf(stderr, "Error playing audio.\n");
        } else
 #endif
          ret=fwrite(fp?(char *)output:(char *)out,
-          (fp?sizeof(float):sizeof(short))*channels,
-          out_len<maxout?out_len:maxout, fout);
+          (fp?sizeof(float):sizeof(short))*channels, out_len, fout);
        sampout+=ret;
        maxout-=ret;
      }

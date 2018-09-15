@@ -70,7 +70,6 @@
 #include <opus_multistream.h>
 #include <opusenc.h>
 
-#include "wav_io.h"
 #include "opus_header.h"
 #include "encoder.h"
 #include "diag_range.h"

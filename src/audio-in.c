@@ -73,6 +73,7 @@
 #include <ogg/ogg.h>
 #include "encoder.h"
 #include "opus_header.h"
+#include "wav_io.h"
 #include "flac.h"
 
 /* Macros for handling potentially large file offsets */
@@ -816,7 +817,7 @@ long wav_ieee_read(void *in, float *buffer, int samples)
 
     for (i=0; i < realsamples; i++)
         for (j=0; j < f->channels; j++)
-            buffer[i*f->channels+j] = buf[i*f->channels + f->channel_permute[j]];
+            buffer[i*f->channels+j] = get_le_float(buf + i*f->channels + f->channel_permute[j]);
 
     return realsamples;
 }

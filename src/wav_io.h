@@ -55,6 +55,36 @@ static inline opus_int32 le_int(opus_int32 i)
 #endif
 }
 
+static inline float get_le_float(float *ptr)
+{
+#if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
+    float val;
+    char *lebytes = (char *)ptr;
+    char *nebytes = (char *)&val;
+    nebytes[0] = lebytes[3];
+    nebytes[1] = lebytes[2];
+    nebytes[2] = lebytes[1];
+    nebytes[3] = lebytes[0];
+    return val;
+#else
+    return *ptr;
+#endif
+}
+
+static inline void put_le_float(float *ptr, float val)
+{
+#if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
+    char *lebytes = (char *)ptr;
+    char *nebytes = (char *)&val;
+    lebytes[0] = nebytes[3];
+    lebytes[1] = nebytes[2];
+    lebytes[2] = nebytes[1];
+    lebytes[3] = nebytes[0];
+#else
+    *ptr = val;
+#endif
+}
+
 void adjust_wav_mapping(int mapping_family, int channels, unsigned char *stream_map);
 
 int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int fp);
