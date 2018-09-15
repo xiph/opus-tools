@@ -51,14 +51,14 @@ opusenc \- encode audio into the Opus format
 .B --title
 .I 'track title'
 ] [
-.B --tracknumber
-.I 'track number'
-] [
 .B --artist
 .I author
 ] [
 .B --album
 .I 'album title'
+] [
+.B --tracknumber
+.I 'track number'
 ] [
 .B --genre
 .I genre
@@ -202,9 +202,6 @@ Set maximum container delay in milliseconds (0-1000, default: 1000)
 .IP "--title title"
 Set the track title comment field to
 .I title
-.IP "--tracknumber N"
-Set the track number comment field to
-.I N
 .IP "--artist artist"
 Set the artist comment field to
 .I artist.
@@ -213,6 +210,9 @@ Note that some playback software does not display multiple artists gracefully.
 .IP "--album album"
 Set the album or collection title field to
 .I album
+.IP "--tracknumber N"
+Set the track number comment field to
+.I N
 .IP "--date YYYY-MM-DD"
 Set the date comment field to
 .I YYYY-MM-DD.
