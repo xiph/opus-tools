@@ -156,7 +156,7 @@ static void usage(void)
   printf("                      (0-1000, default: 1000)\n");
   printf("\nMetadata options:\n");
   printf(" --title title      Set track title\n");
-  printf(" --tracknumber n    Set track title\n");
+  printf(" --tracknumber n    Set track number\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
   printf(" --album album      Set album or collection\n");
   printf(" --genre genre      Set genre, may be used multiple times\n");
