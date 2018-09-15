@@ -158,6 +158,7 @@ static void usage(void)
   printf(" --title title      Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
   printf(" --album album      Set album or collection\n");
+  printf(" --tracknumber n    Set track number\n");
   printf(" --genre genre      Set genre, may be used multiple times\n");
   printf(" --date YYYY-MM-DD  Set date of track (YYYY, YYYY-MM, or YYYY-MM-DD)\n");
   printf(" --comment tag=val  Add the given string as an extra comment\n");
@@ -385,6 +386,7 @@ int main(int argc, char **argv)
     {"artist", required_argument, NULL, 0},
     {"title", required_argument, NULL, 0},
     {"album", required_argument, NULL, 0},
+    {"tracknumber", required_argument, NULL, 0},
     {"date", required_argument, NULL, 0},
     {"genre", required_argument, NULL, 0},
     {"picture", required_argument, NULL, 0},
@@ -662,6 +664,7 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "artist") == 0 ||
                    strcmp(optname, "title") == 0 ||
                    strcmp(optname, "album") == 0 ||
+                   strcmp(optname, "tracknumber") == 0 ||
                    strcmp(optname, "date") == 0 ||
                    strcmp(optname, "genre") == 0) {
           save_cmd=0;
