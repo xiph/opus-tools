@@ -794,9 +794,30 @@ int main(int argc, char **argv)
     usage();
     exit(1);
   }
-  inFile=argv_utf8[optind];
-  outFile=argv_utf8[optind+1];
-
+  inFile = argv_utf8[optind];
+  /*Assumes filename if output is not provided*/
+  if (argc_utf8-optind == 1) {
+    outFile = realloc(NULL, strlen(inFile) * sizeof(char));
+    strcpy(outFile, inFile);
+    int foundExt = 0;
+    for (size_t i = strlen(inFile); i != 0; i--) {
+      outFile[i] = '\0';
+      if (inFile[i] == '\\' || inFile[i] == '/') {
+        break;
+      }
+      else if (inFile[i] == '.') {
+        foundExt = 1;
+        break;
+      }
+    }
+    if (!foundExt) {
+      strcpy(outFile, inFile);
+    }
+    strcat(outFile, ".opus");
+  }
+  else {
+    outFile = argv_utf8[optind+1];
+  }
   if (cline_size > 0) {
     ret = ope_comments_add(inopt.comments, "ENCODER_OPTIONS", ENCODER_string);
     if (ret != OPE_OK) {
