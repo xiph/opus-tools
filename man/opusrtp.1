@@ -4,41 +4,76 @@
 .TH opusrtp 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
 
 .SH NAME
-opusrtp \- encapsulate Opus audio in RTP
+opusrtp \- transmit or receive an Opus audio RTP stream
 
 .SH SYNOPSIS
+.sp
 .B opusrtp
 [
-.B -hV
+.B transmit-options
 ]
-[
+.B in.opus ...
+.sp
+.B opusrtp
 .B --sniff
-]
-.B file.opus
+.I device
 [
-.B file2.opus ...
+.B receive-options
 ]
+.sp
+.B opusrtp
+.B --extract
+.I in.pcap
+[
+.B receive-options
+]
+.sp
+.B opusrtp
+.B --help
+.sp
+.B opusrtp
+.B --version
 
 .SH DESCRIPTION
 
 .B opusrtp
-Demonstration tool for sending and receiving Opus audio data in RTP,
+is an experimental tool to transmit and receive Opus audio RTP streams,
 used for interactive applications on the internet.
 
-By default, Opus audio from each given file is sent as an RTP stream.
-
 .SH "OPTIONS"
+.SS "General options"
 .IP "-h, --help"
-Print help message
+Show command help
 .IP "-V, --version"
-Display version information
-.IP "--quiet"
-Suppresses program output
-.IP "--sniff"
-Sniff the network for active RTP sessions and save them to .opus
-files. This can be useful for debugging other Opus RTP implementations.
-For this function to work, the program must be run with superuser
-privileges.
+Show version information
+
+.SS "Transmit options"
+.IP "-d, --destination addr"
+Set destination IP address (default 127.0.0.1)
+.IP "-p, --port n"
+Set destination port (default 1234)
+.IP "-t, --type n"
+Set RTP payload type (default 120)
+
+.SS "Receive options"
+.IP "--sniff device"
+Sniff the network device for active RTP sessions, which can be
+useful for debugging other Opus RTP implementations.  This may
+require superuser privileges.
+.IP "-e, --extract in.pcap"
+Extract from input pcap file
+.IP "-p, --port n"
+Set destination port to capture. By default, the first plausible
+port number that is seen is captured.
+.IP "-t, --type n"
+Set RTP payload type to capture. By default, the first plausible
+dynamic payload type that is seen is captured.
+.IP "-o, --output out.opus"
+Write Ogg Opus output file
+.IP "-r, --rate n"
+Set original sample rate in Ogg Opus output file (default 48000)
+.IP "-c, --channels n"
+Set channel count in Ogg Opus output file (default 2)
 
 .SH AUTHORS
 .br
@@ -46,11 +81,9 @@ Ralph Giles <giles@thaumas.net>
 
 .SH BUGS
 
-Only the sniff mode is implemented; the tool should do normal unicast
-and multicast send/receive.
-
-The sniff mode should allow specifying device/host/port/payload type
-to limit capture. All that is hard-coded.
+The receive mode does not support out-of-order or missing packets,
+multiple simultaneous RTP streams with the same destination port
+number and payload type, or normal unicast and multicast receive.
 
 .SH SEE ALSO
 .BR opusdec (1),

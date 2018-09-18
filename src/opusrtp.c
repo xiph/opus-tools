@@ -1190,25 +1190,28 @@ void opustools_version(void)
   printf("Copyright (C) 2012-2018 Xiph.Org Foundation\n");
 }
 
-void usage(char *exe)
+void usage(void)
 {
-  printf("Usage: %s [--extract file.pcap] [--sniff <device>] <file.opus> [<file2.opus>]\n", exe);
+  printf("Transmit Opus RTP stream:\n");
+  printf("  opusrtp [transmit-options] in.opus ...\n");
+  printf("    -d, --destination addr Set destination IP address (default 127.0.0.1)\n");
+  printf("    -p, --port n           Set destination port (default 1234)\n");
+  printf("    -t, --type n           Set RTP payload type (default 120)\n");
   printf("\n");
-  printf("Sends and receives Opus audio RTP streams.\n");
-  printf("\nGeneral Options:\n");
-  printf(" -h, --help             Show this help\n");
-  printf(" -V, --version          Show version information\n");
-  printf(" -q, --quiet            Suppress status output\n");
-  printf(" -d, --destination addr Set destination IP address (default 127.0.0.1)\n");
-  printf(" -p, --port n           Set destination port (default 1234)\n");
-  printf(" -o, --output out.opus  Write Ogg Opus output file\n");
-  printf(" -r, --rate n           Set output file sample rate (default 48000)\n");
-  printf(" -c, --channels n       Set output file channel count (default 2)\n");
-  printf(" -t, --type n           Set RTP payload type (default 120)\n");
-  printf(" --sniff device         Sniff device for Opus RTP streams\n");
-  printf(" -e, --extract in.pcap  Extract from input pcap file\n");
+  printf("Receive Opus RTP stream:\n");
+  printf("  opusrtp [receive-options]  (specify one of --sniff or --extract)\n");
+  printf("    --sniff device         Sniff device for Opus RTP streams\n");
+  printf("    -e, --extract in.pcap  Extract from input pcap file\n");
+  printf("    -p, --port n           Set destination port to capture\n");
+  printf("    -t, --type n           Set RTP payload type to capture\n");
+  printf("    -o, --output out.opus  Write Ogg Opus output file\n");
+  printf("    -r, --rate n           Set original sample rate (default 48000)\n");
+  printf("    -c, --channels n       Set channel count (default 2)\n");
   printf("\n");
-  printf("By default, the given file(s) will be sent over RTP.\n");
+  printf("Display help or version information:\n");
+  printf("  opusrtp -h|--help\n");
+  printf("  opusrtp -V|--version\n");
+  printf("\n");
 }
 
 int main(int argc, char *argv[])
@@ -1287,11 +1290,11 @@ int main(int argc, char *argv[])
             payload_type = atoi(optarg);
         break;
       case 'h':
-        usage(argv[0]);
+        usage();
         return 0;
       case '?':
       default:
-        usage(argv[0]);
+        usage();
         return 1;
     }
   }
@@ -1331,6 +1334,6 @@ int main(int argc, char *argv[])
 #endif
   }
 
-  usage(argv[0]);
+  usage();
   return 1;
 }
