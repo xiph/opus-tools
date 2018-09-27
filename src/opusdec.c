@@ -1199,6 +1199,7 @@ int main(int argc, char **argv)
    {
       fclose(fout);
    }
+   op_free(st);
 #ifdef WIN_UNICODE
    free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
    uninit_console_utf8();
