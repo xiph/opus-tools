@@ -138,14 +138,6 @@ static inline unsigned int fast_rand(void)
 # define fmaxf(_x,_y) ((_x)>(_y)?(_x):(_y))
 #endif
 
-static void quit(int _x)
-{
-#ifdef WIN_UNICODE
-  uninit_console_utf8();
-#endif
-  exit(_x);
-}
-
 /* This implements a 16 bit quantization with full triangular dither
    and IIR noise shaping. The noise shaping filters were designed by
    Sebastian Gesemann based on the LAME ATH curves with flattening
@@ -262,12 +254,12 @@ static void print_comments(const OpusTags *_tags)
    }
 }
 
-FILE *out_file_open(char *outFile, int file_output, int *wav_format,
- int rate, int mapping_family, int *channels, int fp)
+/* Returns 1 on success, 0 on error with message displayed on stderr. */
+static int out_file_open(const char *outFile, int *wav_format, int rate,
+    int mapping_family, int *channels, int fp, FILE **fout)
 {
-   FILE *fout=NULL;
-   /*Open output file*/
-   if (!file_output)
+   /* Open output file or audio playback device. */
+   if (!outFile)
    {
 #if defined HAVE_LIBSNDIO
       struct sio_par par;
@@ -276,7 +268,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       if (!hdl)
       {
          fprintf(stderr, "Cannot open sndio device\n");
-         quit(1);
+         return 0;
       }
 
       sio_initpar(&par);
@@ -288,26 +280,27 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
         par.sig != 1 || par.bits != 16 || par.rate != rate) {
          fprintf(stderr, "could not set sndio parameters\n");
-         quit(1);
+         return 0;
       }
       /*We allow the channel count to be forced to stereo, but not anything
         else.*/
       if (*channels!=par.pchan && par.pchan!=2) {
          fprintf(stderr, "could not set sndio channel count\n");
-         quit(1);
+         return 0;
       }
       *channels = par.pchan;
       if (!sio_start(hdl)) {
           fprintf(stderr, "could not start sndio\n");
-          quit(1);
+          return 0;
       }
+      *fout=NULL;
 #elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H
       int audio_fd, format, stereo;
       audio_fd=open("/dev/dsp", O_WRONLY);
       if (audio_fd<0)
       {
          perror("Cannot open /dev/dsp");
-         quit(1);
+         return 0;
       }
 
       format=AFMT_S16_NE;
@@ -315,7 +308,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       {
          perror("SNDCTL_DSP_SETFMT");
          close(audio_fd);
-         quit(1);
+         return 0;
       }
 
       if (*channels > 2)
@@ -335,7 +328,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       {
          perror("SNDCTL_DSP_STEREO");
          close(audio_fd);
-         quit(1);
+         return 0;
       }
       if (stereo!=0)
       {
@@ -348,13 +341,14 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       {
          perror("SNDCTL_DSP_SPEED");
          close(audio_fd);
-         quit(1);
+         return 0;
       }
-      fout = fdopen(audio_fd, "w");
-      if (!fout)
+      *fout = fdopen(audio_fd, "w");
+      if (!*fout)
       {
         perror("Cannot open output");
-        quit(1);
+        close(audio_fd);
+        return 0;
       }
 #elif defined HAVE_SYS_AUDIOIO_H
       audio_info_t info;
@@ -364,7 +358,7 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       if (audio_fd<0)
       {
          perror("Cannot open /dev/audio");
-         quit(1);
+         return 0;
       }
 
       AUDIO_INITINFO(&info);
@@ -379,13 +373,15 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
       if (ioctl(audio_fd, AUDIO_SETINFO, &info) < 0)
       {
          perror("AUDIO_SETINFO");
-         quit(1);
+         close(audio_fd);
+         return 0;
       }
-      fout = fdopen(audio_fd, "w");
-      if (!fout)
+      *fout = fdopen(audio_fd, "w");
+      if (!*fout)
       {
         perror("Cannot open output");
-        quit(1);
+        close(audio_fd);
+        return 0;
       }
 #elif defined WIN32 || defined _WIN32
       {
@@ -393,12 +389,13 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
          if (Set_WIN_Params(INVALID_FILEDESC, rate, SAMPLE_SIZE, opus_channels))
          {
             fprintf(stderr, "Can't access %s\n", "WAVE OUT");
-            quit(1);
+            return 0;
          }
+         *fout=NULL;
       }
 #else
       fprintf(stderr, "No soundcard support\n");
-      quit(1);
+      return 0;
 #endif
    } else {
       if (strcmp(outFile,"-")==0)
@@ -406,28 +403,30 @@ FILE *out_file_open(char *outFile, int file_output, int *wav_format,
 #if defined WIN32 || defined _WIN32
          _setmode(_fileno(stdout), _O_BINARY);
 #endif
-         fout=stdout;
+         *fout=stdout;
       }
       else
       {
-         fout = fopen_utf8(outFile, "wb");
-         if (!fout)
+         *fout = fopen_utf8(outFile, "wb");
+         if (!*fout)
          {
             perror(outFile);
-            quit(1);
+            return 0;
          }
       }
       if (*wav_format)
       {
-         *wav_format = write_wav_header(fout, rate, mapping_family, *channels, fp);
+         *wav_format = write_wav_header(*fout, rate, mapping_family, *channels, fp);
          if (*wav_format < 0)
          {
             fprintf(stderr, "Error writing WAV header.\n");
-            quit(1);
+            fclose(*fout);
+            *fout = NULL;
+            return 0;
          }
       }
    }
-   return fout;
+   return 1;
 }
 
 void usage(void)
@@ -667,7 +666,8 @@ int main(int argc, char **argv)
    float clipmem[8]={0};
    int c;
    int option_index = 0;
-   char *inFile, *outFile;
+   int exit_code = 0;
+   const char *inFile, *outFile, *rangeFile=NULL;
    FILE *fout=NULL, *frange=NULL;
    float *output;
    float *permuted_output;
@@ -731,12 +731,6 @@ int main(int argc, char **argv)
    init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif
 
-   output=0;
-   shapemem.a_buf=0;
-   shapemem.b_buf=0;
-   shapemem.mute=960;
-   shapemem.fs=0;
-
    /*Process options*/
    while (1)
    {
@@ -751,18 +745,18 @@ int main(int argc, char **argv)
          if (strcmp(long_options[option_index].name,"help")==0)
          {
             usage();
-            quit(0);
+            goto done;
          } else if (strcmp(long_options[option_index].name,"quiet")==0)
          {
             quiet = 1;
          } else if (strcmp(long_options[option_index].name,"version")==0)
          {
             version();
-            quit(0);
+            goto done;
          } else if (strcmp(long_options[option_index].name,"version-short")==0)
          {
             version_short();
-            quit(0);
+            goto done;
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
             dither=0;
@@ -783,13 +777,7 @@ int main(int argc, char **argv)
             manual_gain=atof(optarg);
          } else if (strcmp(long_options[option_index].name,"save-range")==0)
          {
-            frange=fopen_utf8(optarg,"w");
-            if (frange==NULL) {
-               perror(optarg);
-               fprintf(stderr,"Could not open save-range file: %s\n",optarg);
-               fprintf(stderr,"Must provide a writable file name.\n");
-               quit(1);
-            }
+            rangeFile=optarg;
          } else if (strcmp(long_options[option_index].name,"packet-loss")==0)
          {
             loss_percent = atof(optarg);
@@ -797,22 +785,21 @@ int main(int argc, char **argv)
          break;
       case 'h':
          usage();
-         quit(0);
-         break;
+         goto done;
       case 'V':
          version();
-         quit(0);
-         break;
+         goto done;
       case '?':
          usage();
-         quit(1);
-         break;
+         exit_code=1;
+         goto done;
       }
    }
    if (argc_utf8-optind!=2 && argc_utf8-optind!=1)
    {
       usage();
-      quit(1);
+      exit_code=1;
+      goto done;
    }
    inFile=argv_utf8[optind];
 
@@ -831,7 +818,7 @@ int main(int argc, char **argv)
      }
      wav_format|=forcewav;
    } else {
-     outFile="";
+     outFile=NULL;
      wav_format=0;
      /*If playing to audio out, default the rate to 48000
        instead of the original rate. The original rate is
@@ -870,7 +857,8 @@ int main(int argc, char **argv)
    if (st==NULL)
    {
       fprintf(stderr, "Failed to open '%s'.\n", inFile);
-      quit(1);
+      exit_code=1;
+      goto done;
    }
 
    if (manual_gain != 0.F)
@@ -952,21 +940,45 @@ int main(int argc, char **argv)
       force_rate=1;
    }
 
+   if (rangeFile)
+   {
+      frange=fopen_utf8(rangeFile,"w");
+      if (!frange)
+      {
+         perror(rangeFile);
+         fprintf(stderr,"Could not open save-range file: %s\n",rangeFile);
+         fprintf(stderr,"Must provide a writable file name.\n");
+         exit_code=1;
+         goto done;
+      }
+   }
+
    requested_channels=force_stereo?2:head->channel_count;
    /*TODO: For seekable sources, write the output length in the WAV header.*/
    channels=requested_channels;
-   fout=out_file_open(outFile, file_output,
-    &wav_format, rate, head->mapping_family, &channels, fp);
-   if (channels!=requested_channels) force_stereo=1;
-   /*Setup the memory for the dithered output*/
-   if (!shapemem.a_buf)
+   if (!out_file_open(outFile, &wav_format, rate, head->mapping_family,
+        &channels, fp, &fout))
    {
-      shapemem.a_buf=calloc(channels,sizeof(float)*4);
-      shapemem.b_buf=calloc(channels,sizeof(float)*4);
-      shapemem.fs=rate;
+      exit_code=1;
+      goto done;
    }
+   if (channels!=requested_channels) force_stereo=1;
+
+   /*Setup the memory for the dithered output*/
+   shapemem.a_buf=calloc(channels,sizeof(float)*4);
+   shapemem.b_buf=calloc(channels,sizeof(float)*4);
+   shapemem.mute=960;
+   shapemem.fs=rate;
+
    output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
    permuted_output=NULL;
+   if (!shapemem.a_buf || !shapemem.b_buf || !output)
+   {
+      fprintf(stderr, "Memory allocation failure.\n");
+      exit_code=1;
+      goto cleanup;
+   }
+
    if (wav_format&&(channels==3||channels>4))
    {
       int ci;
@@ -979,7 +991,8 @@ int main(int argc, char **argv)
       if (!permuted_output)
       {
          fprintf(stderr, "Memory allocation failure.\n");
-         quit(1);
+         exit_code=1;
+         goto cleanup;
       }
    }
 
@@ -1014,6 +1027,7 @@ int main(int argc, char **argv)
             continue;
          } else {
             fprintf(stderr, "Decoding error.\n");
+            exit_code=1;
             break;
          }
       }
@@ -1054,6 +1068,7 @@ int main(int argc, char **argv)
             fprintf(stderr,
              "Error: channel count changed in a chained stream: "
              "aborting.\n");
+            exit_code=1;
             break;
          }
          if (!force_rate
@@ -1153,57 +1168,29 @@ int main(int argc, char **argv)
    }
 
    /*If we were writing wav, go set the duration.*/
-   if (file_output && fout && wav_format>0 && audio_size<0x7FFFFFFF)
+   if (fout && wav_format>0 && update_wav_header(fout, wav_format, audio_size)<0)
    {
-      if (fseek(fout,4,SEEK_SET)==0)
-      {
-         int tmp;
-         tmp=le_int((opus_int32)(audio_size+20+wav_format));
-         if (fwrite(&tmp,4,1,fout)!=1)
-         {
-            fprintf(stderr,"Error writing end length.\n");
-         }
-         if (fseek(fout,16+wav_format,SEEK_CUR)==0)
-         {
-            tmp=le_int((opus_int32)audio_size);
-            if (fwrite(&tmp,4,1,fout)!=1)
-            {
-               fprintf(stderr,"Error writing header length.\n");
-            }
-         } else {
-            fprintf(stderr, "First seek worked, second didn't\n");
-         }
-      } else {
-         fprintf(stderr,
-          "Cannot seek on wav file output, wav size chunk will be incorrect\n");
-      }
+      fprintf(stderr, "Warning: Cannot update audio size in output file;"
+         " size will be incorrect.\n");
    }
 
+cleanup:
 #if defined WIN32 || defined _WIN32
    if (!file_output)
       WIN_Audio_close();
 #endif
+   if (shapemem.a_buf) free(shapemem.a_buf);
+   if (shapemem.b_buf) free(shapemem.b_buf);
+   if (output) free(output);
+   if (permuted_output) free(permuted_output);
+   if (fout) fclose(fout);
 
-   free(shapemem.a_buf);
-   free(shapemem.b_buf);
-   free(output);
-   if (permuted_output!=NULL)
-   {
-      free(permuted_output);
-   }
-   if (frange!=NULL)
-   {
-      fclose(frange);
-   }
-   if (fout!=NULL)
-   {
-      fclose(fout);
-   }
-   op_free(st);
+done:
+   if (frange) fclose(frange);
+   if (st) op_free(st);
 #ifdef WIN_UNICODE
    free_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
    uninit_console_utf8();
 #endif
-
-   return 0;
+   return exit_code;
 }

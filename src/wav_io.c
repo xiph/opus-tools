@@ -139,3 +139,20 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
 
    return !ret ? -1 : extensible ? 40 : 16;
 }
+
+/* format is 0 for raw PCM,
+    16 for WAV with a minimal 16-byte format chunk,
+    40 for WAV with a WAVEFORMATEXTENSIBLE 40-byte format chunk. */
+int update_wav_header(FILE *file, int format, opus_int64 audio_size)
+{
+   opus_int32 write_val;
+
+   if (format <= 0 || audio_size >= 0x7fffffff) return 0;
+   if (fseek(file, 4, SEEK_SET) != 0) return -1;
+   write_val = le_int((opus_int32)(audio_size + 20 + format));
+   if (fwrite(&write_val, 4, 1, file) != 1) return -1;
+   if (fseek(file, 16 + format, SEEK_CUR) != 0) return -1;
+   write_val = le_int((opus_int32)audio_size);
+   if (fwrite(&write_val, 4, 1, file) != 1) return -1;
+   return 0;
+}

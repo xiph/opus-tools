@@ -88,5 +88,6 @@ static inline void put_le_float(float *ptr, float val)
 void adjust_wav_mapping(int mapping_family, int channels, unsigned char *stream_map);
 
 int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int fp);
+int update_wav_header(FILE *file, int format, opus_int64 audio_size);
 
 #endif
