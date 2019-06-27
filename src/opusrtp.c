@@ -72,6 +72,7 @@ typedef struct {
   int linktype;
   int dst_port;
   int payload_type;
+  int samplerate;
 } state;
 
 /* helper, write a little-endian 32 bit int to memory */
@@ -700,7 +701,7 @@ int send_rtp_packet(int fd, struct sockaddr *addr, socklen_t addrlen,
 }
 
 int rtp_send_file_to_addr(const char *filename, struct sockaddr *addr,
-    socklen_t addrlen, int payload_type)
+    socklen_t addrlen, int payload_type, int samplerate)
 {
   rtp_header rtp;
   int fd;
@@ -808,7 +809,7 @@ int rtp_send_file_to_addr(const char *filename, struct sockaddr *addr,
           continue;
         }
         /* get packet duration */
-        samples = opus_packet_get_nb_samples(op.packet, op.bytes, 48000);
+        samples = opus_packet_get_nb_samples(op.packet, op.bytes, samplerate);
         if (samples <= 0) {
           fprintf(stderr, "skipping invalid packet\n");
           continue;
@@ -834,7 +835,7 @@ int rtp_send_file_to_addr(const char *filename, struct sockaddr *addr,
 }
 
 int rtp_send_file(const char *filename, const char *dest, const char *port,
-        int payload_type)
+        int payload_type, int samplerate)
 {
   int ret;
   struct addrinfo *addrs;
@@ -852,13 +853,13 @@ int rtp_send_file(const char *filename, const char *dest, const char *port,
     return -1;
   }
   ret = rtp_send_file_to_addr(filename, addrs->ai_addr, addrs->ai_addrlen,
-    payload_type);
+    payload_type, samplerate);
   freeaddrinfo(addrs);
   return ret;
 }
 #else /* !HAVE_SOCKETS */
 int rtp_send_file(const char *filename, const char *dest, const char *port,
-        int payload_type)
+        int payload_type, int samplerate)
 {
   fprintf(stderr, "Cannot send %s to %s:%s'. Socket support not available.\n",
           filename, dest, port);
@@ -1040,7 +1041,7 @@ void write_packet(u_char *args, const struct pcap_pkthdr *header,
   /* write the payload to our opus file */
   op = op_from_pkt(packet, size);
   op->packetno = rtp.seq;
-  samples = opus_packet_get_nb_samples(packet, size, 48000);
+  samples = opus_packet_get_nb_samples(packet, size, params->samplerate);
   if (samples > 0) params->granulepos += samples;
   op->granulepos = params->granulepos;
   ogg_stream_packetin(params->stream, op);
@@ -1137,6 +1138,7 @@ int sniff(const char *input_file, const char *device, const char *output_file,
   params->granulepos = 0;
   params->dst_port = dst_port;
   params->payload_type = payload_type;
+  params->samplerate = samplerate;
 
   if (output_file) {
     if (strcmp(output_file, "-") == 0) {
@@ -1309,7 +1311,7 @@ int main(int argc, char *argv[])
     if (!port) port = "1234";
     if (payload_type < 0) payload_type = 120;
     for (i = optind; i < argc; i++) {
-      rtp_send_file(argv[i], dest, port, payload_type);
+      rtp_send_file(argv[i], dest, port, payload_type, samplerate);
     }
     return 0;
   }
