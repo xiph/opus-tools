@@ -790,7 +790,7 @@ int main(int argc, char **argv)
         break;
     }
   }
-  if (argc_utf8-optind!=2) {
+  if (argc_utf8-optind!=1 && argc_utf8-optind!= 2) {
     usage();
     exit(1);
   }
