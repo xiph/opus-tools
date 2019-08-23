@@ -790,7 +790,7 @@ int main(int argc, char **argv)
         break;
     }
   }
-  if (argc_utf8-optind!=1&& argc_utf8-optind!=2) {
+  if (argc_utf8-optind!=1&&argc_utf8-optind!=2) {
     usage();
     exit(1);
   }
@@ -800,7 +800,7 @@ int main(int argc, char **argv)
     outFile = realloc(NULL, strlen(inFile) * sizeof(char));
     strcpy(outFile, inFile);
     int foundExt = 0;
-    for (size_t i=strlen(inFile);i!=0;i-) {
+    for (size_t i=strlen(inFile);i!=0;i--) {
       outFile[i]='\0';
       if (inFile[i]=='\\'||inFile[i]=='/') {
         break;
