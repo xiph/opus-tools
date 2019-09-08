@@ -1,11 +1,9 @@
 .\" Process this file with
 .\" groff -man -Tascii opusinfo.1
 .\"
-.TH opusinfo 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
-
+.TH opusinfo 1 2019-09-07 "Xiph.Org Foundation" "opus-tools"
 .SH NAME
-opusinfo \- gives information about Opus files and does extensive validity checking
-
+opusinfo \(en display information and perform validity checks on Opus files
 .SH SYNOPSIS
 .B opusinfo
 [
@@ -17,56 +15,52 @@ opusinfo \- gives information about Opus files and does extensive validity check
 ] [
 .B -V
 ]
-.I file1.opus
+.I file.opus
 .B ...
-.I fileN.opus
-
 .SH DESCRIPTION
 .B opusinfo
 reads one or more Opus files and prints information about stream contents
 (including chained and/or multiplexed streams) to standard output. It will
 detect (but not correct) a wide range of common defects, with many
 additional checks specifically for Opus streams.
-
+.PP
 For all stream types
 .B opusinfo
 will print the filename being processed, the stream serial numbers, and various
 common error conditions.
-
+.PP
 For
 .B Opus
-streams, information including the version used for encoding, number of channels
-and other header information, the bitrate and playback length, the contents of the
-comment header, and general statistics about the stream are printed.
-
-Opusinfo is a fork of \fBogginfo\fR(1) with the non-opus parts largely removed.
-
+streams, information including the version used for encoding, number of
+channels and other header information, the bitrate and playback length,
+the contents of the comment header, and general statistics about the
+stream are printed.
+.PP
+Opusinfo is a fork of \fBogginfo\fR(1) with the non-Opus parts largely removed.
 .SH OPTIONS
-.IP -h
-Show a help and usage message.
-.IP -q
+.TP
+.B -h
+Show command help.
+.TP
+.B -q
 Quiet mode. This may be specified multiple times. Doing so once will remove
 the detailed informative messages; twice will remove warnings as well.
-.IP -v
+.TP
+.B -v
 Verbose mode. At the current time, this does not do anything.
-.IP -V
-Show program version info and exit.
-
+.TP
+.B -V
+Show version information.
 .SH NOTES
-
 There are many kinds of errored, invalid, non-normative, or otherwise
-unwise stream constructions which opusinfo will not produce warnings
-on. Passing opusinfo with flying colors is not certification of the
+unwise stream constructions for which opusinfo will not produce warnings.
+Passing opusinfo with flying colors is not certification of the
 correctness of a stream. Future versions may detect more error
 conditions.
-
 .SH AUTHORS
-.br
 Michael Smith <msmith@xiph.org>
-.br
+.PP
 Gregory Maxwell <greg@xiph.org>
-
 .SH SEE ALSO
-
 .BR opusdec (1),
 .BR opusenc (1)

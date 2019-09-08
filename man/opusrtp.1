@@ -1,90 +1,89 @@
 .\" Process this file with
 .\" groff -man -Tascii opusrtp.1
 .\"
-.TH opusrtp 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
-
+.TH opusrtp 1 2019-09-07 "Xiph.Org Foundation" "opus-tools"
 .SH NAME
-opusrtp \- transmit or receive an Opus audio RTP stream
-
+opusrtp \(en transmit or receive an Opus audio RTP stream
 .SH SYNOPSIS
-.sp
 .B opusrtp
 [
-.B transmit-options
+.I transmit-options
 ]
-.B in.opus ...
-.sp
+.I in.opus ...
+.PP
 .B opusrtp
 .B --sniff
 .I device
 [
-.B receive-options
+.I receive-options
 ]
-.sp
+.PP
 .B opusrtp
 .B --extract
 .I in.pcap
 [
-.B receive-options
+.I receive-options
 ]
-.sp
+.PP
 .B opusrtp
 .B --help
-.sp
+.PP
 .B opusrtp
 .B --version
-
 .SH DESCRIPTION
-
 .B opusrtp
 is an experimental tool to transmit and receive Opus audio RTP streams,
 used for interactive applications on the internet.
-
-.SH "OPTIONS"
+.SH OPTIONS
 .SS "General options"
-.IP "-h, --help"
-Show command help
-.IP "-V, --version"
-Show version information
-
+.TP
+.BR -h ", " --help
+Show command help.
+.TP
+.BR -V ", " --version
+Show version information.
 .SS "Transmit options"
-.IP "-d, --destination addr"
-Set destination IP address (default 127.0.0.1)
-.IP "-p, --port n"
-Set destination port (default 1234)
-.IP "-t, --type n"
-Set RTP payload type (default 120)
-
+.TP
+\fB-d\fR, \fB--destination\fR \fIaddr\fR
+Set destination IP address (default: 127.0.0.1).
+.TP
+\fB-p\fR, \fB--port\fR \fIN\fR
+Set destination port (1\(en65535, default: 1234).
+.TP
+\fB-t\fR, \fB--type\fR \fIN\fR
+Set RTP payload type (0\(en127, default: 120).
 .SS "Receive options"
-.IP "--sniff device"
+.TP
+\fB--sniff\fR \fIdevice\fR
 Sniff the network device for active RTP sessions, which can be
 useful for debugging other Opus RTP implementations.  This may
 require superuser privileges.
-.IP "-e, --extract in.pcap"
-Extract from input pcap file
-.IP "-p, --port n"
-Set destination port to capture. By default, the first plausible
+.TP
+\fB-e\fR, \fB--extract\fR \fIin.pcap\fR
+Extract from input pcap file.
+.TP
+\fB-p\fR, \fB--port\fR \fIN\fR
+Set destination port to capture (1\(en65535). By default, the first plausible
 port number that is seen is captured.
-.IP "-t, --type n"
-Set RTP payload type to capture. By default, the first plausible
-dynamic payload type that is seen is captured.
-.IP "-o, --output out.opus"
-Write Ogg Opus output file
-.IP "-r, --rate n"
-Set original sample rate in Ogg Opus output file (default 48000)
-.IP "-c, --channels n"
-Set channel count in Ogg Opus output file (default 2)
-
+.TP
+\fB-t\fR, \fB--type\fR \fIN\fR
+Set RTP payload type to capture (0\(en127). By default, the first plausible
+dynamic payload type (96\(en127) that is seen is captured.
+.TP
+\fB-o\fR, \fB--output\fR \fIout.opus\fR
+Write Ogg Opus output file.
+.TP
+\fB-r\fR, \fB--rate\fR \fIN\fR
+Set original sample rate in Ogg Opus output file (default: 48000).
+.TP
+\fB-c\fR, \fB--channels\fR \fIN\fR
+Set channel count in Ogg Opus output file (default: 2).
 .SH AUTHORS
-.br
 Ralph Giles <giles@thaumas.net>
-
 .SH BUGS
-
 The receive mode does not support out-of-order or missing packets,
 multiple simultaneous RTP streams with the same destination port
 number and payload type, or normal unicast and multicast receive.
-
 .SH SEE ALSO
 .BR opusdec (1),
 .BR opusenc (1),

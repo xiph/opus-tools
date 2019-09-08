@@ -1,133 +1,119 @@
 .\" Process this file with
 .\" groff -man -Tascii opusdec.1
 .\"
-.TH opusdec 1 2012-08-31 "Xiph.Org Foundation" "opus-tools"
-
+.TH opusdec 1 2019-09-07 "Xiph.Org Foundation" "opus-tools"
 .SH NAME
-opusdec \- decode audio in Opus format to Wave or raw PCM
-
+opusdec \(en decode audio in Opus format to Wave or raw PCM
 .SH SYNOPSIS
 .B opusdec
 [
-.B -hV
-] [
-.B --quiet
-] [
-.B --rate Hz
-] [
-.B --force-stereo
-] [
-.B --gain dB
-] [
-.B --no-dither
-] [
-.B --float
-] [
-.B --force-wav
-] [
-.B --packet-loss pct
-] [
-.B --save-range file
+.I options
 ]
-.B input.opus
+.I input
 [
-.B output.wav
+.I output
 ]
-
 .SH DESCRIPTION
-
 .B opusdec
 decodes Opus URLs or files to uncompressed Wave or raw PCM.
-
-In URLs, the
-.B file
-,
-.B http
-, and
+.PP
+.I input
+may be a URL, file, or "\fB\-\fR" to read from stdin.  In URLs, the
+.BR file ,
+.BR http ,
+and
 .B https
 schemes are supported unless HTTP support was disabled at build time.
-
-If the input file is specified as
-.B "-"
-, then
-.B opusdec
-will read from stdin. Likewise, an output filename of
-.B "-"
-will cause output to be to stdout.
-
-If no output is specified
+.PP
+.I output
+is an output file or "\fB\-\fR" to write to stdout.  The output
+will be in Wave format if the output filename ends in
+.B .wav
+or the
+.B "--force-wav"
+option is used; otherwise raw PCM samples will be written.
+.PP
+If
+.I output
+is not specified,
 .B opusdec
 will attempt to play the audio in realtime if it supports
 audio playback on your system.
-
-.SH "OPTIONS"
-.IP "-h, --help"
-Show help message
-.IP "-V, --version"
-Show version information
-.IP "--quiet"
-Suppresses program output
-.IP "--rate n"
+.SH OPTIONS
+.TP
+.BR -h ", " --help
+Show command help.
+.TP
+.BR -V ", " --version
+Show version information.
+.TP
+.B --quiet
+Suppresses program output.
+.TP
+.BI --rate " N"
+Force decoding at sampling rate
+.I N
+Hz.
+.TP
+.B --force-stereo
+Force decoding to stereo.
+.TP
+.BI --gain " N"
 .br
-Force decoding at sampling rate n Hz
-.IP "--force-stereo"
-.br
-Force decoding to stereo
-.IP "--gain n"
-.br
-Adjust the output volume n dB, negative values make the signal quieter
-.IP "--no-dither"
-Do not dither 16-bit output
-.IP "--float"
-Output 32-bit floating-point samples instead of 16-bit integer samples
-.IP "--force-wav"
-Force including a Wave header on output (e.g. for non-wav extensions and stdout)
-.IP "--packet-loss n"
-Simulate n % random Opus packet loss
-.IP "--save-range file"
-Save check values for every frame to a file
-
+Adjust the output volume
+.I N
+dB.
+Negative values make the signal quieter.
+.TP
+.B --no-dither
+Do not dither 16-bit output.
+.TP
+.B --float
+Output 32-bit floating-point samples instead of 16-bit integer samples.
+.TP
+.B --force-wav
+Force Wave output format, regardless of the output filename extension.
+.TP
+.BI --packet-loss " N"
+Simulate \fIN\fR\|% random Opus packet loss.
+.TP
+.BI --save-range " FILENAME"
+Save check values for every frame to a file.
 .SH EXAMPLES
 Decode a file
 .B input.opus
 to
-.B output.wav
-.RS
+.BR output.wav :
+.RS 5
 opusdec input.opus output.wav
 .RE
-
+.PP
 Play a file
-.B input.opus
-.RS
+.BR input.opus :
+.RS 5
 opusdec input.opus
 .RE
-
-Re-encode a high bitrate Opus file to a lower rate
-.RS
+.PP
+Re-encode a high bitrate Opus file to a lower rate:
+.RS 5
 opusdec --force-wav input.opus - | opusenc --bitrate 64 - output.opus
 .RE
-
-Play an http stream
+.PP
+Play the http stream
 .B http://icecast.somwhere.org:8000/stream.opus
-on a system with pulseaudio
-.br
+on a system with pulseaudio:
 .I (press ctrl-c to quit)
-.RS
+.RS 5
 padsp opusdec http://icecast.somwhere.org:8000/stream.opus
 .RE
-
 .SH AUTHORS
-.br
 Jean-Marc Valin <jmvalin@jmvalin.ca>
-.br
+.PP
 Gregory Maxwell <greg@xiph.org>
-
 .SH BUGS
-
 Opusdec does not currently reject all invalid files which it should reject.
 It also doesn't provide very helpful output for the corrupted files it
 does reject. Use \fBopusinfo\fR(1) for somewhat better diagnostics.
-
 .SH SEE ALSO
 .BR opusenc (1),
 .BR opusinfo (1)
