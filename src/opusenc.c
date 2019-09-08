@@ -158,9 +158,9 @@ static void usage(void)
   printf(" --title title      Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
   printf(" --album album      Set album or collection\n");
-  printf(" --tracknumber n    Set track number\n");
   printf(" --genre genre      Set genre, may be used multiple times\n");
   printf(" --date YYYY-MM-DD  Set date of track (YYYY, YYYY-MM, or YYYY-MM-DD)\n");
+  printf(" --tracknumber n    Set track number\n");
   printf(" --comment tag=val  Add the given string as an extra comment\n");
   printf("                      This may be used multiple times\n");
   printf(" --picture file     Attach album art (see --help-picture)\n");
