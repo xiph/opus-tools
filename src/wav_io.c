@@ -83,7 +83,7 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
    extensible |= fp;
 
    ret = fprintf(file, "RIFF") >= 0;
-   ret &= fwrite_le32(0x7fffffff, file);
+   ret &= fwrite_le32(0xffffffff, file);
 
    ret &= fprintf(file, "WAVEfmt ") >= 0;
    ret &= fwrite_le32(extensible ? 40 : 16, file);
@@ -135,7 +135,7 @@ int write_wav_header(FILE *file, int rate, int mapping_family, int channels, int
    }
 
    ret &= fprintf(file, "data") >= 0;
-   ret &= fwrite_le32(0x7fffffff, file);
+   ret &= fwrite_le32(0xffffffff, file);
 
    return !ret ? -1 : extensible ? 40 : 16;
 }
@@ -147,12 +147,18 @@ int update_wav_header(FILE *file, int format, opus_int64 audio_size)
 {
    opus_int32 write_val;
 
-   if (format <= 0 || audio_size >= 0x7fffffff) return 0;
-   if (fseek(file, 4, SEEK_SET) != 0) return -1;
-   write_val = le_int((opus_int32)(audio_size + 20 + format));
-   if (fwrite(&write_val, 4, 1, file) != 1) return -1;
-   if (fseek(file, 16 + format, SEEK_CUR) != 0) return -1;
-   write_val = le_int((opus_int32)audio_size);
-   if (fwrite(&write_val, 4, 1, file) != 1) return -1;
+   if (format <= 0 || audio_size < 0) return 0;
+   if (audio_size < (opus_int64)0xffffffffU - 20 - format)
+   {
+      if (fseek(file, 4, SEEK_SET) != 0) return -1;
+      write_val = le_int((opus_int32)(audio_size + 20 + format));
+      if (fwrite(&write_val, 4, 1, file) != 1) return -1;
+   }
+   if (audio_size < (opus_int64)0xffffffffU)
+   {
+      if (fseek(file, 24 + format, SEEK_SET) != 0) return -1;
+      write_val = le_int((opus_int32)audio_size);
+      if (fwrite(&write_val, 4, 1, file) != 1) return -1;
+   }
    return 0;
 }
