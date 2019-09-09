@@ -12,7 +12,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Release'">
     <Link>
-      <AdditionalDependencies>opus.lib;libogg_static.lib;opusfile.lib;opusenc.lib;libeay32.lib;ssleay32.lib;ws2_32.lib;crypt32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opus.lib;libogg.lib;opusfile.lib;opusenc.lib;libeay32.lib;ssleay32.lib;ws2_32.lib;crypt32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
