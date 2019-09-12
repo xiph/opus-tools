@@ -127,7 +127,7 @@ ogg_packet *op_opushead(int samplerate, int channels)
   memcpy(data, "OpusHead", 8);  /* identifier */
   data[8] = 1;                  /* version */
   data[9] = channels;           /* channels */
-  le16(data+10, 0);             /* pre-skip */
+  le16(data + 10, 0);             /* pre-skip */
   le32(data + 12, samplerate);  /* original sample rate */
   le16(data + 16, 0);           /* gain */
   data[18] = 0;                 /* channel mapping family */
@@ -163,7 +163,7 @@ ogg_packet *op_opustags(void)
     return NULL;
   }
 
-  memcpy(data, identifier, 8);
+  memcpy(data, identifier, strlen(identifier));
   le32(data + 8, strlen(vendor));
   memcpy(data + 12, vendor, strlen(vendor));
   le32(data + 12 + strlen(vendor), 0);
