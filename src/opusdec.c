@@ -578,7 +578,7 @@ static int decode_cb(decode_cb_ctx *ctx, OpusMSDecoder *decoder, void *pcm,
    (void)nchannels;
    (void)li;
    lost = ctx->loss_percent>0
-    && 100*((float)rand())/RAND_MAX<ctx->loss_percent;
+    && 100*(float)rand()/(float)RAND_MAX<ctx->loss_percent;
    switch (format)
    {
       case OP_DEC_FORMAT_SHORT:
