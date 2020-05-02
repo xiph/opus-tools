@@ -1,6 +1,7 @@
+image: alpine
+
 build-gcc:
   tags:
-  - alpine
   - docker
 
   stage: build
