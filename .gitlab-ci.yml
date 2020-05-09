@@ -13,7 +13,7 @@ build-gcc:
 
   script:
   # build libopusenc
-  - git clone "https://git.xiph.org/libopusenc.git"
+  - git clone "https://gitlab.xiph.org/xiph/libopusenc.git"
   - cd libopusenc
   - ./autogen.sh
   - ./configure --prefix="$(pwd)/_inst" || cat config.log

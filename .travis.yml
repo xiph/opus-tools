@@ -23,7 +23,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libogg opus opusfile libopusenc flac; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PKG_CONFIG_PATH="$(brew --prefix openssl)/lib/pkgconfig"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then git clone https://git.xiph.org/libopusenc.git; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then git clone https://gitlab.xiph.org/xiph/libopusenc.git; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then pushd libopusenc; ./autogen.sh; ./configure --prefix=$PWD/_inst; make check; make install; export PKG_CONFIG_PATH=$PWD/_inst/lib/pkgconfig; popd; fi
 
 script:
