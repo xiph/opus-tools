@@ -8,7 +8,7 @@ platform:
 - x64
 
 environment:
-  sample_url: https://people.xiph.org/~giles/2012/opus/ehren-paper_lights-96.opus
+  sample_url: https://opus-codec.org/static/examples/ehren-paper_lights-96.opus
   opus_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opus/artifacts/opus.zip
   opusfile_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opusfile/artifacts/opusfile.zip
   libopusenc_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/libopusenc/artifacts/libopusenc.zip
