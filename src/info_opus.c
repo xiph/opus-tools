@@ -109,6 +109,10 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
             break;
 
         packets++;
+        if(header == 1 && packets >= 2) {
+          oi_warn(_("WARNING: Extra packet found in the page containing the Opus headers "
+                    "in Opus stream %d\n"), stream->num);
+        }
         if(inf->doneheaders < 2) {
             if(inf->doneheaders==0 && opus_header_parse(packet.packet,packet.bytes,&inf->oh)!=1) {
                 oi_warn(_("WARNING: Could not decode Opus header "
