@@ -848,7 +848,10 @@ int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     for (i=0; i < wav->channels; i++)
       wav->channel_permute[i] = i;
 
-    opt->read_samples = wav_read;
+    if (opt->rawmode_f)
+        opt->read_samples = wav_ieee_read;
+    else
+        opt->read_samples = wav_read;
     opt->readdata = (void *)wav;
     opt->total_samples_per_channel = 0; /* raw mode, don't bother */
     return 1;

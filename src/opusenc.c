@@ -170,6 +170,7 @@ static void usage(void)
   printf(" --discard-pictures Don't keep pictures when transcoding\n");
   printf("\nInput options:\n");
   printf(" --raw              Interpret input as raw PCM data without headers\n");
+  printf(" --raw-float        Interpret input as raw float data without headers\n");
   printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
   printf(" --raw-rate n       Set sampling rate for raw input (default: 48000)\n");
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
@@ -379,6 +380,7 @@ int main(int argc, char **argv)
     {"raw-rate", required_argument, NULL, 0},
     {"raw-chan", required_argument, NULL, 0},
     {"raw-endianness", required_argument, NULL, 0},
+    {"raw-float", no_argument, NULL, 0},
     {"ignorelength", no_argument, NULL, 0},
     {"version", no_argument, NULL, 0},
     {"version-short", no_argument, NULL, 0},
@@ -464,6 +466,7 @@ int main(int argc, char **argv)
   inopt.samplesize=16;
   inopt.endianness=0;
   inopt.rawmode=0;
+  inopt.rawmode_f=0;
   inopt.ignorelength=0;
   inopt.copy_comments=1;
   inopt.copy_pictures=1;
@@ -549,9 +552,9 @@ int main(int argc, char **argv)
           inopt.rawmode=1;
           inopt.samplesize=atoi(optarg);
           save_cmd=0;
-          if (inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24) {
+          if (inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24&&inopt.samplesize!=32) {
             fatal("Invalid bit-depth: %s\n"
-              "--raw-bits must be one of 8, 16, or 24\n", optarg);
+              "--raw-bits must be one of 8, 16, 24 or 32\n", optarg);
           }
         } else if (strcmp(optname, "raw-rate")==0) {
           inopt.rawmode=1;
@@ -565,6 +568,9 @@ int main(int argc, char **argv)
           inopt.rawmode=1;
           inopt.endianness=atoi(optarg);
           save_cmd=0;
+        } else if (strcmp(optname, "raw-float")==0) {
+          inopt.rawmode=1;
+          inopt.rawmode_f=1;
         } else if (strcmp(optname, "downmix-mono")==0) {
           downmix=1;
         } else if (strcmp(optname, "downmix-stereo")==0) {
@@ -789,6 +795,10 @@ int main(int argc, char **argv)
         exit(1);
         break;
     }
+  }
+  if (inopt.samplesize==32&&(!inopt.rawmode_f)) {
+    fatal("Invalid bit-depth:\n"
+      "--raw-bits can only be 32 for float sample format\n");
   }
   if (argc_utf8-optind!=2) {
     usage();

@@ -24,6 +24,7 @@ typedef struct
     void *readdata;
     opus_int64 total_samples_per_channel;
     int rawmode;
+    int rawmode_f;
     int channels;
     long rate;
     int gain;
