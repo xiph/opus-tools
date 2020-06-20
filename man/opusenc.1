@@ -14,7 +14,7 @@ opusenc \(en encode audio into the Opus format
 .SH DESCRIPTION
 .B opusenc
 reads audio data in Wave, AIFF, FLAC, Ogg/FLAC,
-or raw PCM format and encodes it into an Ogg Opus stream.
+or raw PCM/float format and encodes it into an Ogg Opus stream.
 If the input file is "\fB\-\fR" audio data is read from stdin.
 Likewise, if the output file is "\fB\-\fR" the Ogg Opus stream
 is written to stdout.
@@ -289,6 +289,9 @@ Don't propagate pictures or art from the input file.
 .TP
 .B --raw
 Interpret input as raw PCM data without headers.
+.TP
+.B --raw-float
+Interpret input as raw floating point data without headers.
 .TP
 .BI --raw-bits " N"
 Set bits/sample for raw input (default: 16).
