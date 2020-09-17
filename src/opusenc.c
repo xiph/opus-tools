@@ -554,7 +554,7 @@ int main(int argc, char **argv)
           save_cmd=0;
           if (inopt.samplesize!=8&&inopt.samplesize!=16&&inopt.samplesize!=24&&inopt.samplesize!=32) {
             fatal("Invalid bit-depth: %s\n"
-              "--raw-bits must be one of 8, 16, 24 or 32\n", optarg);
+              "--raw-bits must be one of 8, 16, 24, or 32\n", optarg);
           }
         } else if (strcmp(optname, "raw-rate")==0) {
           inopt.rawmode=1;
