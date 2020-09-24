@@ -571,6 +571,7 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "raw-float")==0) {
           inopt.rawmode=1;
           inopt.rawmode_f=1;
+          inopt.samplesize=32;
         } else if (strcmp(optname, "downmix-mono")==0) {
           downmix=1;
         } else if (strcmp(optname, "downmix-stereo")==0) {
