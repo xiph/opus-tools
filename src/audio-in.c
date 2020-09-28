@@ -790,9 +790,17 @@ long wav_read(void *in, float *buffer, int samples)
             }
         }
         else {
-            fprintf(stderr, _("Big endian 24 bit PCM data is not currently "
-                              "supported, aborting.\n"));
-            return 0;
+            for (i = 0; i < realsamples; i++)
+            {
+                for (j=0; j < f->channels; j++)
+                {
+                    buffer[i*f->channels+j] = ((buf[i*3*f->channels + 3*ch_permute[j]] << 16) |
+                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 1] << 8) |
+                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 2] & 0xff))
+                        / 8388608.0f;
+
+                }
+            }
         }
     }
     else {
@@ -815,9 +823,18 @@ long wav_ieee_read(void *in, float *buffer, int samples)
     realsamples = (int)fread(buf, 4*f->channels, realsamples, f->f);
     f->samplesread += realsamples;
 
-    for (i=0; i < realsamples; i++)
-        for (j=0; j < f->channels; j++)
-            buffer[i*f->channels+j] = get_le_float(buf + i*f->channels + f->channel_permute[j]);
+    if (!f->bigendian) {
+        for (i=0; i < realsamples; i++)
+            for (j=0; j < f->channels; j++)
+                buffer[i*f->channels+j] =
+                    get_le_float(buf + i*f->channels + f->channel_permute[j]);
+    }
+    else {
+        for (i=0; i < realsamples; i++)
+            for (j=0; j < f->channels; j++)
+                buffer[i*f->channels+j] =
+                    get_be_float(buf + i*f->channels + f->channel_permute[j]);
+    }
 
     return realsamples;
 }

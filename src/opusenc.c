@@ -805,10 +805,6 @@ int main(int argc, char **argv)
     fatal("Invalid bit-depth:\n"
       "--raw-bits must be 24 or 32 for float sample format\n");
   }
-  if (inopt.endianness==1&&(inopt.rawmode_f)) {
-    fprintf(stderr,"Notice: Setting big-endian with floating point samples does not make sense, fixing.\n");
-    inopt.endianness=0;
-  }
   if (argc_utf8-optind!=2) {
     usage();
     exit(1);

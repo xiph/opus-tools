@@ -71,6 +71,22 @@ static inline float get_le_float(float *ptr)
 #endif
 }
 
+static inline float get_be_float(float *ptr)
+{
+#if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
+    return *ptr;
+#else
+    float val;
+    char *bebytes = (char *)ptr;
+    char *nebytes = (char *)&val;
+    nebytes[0] = bebytes[3];
+    nebytes[1] = bebytes[2];
+    nebytes[2] = bebytes[1];
+    nebytes[3] = bebytes[0];
+    return val;
+#endif
+}
+
 static inline void put_le_float(float *ptr, float val)
 {
 #if !defined(__LITTLE_ENDIAN__) && ( defined(WORDS_BIGENDIAN) || defined(__BIG_ENDIAN__) )
