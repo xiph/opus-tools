@@ -171,7 +171,7 @@ static void usage(void)
   printf("\nInput options:\n");
   printf(" --raw              Interpret input as raw PCM data without headers\n");
   printf(" --raw-float        Interpret input as raw float data without headers\n");
-  printf(" --raw-bits n       Set bits/sample for raw input (default: 16)\n");
+  printf(" --raw-bits n       Set bits/sample for raw input (default: 16; 32 for float)\n");
   printf(" --raw-rate n       Set sampling rate for raw input (default: 48000)\n");
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for big endian, 0 for little (default: 0)\n");
@@ -801,9 +801,9 @@ int main(int argc, char **argv)
     fatal("Invalid bit-depth:\n"
       "--raw-bits can only be 32 for float sample format\n");
   }
-  if (inopt.samplesize<24&&(inopt.rawmode_f)) {
+  if (inopt.samplesize!=32&&(inopt.rawmode_f)) {
     fatal("Invalid bit-depth:\n"
-      "--raw-bits must be 24 or 32 for float sample format\n");
+      "--raw-bits must be 32 for float sample format\n");
   }
   if (argc_utf8-optind!=2) {
     usage();
