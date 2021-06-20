@@ -122,8 +122,9 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         comments=metadata->data.vorbis_comment.comments;
         saw_album_gain=saw_track_gain=0;
         album_gain=track_gain=0;
-        /*The default reference loudness for ReplayGain is 89.0 dB*/
-        reference_loudness=89;
+        /*The default reference loudness for ReplayGain is 89 dB SPL,
+          or -18 LUFS measured according to ITU-R BS.1770 / EBU R128.*/
+        reference_loudness=-18;
         /*The code below uses strtod for the gain tags, so make sure the locale is C*/
         saved_locale=setlocale(LC_NUMERIC,"C");
         for(i=0;i<num_comments;i++){
@@ -134,11 +135,15 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           /*Check for ReplayGain tags.
             Parse the ones we have R128 equivalents for, and skip the others.*/
           if(tagcompare(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
+            /*Reference loundness may be in dB SPL (positive) or
+              LUFS (negative).  The 89 dB SPL reference is considered
+              to be the same loudness as -18 LUFS.*/
             gain=strtod(entry+30,&end);
             if(end<=entry+30){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
             }
-            else reference_loudness=gain;
+            else if (gain<0) reference_loudness=gain;
+            else reference_loudness=gain-89-18;
             continue;
           }
           if(tagcompare(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
@@ -177,9 +182,9 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
         }
         setlocale(LC_NUMERIC,saved_locale);
         /*Set the header gain to the album gain after converting to the R128
-          reference level.*/
+          reference level (-23 LUFS).*/
         if(saw_album_gain){
-          gain=256*(album_gain+(84-reference_loudness))+0.5;
+          gain=256*(album_gain+(-23-reference_loudness))+0.5;
           inopt->gain=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
         }
         /*If there was a track gain, then add an equivalent R128 tag for that.*/
