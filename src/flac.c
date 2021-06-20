@@ -33,7 +33,7 @@
 #include "encoder.h"
 #include "flac.h"
 #include "opus_header.h"
-#include "picture.h"
+#include "tagcompare.h"
 
 #if defined(HAVE_LIBFLAC)
 
@@ -133,7 +133,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           if(!entry)continue;
           /*Check for ReplayGain tags.
             Parse the ones we have R128 equivalents for, and skip the others.*/
-          if(oi_strncasecmp(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
+          if(tagcompare(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
             gain=strtod(entry+30,&end);
             if(end<=entry+30){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -141,7 +141,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             else reference_loudness=gain;
             continue;
           }
-          if(oi_strncasecmp(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
+          if(tagcompare(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
             gain=strtod(entry+22,&end);
             if(end<=entry+22){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -152,7 +152,7 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             }
             continue;
           }
-          if(oi_strncasecmp(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
+          if(tagcompare(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
             gain=strtod(entry+22,&end);
             if(end<entry+22){
               fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
@@ -163,8 +163,8 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
             }
             continue;
           }
-          if(oi_strncasecmp(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
-             ||oi_strncasecmp(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
+          if(tagcompare(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
+             ||tagcompare(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
             continue;
           }
           if(!strchr(entry,'=')){

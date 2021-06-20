@@ -31,6 +31,7 @@
 #include "opus_header.h"
 #include "info_opus.h"
 #include "picture.h"
+#include "tagcompare.h"
 
 #if defined WIN32 || defined _WIN32
 # include "unicode_support.h"
@@ -256,7 +257,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
      }
 
      if(sep - comment == 22
-           && oi_strncasecmp(comment, "METADATA_BLOCK_PICTURE", 22) == 0) {
+           && tagcompare(comment, "METADATA_BLOCK_PICTURE", 22) == 0) {
          ogg_uint32_t   picture_type;
          ogg_uint32_t   mime_type_length;
          ogg_uint32_t   description_length;
@@ -440,7 +441,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          is_url = 0;
          format = -1;
          if(mime_type_length == 10
-               && oi_strncasecmp((const char*)data+8, "image/jpeg",
+               && tagcompare((const char*)data+8, "image/jpeg",
                      mime_type_length) == 0) {
              if(!is_jpeg(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
@@ -453,7 +454,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              format = PIC_FORMAT_JPEG;
          }
          else if(mime_type_length == 9
-               && oi_strncasecmp((const char *)data+8, "image/png",
+               && tagcompare((const char *)data+8, "image/png",
                      mime_type_length) == 0) {
              if(!is_png(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
@@ -466,7 +467,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              format = PIC_FORMAT_PNG;
          }
          else if(mime_type_length == 9
-               && oi_strncasecmp((const char *)data+8, "image/gif",
+               && tagcompare((const char *)data+8, "image/gif",
                      mime_type_length) == 0) {
              if(!is_gif(data+j, image_length)) {
                  oi_warn(_("WARNING: Invalid image data in "
@@ -484,7 +485,7 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              /*TODO: validate URL.*/
          }
          else if(mime_type_length == 0 || (mime_type_length == 6 &&
-               oi_strncasecmp((const char *)data+8, "image/",
+               tagcompare((const char *)data+8, "image/",
                      mime_type_length) == 0)) {
              if(is_jpeg(data+j, image_length)) {
                  format = PIC_FORMAT_JPEG;

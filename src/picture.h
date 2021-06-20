@@ -6,8 +6,6 @@ typedef enum {
   PIC_FORMAT_GIF
 } picture_format;
 
-int oi_strncasecmp(const char *a, const char *b, int n);
-
 int is_jpeg(const unsigned char *buf, size_t length);
 int is_png(const unsigned char *buf, size_t length);
 int is_gif(const unsigned char *buf, size_t length);

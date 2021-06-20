@@ -29,36 +29,10 @@
 # include "config.h"
 #endif
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "picture.h"
 
-
-/*A version of strncasecmp() that is guaranteed to only ignore the case of
-   ASCII characters.*/
-int oi_strncasecmp(const char *a, const char *b, int n)
-{
-  int i;
-  for(i=0;i<n;i++){
-    int aval;
-    int bval;
-    int diff;
-    aval=a[i];
-    bval=b[i];
-    if(aval>='a'&&aval<='z') {
-      aval-='a'-'A';
-    }
-    if(bval>='a'&&bval<='z'){
-      bval-='a'-'A';
-    }
-    diff=aval-bval;
-    if(diff){
-      return diff;
-    }
-  }
-  return 0;
-}
 
 int is_jpeg(const unsigned char *buf, size_t length)
 {

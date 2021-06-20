@@ -32,7 +32,7 @@
     <ClCompile Include="..\..\src\opus_header.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\picture.c">
+    <ClCompile Include="..\..\src\tagcompare.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\win32\unicode_support.c">
@@ -55,7 +55,7 @@
     <ClInclude Include="..\..\src\opus_header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\picture.h">
+    <ClInclude Include="..\..\src\tagcompare.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\stack_alloc.h">

@@ -19,6 +19,7 @@ noinst_HEADERS = src/arch.h \
                  src/opus_header.h \
                  src/opusinfo.h \
                  src/picture.h \
+                 src/tagcompare.h \
                  src/resample_sse.h \
                  src/speex_resampler.h \
                  src/stack_alloc.h \
@@ -51,7 +52,7 @@ dist_man_MANS = man/opusenc.1 man/opusdec.1 man/opusinfo.1
 
 resampler_CPPFLAGS = -DRANDOM_PREFIX=opustools -DOUTSIDE_SPEEX -DRESAMPLE_FULL_SINC_TABLE
 
-opusenc_SOURCES = src/opus_header.c src/opusenc.c src/picture.c src/audio-in.c src/diag_range.c src/flac.c win32/unicode_support.c
+opusenc_SOURCES = src/opus_header.c src/opusenc.c src/tagcompare.c src/audio-in.c src/diag_range.c src/flac.c win32/unicode_support.c
 opusenc_CPPFLAGS = $(AM_CPPFLAGS)
 opusenc_CFLAGS = $(AM_CFLAGS) $(LIBOPUSENC_CFLAGS) $(FLAC_CFLAGS)
 opusenc_LDADD = $(LIBOPUSENC_LIBS) $(OPUS_LIBS) $(FLAC_LIBS) $(OGG_LIBS) $(LIBM)
@@ -63,7 +64,7 @@ opusdec_CFLAGS = $(AM_CFLAGS) $(OPUSURL_CFLAGS)
 opusdec_LDADD = $(OPUSURL_LIBS) $(OPUS_LIBS) $(LIBM)
 opusdec_MANS = man/opusdec.1
 
-opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c src/picture.c win32/unicode_support.c
+opusinfo_SOURCES = src/opus_header.c src/opusinfo.c src/info_opus.c src/picture.c src/tagcompare.c win32/unicode_support.c
 opusinfo_CPPFLAGS = $(AM_CPPFLAGS) -DOPUSTOOLS
 opusinfo_LDADD = $(OGG_LIBS)
 opusinfo_MANS = man/opusinfo.1
