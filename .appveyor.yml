@@ -8,13 +8,14 @@ platform:
 - x64
 
 environment:
-  sample_url: https://opus-codec.org/static/examples/ehren-paper_lights-96.opus
+  sample_url: https://gitlab.xiph.org/xiph/opus-website/-/raw/master/static/examples/ehren-paper_lights-96.opus
   opus_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opus/artifacts/opus.zip
   opusfile_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/opusfile/artifacts/opusfile.zip
   libopusenc_url: https://ci.appveyor.com/api/projects/$(APPVEYOR_ACCOUNT_NAME)/libopusenc/artifacts/libopusenc.zip
 
 install:
   - cd %APPVEYOR_BUILD_FOLDER%
+  - curl --version
   - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUS_URL%'
   - 7z x opus.zip -oopus-artifacts
   - 'curl -LOG --data-urlencode "job=Configuration: %CONFIGURATION%; Platform: %PLATFORM%" %OPUSFILE_URL%'
@@ -39,13 +40,12 @@ after_build:
   - cd %APPVEYOR_BUILD_FOLDER%
   - copy /Y COPYING LICENSE
   - 7z a opus-tools.zip .\win32\VS2015\%PLATFORM%\%CONFIGURATION%\*.exe .\LICENSE
-  - for %%a in (mandoc.css opusdec.html opusenc.html opusinfo.html) do curl -O https://opus-codec.org/docs/opus-tools/%%a
+  - for %%a in (mandoc.css opusdec.html opusenc.html opusinfo.html) do curl -O https://gitlab.xiph.org/xiph/opus-website/-/raw/master/docs/opus-tools/%%a
   - 7z a opus-tools.zip .\mandoc.css .\opusdec.html .\opusenc.html .\opusinfo.html
 
 test_script:
   - cd %APPVEYOR_BUILD_FOLDER%\win32\VS2015\%PLATFORM%\%CONFIGURATION%
-  - curl -o original.opus %SAMPLE_URL%
-  - opusdec.exe original.opus decoded.wav
+  - opusdec.exe %SAMPLE_URL% decoded.wav
   - opusenc.exe decoded.wav encoded.opus
   - opusinfo.exe encoded.opus
   - appveyor PushArtifact encoded.opus
