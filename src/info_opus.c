@@ -267,15 +267,17 @@ void info_opus_end(stream_processor *stream)
     if(inf && inf->total_packets>0){
         int i, j;
         long minutes, seconds, milliseconds;
+        ogg_int64_t playback_samples;
         double time;
-        time = (inf->lastgranulepos-inf->firstgranule-inf->oh.preskip) / 48000.;
+        playback_samples = inf->lastgranulepos-inf->firstgranule-inf->oh.preskip;
+        time = playback_samples / 48000.;
         if(time<=0)time=0;
         minutes = (long)(time) / 60;
         seconds = (long)(time - minutes*60);
         milliseconds = (long)((time - minutes*60 - seconds)*1000);
         if(inf->lastgranulepos-inf->firstgranule<inf->oh.preskip)
            oi_error(_("\tERROR: stream %d has a negative duration: %" PRId64 "-%" PRId64 "-%d=%" PRId64 "\n"),stream->num,
-           inf->lastgranulepos,inf->firstgranule,inf->oh.preskip,inf->lastgranulepos-inf->firstgranule-inf->oh.preskip);
+           inf->lastgranulepos,inf->firstgranule,inf->oh.preskip,playback_samples);
         if((inf->total_samples-inf->last_page_duration)>(inf->lastgranulepos-inf->firstgranule))
            oi_error(_("\tERROR: stream %d has interior holes or more than one page of end trimming\n"),stream->num);
         if(inf->last_eos &&( (inf->last_page_duration-inf->last_packet_duration)>(inf->lastgranulepos-inf->lastlastgranulepos)))
@@ -313,6 +315,7 @@ void info_opus_end(stream_processor *stream)
         if(inf->total_pages)oi_info(_("\tPage duration: %8.1fms (max), %6.1fms (avg), %6.1fms (min)\n"),
             inf->max_page_duration/48.,inf->total_samples/(double)inf->total_pages/48.,inf->min_page_duration/48.);
         oi_info(_("\tTotal data length: %" PRId64 " bytes (overhead: %0.3g%%)\n"),inf->bytes,(double)inf->overhead_bytes/inf->bytes*100.);
+        oi_info(_("\tPlayback samples: %" PRId64 "\n"), playback_samples);
         oi_info(_("\tPlayback length: %ldm:%02ld.%03lds\n"), minutes, seconds, milliseconds);
         oi_info(_("\tAverage bitrate: %0.4g kbit/s, w/o overhead: %.04g kbit/s%s\n"),time<=0?0:inf->bytes*8/time/1000.0,
             time<=0?0:(inf->bytes-inf->overhead_bytes)*8/time/1000.0,
