@@ -402,7 +402,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
         return 0; /* No SSND chunk -> no actual audio */
     }
 
-    if (len < 8)
+    if (len < 8 && in != stdin)
     {
         fprintf(stderr, _("ERROR: Corrupted SSND chunk in AIFF header\n"));
         return 0;
