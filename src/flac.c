@@ -386,7 +386,11 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
       opt->readdata=flac;
       /*FLAC supports 1 to 8 channels only.*/
       /*It uses the same channel mappings as WAV.*/
-      flac->channel_permute=wav_permute_matrix[flac->channels-1];
+      if(opt->channels_format==CHANNELS_FORMAT_DEFAULT){
+        flac->channel_permute=wav_permute_matrix[flac->channels-1];
+      }else{
+        flac->channel_permute=flac_no_permute_matrix;
+      }
       return 1;
     }
   }

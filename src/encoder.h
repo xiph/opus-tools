@@ -16,6 +16,9 @@
 # define N_(X) (X)
 #endif
 
+#define CHANNELS_FORMAT_DEFAULT  0
+#define CHANNELS_FORMAT_AMBIX    1
+
 typedef long (*audio_read_func)(void *src, float *buffer, int samples);
 
 typedef struct
@@ -26,6 +29,7 @@ typedef struct
     int rawmode;
     int rawmode_f;
     int channels;
+    int channels_format;
     long rate;
     int gain;
     int samplesize;

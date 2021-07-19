@@ -51,3 +51,5 @@ int flac_id(unsigned char *buf,int len);
 int oggflac_id(unsigned char *buf,int len);
 int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen);
 void flac_close(void *client_data);
+
+static const int flac_no_permute_matrix[8] = {0,1,2,3,4,5,6,7};

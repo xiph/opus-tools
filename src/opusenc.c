@@ -176,6 +176,7 @@ static void usage(void)
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for big endian, 0 for little (default: 0)\n");
   printf(" --ignorelength     Ignore the data length in Wave headers\n");
+  printf(" --channels <ambix> Override the format of the input channels\n");
   printf("\nDiagnostic options:\n");
   printf(" --serial n         Force use of a specific stream serial number\n");
   printf(" --save-range file  Save check values for every frame to a file\n");
@@ -349,6 +350,16 @@ static int is_valid_ctl(int request)
   return 0;
 }
 
+static void validate_ambisonics_channel_count(int num_channels)
+{
+  int order_plus_one;
+  int nondiegetic_chs;
+  if(num_channels<1||num_channels>227) fatal("Error: the number of channels must not be <1 or >227.\n");
+  order_plus_one=sqrt(num_channels);
+  nondiegetic_chs=num_channels-order_plus_one*order_plus_one;
+  if(nondiegetic_chs!=0&&nondiegetic_chs!=2) fatal("Error: invalid number of ambisonics channels.\n");
+}
+
 int main(int argc, char **argv)
 {
   static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
@@ -375,6 +386,7 @@ int main(int argc, char **argv)
     {"set-ctl-int", required_argument, NULL, 0},
     {"help", no_argument, NULL, 0},
     {"help-picture", no_argument, NULL, 0},
+    {"channels", required_argument, NULL, 0},
     {"raw", no_argument, NULL, 0},
     {"raw-bits", required_argument, NULL, 0},
     {"raw-rate", required_argument, NULL, 0},
@@ -439,6 +451,7 @@ int main(int argc, char **argv)
   int                comment_padding=512;
   int                serialno;
   opus_int32         lookahead=0;
+  int                mapping_family;
 #ifdef WIN_UNICODE
   int argc_utf8;
   char **argv_utf8;
@@ -460,6 +473,7 @@ int main(int argc, char **argv)
   range_file=NULL;
   in_format=NULL;
   inopt.channels=chan;
+  inopt.channels_format=CHANNELS_FORMAT_DEFAULT;
   inopt.rate=rate;
   /* 0 dB gain is recommended unless you know what you're doing */
   inopt.gain=0;
@@ -620,6 +634,14 @@ int main(int argc, char **argv)
               optarg);
           }
           max_ogg_delay=(int)floor(val*48.);
+        } else if (strcmp(optname, "channels")==0) {
+          if (strcmp(optarg, "ambix")==0) {
+            inopt.channels_format=CHANNELS_FORMAT_AMBIX;
+          } else {
+            fatal("Invalid input format: %s\n"
+              "--channels only supports 'ambix'\n",
+              optarg);
+          }
         } else if (strcmp(optname, "serial")==0) {
           serialno=atoi(optarg);
         } else if (strcmp(optname, "set-ctl-int")==0) {
@@ -853,9 +875,17 @@ int main(int argc, char **argv)
       "Channel count must be in the range 1 to 255.\n", inopt.channels);
   }
 
-  if (downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)) {
-    if (!quiet) fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
-    downmix=inopt.channels>8?1:2;
+  if (downmix>0&&inopt.channels_format==CHANNELS_FORMAT_AMBIX) {
+    /*Ambisonics channels should be downmixed to mono or stereo, and then
+      encoded using channel mapping family 0.*/
+    fatal("Error: downmixing is currently unimplemented for ambisonics input.\n");
+  }
+
+  if (inopt.channels_format==CHANNELS_FORMAT_DEFAULT) {
+    if (downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)) {
+      if (!quiet) fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
+      downmix=inopt.channels>8?1:2;
+    }
   }
 
   if (downmix>0&&downmix<inopt.channels) downmix=setup_downmix(&inopt,downmix);
@@ -868,9 +898,19 @@ int main(int argc, char **argv)
     inopt.total_samples_per_channel = (opus_int64)
       ((double)inopt.total_samples_per_channel * (48000./(double)rate));
 
+  if (inopt.channels_format==CHANNELS_FORMAT_AMBIX) {
+    validate_ambisonics_channel_count(chan);
+    /*Use channel mapping 3 for orders {1, 2, 3} with 4 to 18 channels
+      (including the non-diegetic stereo track). For other orders with no
+      demixing matrices currently available, use channel mapping 2.*/
+    mapping_family=(chan>=4&&chan<=18)?3:2;
+  } else {
+    mapping_family=chan>8?255:chan>2;
+  }
+
   /*Initialize Opus encoder*/
   enc = ope_encoder_create_callbacks(&callbacks, &data, inopt.comments, rate,
-    chan, chan>8?255:chan>2, &ret);
+    chan, mapping_family, &ret);
   if (enc == NULL) fatal("Error: failed to create encoder: %s\n", ope_strerror(ret));
   data.enc = enc;
 
