@@ -139,6 +139,7 @@ static void usage(void)
   printf("\nEncoding options:\n");
   printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
   printf(" --bandwidth <bw>   Set audio bandwidth (NB, MB, WB, SWB, FB)\n");
+  printf(" --application <app> Set audio application (voip, audio, lowdelay)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -371,6 +372,7 @@ int main(int argc, char **argv)
     {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
     {"bandwidth", required_argument, NULL, 0},
+    {"application", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
@@ -440,6 +442,7 @@ int main(int argc, char **argv)
   int                quiet=0;
   opus_int32         bitrate=-1;
   int                bandwidth=OPUS_AUTO;
+  int                application=OPUS_AUTO;
   opus_int32         rate=48000;
   opus_int32         frame_size=960;
   opus_int32         opus_frame_param = OPUS_FRAMESIZE_20_MS;
@@ -557,6 +560,17 @@ int main(int argc, char **argv)
             bandwidth = OPUS_BANDWIDTH_FULLBAND;
           } else {
             fatal("Unknown bandwidth %s. Supported are NB, MB, WB, SWB, FB.\n",
+                  optarg);
+          }
+        } else if (strcmp(optname, "application")==0) {
+          if (strcmp(optarg, "voip")==0) {
+            application = OPUS_APPLICATION_VOIP;
+          } else if (strcmp(optarg, "audio")==0) {
+            application = OPUS_APPLICATION_AUDIO;
+          } else if (strcmp(optarg, "lowdelay")==0) {
+            application = OPUS_APPLICATION_RESTRICTED_LOWDELAY;
+          } else {
+            fatal("Unknown application %s. Supported are voip, audio, lowdelay.\n",
                   optarg);
           }
         } else if (strcmp(optname, "hard-cbr")==0) {
@@ -998,6 +1012,13 @@ int main(int argc, char **argv)
     ret = ope_encoder_ctl(enc, OPUS_SET_BANDWIDTH(bandwidth));
     if (ret != OPE_OK) {
       fatal("Error: OPUS_SET_BANDWIDTH %d failed: %s\n", bandwidth, ope_strerror(ret));
+    }
+  }
+
+  if (application!=OPUS_AUTO) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_APPLICATION(application));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_APPLICATION %d failed: %s\n", application, ope_strerror(ret));
     }
   }
 
