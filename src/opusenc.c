@@ -138,6 +138,7 @@ static void usage(void)
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
   printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
+  printf(" --bandwidth <bw>   Set audio bandwidth (NB, MB, WB, SWB, FB)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -367,6 +368,7 @@ int main(int argc, char **argv)
   {
     {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
+    {"bandwidth", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
@@ -433,6 +435,7 @@ int main(int argc, char **argv)
   /*Settings*/
   int                quiet=0;
   opus_int32         bitrate=-1;
+  int                bandwidth=OPUS_AUTO;
   opus_int32         rate=48000;
   opus_int32         frame_size=960;
   opus_int32         opus_frame_param = OPUS_FRAMESIZE_20_MS;
@@ -535,6 +538,21 @@ int main(int argc, char **argv)
           save_cmd=0;
         } else if (strcmp(optname, "bitrate")==0) {
           bitrate=(opus_int32)(atof(optarg)*1000.);
+        } else if (strcmp(optname, "bandwidth")==0) {
+          if (strcmp(optarg, "NB")==0) {
+            bandwidth = OPUS_BANDWIDTH_NARROWBAND;
+          } else if (strcmp(optarg, "MB")==0) {
+            bandwidth = OPUS_BANDWIDTH_MEDIUMBAND;
+          } else if (strcmp(optarg, "WB")==0) {
+            bandwidth = OPUS_BANDWIDTH_WIDEBAND;
+          } else if (strcmp(optarg, "SWB")==0) {
+            bandwidth = OPUS_BANDWIDTH_SUPERWIDEBAND;
+          } else if (strcmp(optarg, "FB")==0) {
+            bandwidth = OPUS_BANDWIDTH_FULLBAND;
+          } else {
+            fatal("Unknown bandwidth %s. Supported are NB, MB, WB, SWB, FB.\n",
+                  optarg);
+          }
         } else if (strcmp(optname, "hard-cbr")==0) {
           with_hard_cbr=1;
           with_cvbr=0;
@@ -965,6 +983,14 @@ int main(int argc, char **argv)
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_BITRATE %d failed: %s\n", bitrate, ope_strerror(ret));
   }
+
+  if (bandwidth!=OPUS_AUTO) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_BANDWIDTH(bandwidth));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_BANDWIDTH %d failed: %s\n", bandwidth, ope_strerror(ret));
+    }
+  }
+
   ret = ope_encoder_ctl(enc, OPUS_SET_VBR(!with_hard_cbr));
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_VBR %d failed: %s\n", !with_hard_cbr, ope_strerror(ret));
