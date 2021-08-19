@@ -144,6 +144,7 @@ static void usage(void)
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
   printf(" --music            Tune low bitrates for music (override automatic detection)\n");
   printf(" --speech           Tune low bitrates for speech (override automatic detection)\n");
+  printf(" --dtx              Enable DTX mode (default disabled)\n");
   printf(" --comp n           Set encoding complexity (0-10, default: 10 (slowest))\n");
   printf(" --framesize n      Set maximum frame size in milliseconds\n");
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
@@ -374,6 +375,7 @@ int main(int argc, char **argv)
     {"cvbr",no_argument,NULL, 0},
     {"music", no_argument, NULL, 0},
     {"speech", no_argument, NULL, 0},
+    {"dtx",no_argument,NULL, 0},
     {"comp", required_argument, NULL, 0},
     {"complexity", required_argument, NULL, 0},
     {"framesize", required_argument, NULL, 0},
@@ -442,6 +444,7 @@ int main(int argc, char **argv)
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
+  int                with_dtx=0;
   int                signal_type=OPUS_AUTO;
   int                expect_loss=0;
   int                complexity=10;
@@ -562,6 +565,8 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "vbr")==0) {
           with_cvbr=0;
           with_hard_cbr=0;
+        } else if (strcmp(optname, "dtx")==0) {
+          with_dtx=1;
         } else if (strcmp(optname, "help")==0) {
           usage();
           exit(0);
@@ -1005,6 +1010,13 @@ int main(int argc, char **argv)
   ret = ope_encoder_ctl(enc, OPUS_SET_SIGNAL(signal_type));
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_SIGNAL failed: %s\n", ope_strerror(ret));
+  }
+  if (with_dtx) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_DTX(with_dtx));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_DTX %d failed: %s\n",
+        with_dtx, ope_strerror(ret));
+    }
   }
   ret = ope_encoder_ctl(enc, OPUS_SET_COMPLEXITY(complexity));
   if (ret != OPE_OK) {
