@@ -101,7 +101,7 @@ void oi_error(char *format, ...)
 }
 
 #define READ_U32_BE(buf) \
-    (((buf)[0]<<24)|((buf)[1]<<16)|((buf)[2]<<8)|((buf)[3]&0xff))
+    (((ogg_uint32_t)(buf)[0]<<24)|((buf)[1]<<16)|((buf)[2]<<8)|(buf)[3])
 
 void check_xiph_comment(stream_processor *stream, int i, const char *comment,
     int comment_length)
