@@ -104,6 +104,15 @@
 #include "stack_alloc.h"
 #include "cpusupport.h"
 
+/* printf format specifier for opus_int64 */
+#if !defined opus_int64 && defined PRId64
+# define I64FORMAT PRId64
+#elif defined WIN32 || defined _WIN32
+# define I64FORMAT "I64d"
+#else
+# define I64FORMAT "lld"
+#endif
+
 #define MINI(_a,_b)      ((_a)<(_b)?(_a):(_b))
 #define MAXI(_a,_b)      ((_a)>(_b)?(_a):(_b))
 #define CLAMPI(_a,_b,_c) (MAXI(_a,MINI(_b,_c)))
@@ -699,7 +708,7 @@ int main(int argc, char **argv)
       {0, 0, 0, 0}
    };
    opus_int64 audio_size=0;
-   double last_coded_seconds=0;
+   opus_int64 last_coded_seconds=-1;
    float loss_percent=-1;
    float manual_gain=0;
    int force_rate=0;
@@ -1111,18 +1120,18 @@ int main(int argc, char **argv)
       {
          /*Display a progress spinner while decoding.*/
          static const char spinner[]="|/-\\";
-         double coded_seconds=nb_read_total/(double)rate;
-         if (coded_seconds>=last_coded_seconds+1 || li!=old_li)
+         opus_int64 coded_seconds = nb_read_total/48000;
+         if (coded_seconds > last_coded_seconds || li != old_li)
          {
-            fprintf(stderr,"\r[%c] %02d:%02d:%02d", spinner[last_spin&3],
-             (int)(coded_seconds/3600), (int)(coded_seconds/60)%60,
-             (int)(coded_seconds)%60);
+            if (coded_seconds > last_coded_seconds)
+            {
+               last_spin++;
+               last_coded_seconds = coded_seconds;
+            }
+            fprintf(stderr,"\r[%c] %02" I64FORMAT ":%02d:%02d",
+             spinner[last_spin&3], coded_seconds/3600,
+             (int)((coded_seconds/60)%60), (int)(coded_seconds%60));
             fflush(stderr);
-         }
-         if (coded_seconds>=last_coded_seconds+1)
-         {
-            last_spin++;
-            last_coded_seconds=coded_seconds;
          }
       }
       old_li=li;
