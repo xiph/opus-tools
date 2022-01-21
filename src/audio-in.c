@@ -114,7 +114,7 @@
 input_format formats[] = {
     {wav_id, 12, wav_open, wav_close, "wav", N_("WAV file reader")},
     {aiff_id, 12, aiff_open, wav_close, "aiff", N_("AIFF/AIFC file reader")},
-    {flac_id,     4, flac_open, flac_close, "flac", N_("FLAC file reader")},
+    {flac_id,     0x10000, flac_open, flac_close, "flac", N_("FLAC file reader")},
     {oggflac_id, 33, flac_open, flac_close, "ogg", N_("Ogg FLAC file reader")},
     {NULL, 0, NULL, NULL, NULL, NULL}
 };
@@ -138,11 +138,9 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
         if (size > buf_filled)
         {
             buf_filled += (int)fread(buf+buf_filled, 1, buf_size-buf_filled, in);
-            if (buf_filled < size)
-            { /* File truncated */
-                j++;
-                continue;
-            }
+            /* We still check a truncated read aginast the id_func
+             * in order to support very small FLAC files but still be able to
+             * read past an ID3 header. */
         }
 
         if (formats[j].id_func(buf, buf_filled))

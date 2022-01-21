@@ -290,10 +290,23 @@ int flac_id(unsigned char *buf,int len)
 {
   /*Something screwed up.*/
   if(len<4)return 0;
+  /*Normal FLAC.*/
+  if(!memcmp(buf,"fLaC",4))return 1;
+  if(!memcmp(buf,"ID3",3)){
+    int i;
+    int id3_len = 0;
+    for(i=0;i<4;i++) {
+      if(buf[6+i]&0x80)return 0;
+      id3_len<<=7;
+      id3_len|=buf[6+i];
+    }
+    id3_len+=10;
+    if(len<id3_len+4)return 0;
+    /*FLAC with ID3 tag.*/
+    if(!memcmp(&buf[id3_len],"fLaC",4))return 1;
+  }
   /*Not FLAC.*/
-  if(memcmp(buf,"fLaC",4))return 0;
-  /*Looks like FLAC.*/
-  return 1;
+  return 0;
 }
 
 int oggflac_id(unsigned char *buf,int len)
