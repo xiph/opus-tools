@@ -56,7 +56,7 @@ static FLAC__StreamDecoderReadStatus read_callback(
         some more.*/
       bytes_to_copy=buflen-bufpos;
       bytes_to_copy=*bytes<bytes_to_copy?*bytes:bytes_to_copy;
-      memcpy(buffer,flac->oldbuf,bytes_to_copy);
+      memcpy(buffer,flac->oldbuf+flac->bufpos,bytes_to_copy);
       flac->bufpos+=bytes_to_copy;
       *bytes=bytes_to_copy;
     }else{
