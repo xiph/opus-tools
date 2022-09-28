@@ -114,6 +114,9 @@ to mono after decoding.
 .TP
 .BI --max-delay " N"
 Set maximum container delay in milliseconds (0\(en1000, default: 1000).
+.TP
+.BI --output-gain " N"
+Set the output gain in LUFS normalized around -23 LUFS
 .SS "Metadata options"
 .TP
 .BI --title " TITLE"
@@ -286,6 +289,12 @@ Don't propagate metadata tags from the input file.
 .TP
 .B --discard-pictures
 Don't propagate pictures or art from the input file.
+.TP
+.BI --track-gain " N"
+Set the track gain in LUFS.
+.TP
+.BI --album-gain " N"
+Set the album gain in LUFS. If track gain is specified, this option is ignored.
 .SS "Input options"
 .TP
 .B --raw

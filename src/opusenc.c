@@ -154,6 +154,7 @@ static void usage(void)
 #endif
   printf(" --max-delay n      Set maximum container delay in milliseconds\n");
   printf("                      (0-1000, default: 1000)\n");
+  printf(" --output-gain n.nnn Set the output gain in LUFS\n");
   printf("\nMetadata options:\n");
   printf(" --title title      Set track title\n");
   printf(" --artist artist    Set artist or author, may be used multiple times\n");
@@ -168,6 +169,8 @@ static void usage(void)
   printf(" --padding n        Reserve n extra bytes for metadata (default: 512)\n");
   printf(" --discard-comments Don't keep metadata when transcoding\n");
   printf(" --discard-pictures Don't keep pictures when transcoding\n");
+  printf(" --track-gain n.nnn Set the track gain in LUFS\n");
+  printf(" --album-gain n.nnn Set the album gain in LUFS\n");
   printf("\nInput options:\n");
   printf(" --raw              Interpret input as raw PCM data without headers\n");
   printf(" --raw-float        Interpret input as raw float data without headers\n");
@@ -407,6 +410,9 @@ int main(int argc, char **argv)
     {"padding", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
     {"discard-pictures", no_argument, NULL, 0},
+    {"output-gain", required_argument, NULL, 0},
+    {"track-gain", required_argument, NULL, 0},
+    {"album-gain", required_argument, NULL, 0},
     {0, 0, 0, 0}
   };
   int i, ret;
@@ -452,6 +458,12 @@ int main(int argc, char **argv)
   int                serialno;
   opus_int32         lookahead=0;
   int                mapping_family;
+  int                set_output_gain=0;
+  double             output_gain=0;
+  int                set_track_gain=0;
+  double             track_gain=0;
+  int                set_album_gain=0;
+  double             album_gain=0;
 #ifdef WIN_UNICODE
   int argc_utf8;
   char **argv_utf8;
@@ -781,6 +793,30 @@ int main(int argc, char **argv)
           inopt.copy_pictures=0;
         } else if (strcmp(optname, "discard-pictures")==0) {
           inopt.copy_pictures=0;
+        } else if (strcmp(optname, "output-gain")==0) {
+          char* end;
+          output_gain=strtod(optarg, &end);
+          set_output_gain=1;
+          if(end==optarg) {
+            fatal("Error: output gain must be decimal\n");
+          }
+          save_cmd=0;
+        } else if(strcmp(optname, "track-gain")==0) {
+          char* end;
+          track_gain=strtod(optarg, &end);
+          set_track_gain=1;
+          if(end==optarg) {
+            fatal("Error: track gain must be decimal\n");
+          }
+          save_cmd=0;
+        } else if(strcmp(optname, "album-gain")==0) {
+          char* end;
+          album_gain=strtod(optarg, &end);
+          set_album_gain=1;
+          if(end==optarg) {
+            fatal("Error: album gain must be decimal\n");
+          }
+          save_cmd=0;
         }
         /*Options whose arguments would leak file paths or just end up as
            metadata, or that relate only to input file handling or console
@@ -906,6 +942,27 @@ int main(int argc, char **argv)
     mapping_family=(chan>=4&&chan<=18)?3:2;
   } else {
     mapping_family=chan>8?255:chan>2;
+  }
+
+  if (set_output_gain) {
+    double gain = output_gain*256+0.5;
+    inopt.gain=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+  }
+
+  if (set_track_gain) {
+    char track_gain_buf[7];
+    int track_gain_val;
+    double gain=256*track_gain+0.5;
+    track_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+    sprintf(track_gain_buf,"%i",track_gain_val);
+    ope_comments_add(inopt.comments, "R128_TRACK_GAIN",track_gain_buf);
+  } else if(set_album_gain) {
+    char album_gain_buf[7];
+    int album_gain_val;
+    double gain=256*album_gain+0.5;
+    album_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+    sprintf(album_gain_buf,"%i",album_gain_val);
+    ope_comments_add(inopt.comments, "R128_ALBUM_GAIN",album_gain_buf);
   }
 
   /*Initialize Opus encoder*/
