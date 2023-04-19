@@ -1,24 +1,14 @@
 default:
   tags:
   - docker
-  # Image from https://hub.docker.com/_/gcc/ based on Debian
-  image: gcc:9
+  image: debian:bookworm
 
 autoconf:
   stage: build
   before_script:
   - apt-get update &&
-    apt-get install -y libogg-dev libopus-dev libopusfile-dev libflac-dev libpcap-dev zip
+    apt-get install -y autoconf gcc libtool make libogg-dev libopus-dev libopusenc-dev libopusfile-dev libflac-dev libpcap-dev xz-utils zip
   script:
-  # build libopusenc
-  - git clone "https://gitlab.xiph.org/xiph/libopusenc.git"
-  - cd libopusenc
-  - ./autogen.sh
-  - ./configure --prefix="$(pwd)/_inst" || cat config.log
-  - make check
-  - make install
-  - export PKG_CONFIG_PATH="$(pwd)/_inst/lib/pkgconfig"
-  - cd ..
   # build opus-tools
   - ./autogen.sh
   - ./configure || cat config.log
