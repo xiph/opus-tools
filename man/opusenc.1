@@ -93,9 +93,10 @@ Zero gives the fastest encodes but lower quality, while 10 gives the
 highest quality but slower encoding.
 .TP
 .BI --framesize " N"
-Set maximum frame size in milliseconds (2.5, 5, 10, 20, 40, 60, default: 20).
+Set maximum frame size in milliseconds (2.5, 5, 10, 20, 40, 60, 80, 100, 120, default: 20).
 Smaller framesizes achieve lower latency but less quality at a given bitrate.
 Sizes greater than 20\ ms are only interesting at fairly low bitrates.
+Sizes greater than 60\ ms require opus 1.2 and are intended for use cases where per-packet network overhead is a concern (not recommended for Ogg Opus files).
 .TP
 .BI --expect-loss " N"
 Set expected packet loss in percent (default: 0).
