@@ -1,16 +1,14 @@
-image: alpine
-
-build-gcc:
+default:
   tags:
   - docker
+  # Image from https://hub.docker.com/_/gcc/ based on Debian
+  image: gcc:9
 
+autoconf:
   stage: build
-
   before_script:
-  - apk update
-  - apk add musl-dev git make gcc automake autoconf libtool file gzip zip xz
-  - apk add linux-headers libogg-dev opus-dev opusfile-dev flac-dev libpcap-dev
-
+  - apt-get update &&
+    apt-get install -y libogg-dev libopus-dev libopusfile-dev libflac-dev libpcap-dev zip
   script:
   # build libopusenc
   - git clone "https://gitlab.xiph.org/xiph/libopusenc.git"
