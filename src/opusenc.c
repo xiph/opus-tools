@@ -176,7 +176,7 @@ static void usage(void)
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for big endian, 0 for little (default: 0)\n");
   printf(" --ignorelength     Ignore the data length in Wave headers\n");
-  printf(" --channels <ambix> Override the format of the input channels\n");
+  printf(" --channels         Override the format of the input channels (ambix, discrete)\n");
   printf("\nDiagnostic options:\n");
   printf(" --serial n         Force use of a specific stream serial number\n");
   printf(" --save-range file  Save check values for every frame to a file\n");
@@ -637,9 +637,11 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "channels")==0) {
           if (strcmp(optarg, "ambix")==0) {
             inopt.channels_format=CHANNELS_FORMAT_AMBIX;
+          } else if (strcmp(optarg, "discrete")==0) {
+            inopt.channels_format=CHANNELS_FORMAT_DISCRETE;
           } else {
             fatal("Invalid input format: %s\n"
-              "--channels only supports 'ambix'\n",
+              "--channels only supports 'ambix' or 'discrete'\n",
               optarg);
           }
         } else if (strcmp(optname, "serial")==0) {
@@ -881,6 +883,11 @@ int main(int argc, char **argv)
     fatal("Error: downmixing is currently unimplemented for ambisonics input.\n");
   }
 
+  if (downmix>0&&inopt.channels_format==CHANNELS_FORMAT_DISCRETE) {
+    /*Downmix of uncoupled channels not specified.*/
+    fatal("Error: downmixing is currently unimplemented for independent input.\n");
+  }
+
   if (inopt.channels_format==CHANNELS_FORMAT_DEFAULT) {
     if (downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)) {
       if (!quiet) fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
@@ -904,6 +911,8 @@ int main(int argc, char **argv)
       (including the non-diegetic stereo track). For other orders with no
       demixing matrices currently available, use channel mapping 2.*/
     mapping_family=(chan>=4&&chan<=18)?3:2;
+  } else if (inopt.channels_format==CHANNELS_FORMAT_DISCRETE) {
+    mapping_family=255;
   } else {
     mapping_family=chan>8?255:chan>2;
   }

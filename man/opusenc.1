@@ -312,12 +312,13 @@ Ignore the data length in Wave headers.
 The length will always be ignored when it is implausible (very small or very
 large), but some stdin usage may still need this option to avoid truncation.
 .TP
-.B --channels <ambix>
+.B --channels <ambix, discrete>
 Override the format of the input channels.
 The "ambix" option indicates that the input is ambisonics using ACN channel
 ordering with SN3D normalization. All channels in a full ambisonics order must
 be included. A pair of non-diegetic stereo channels can be optionally placed
-after the ambisonics channels.
+after the ambisonics channels. The option "discrete" forces uncoupled
+channels.
 .SS "Diagnostic options"
 .TP
 .BI --serial " N"

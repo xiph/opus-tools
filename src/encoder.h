@@ -18,6 +18,7 @@
 
 #define CHANNELS_FORMAT_DEFAULT  0
 #define CHANNELS_FORMAT_AMBIX    1
+#define CHANNELS_FORMAT_DISCRETE 2
 
 typedef long (*audio_read_func)(void *src, float *buffer, int samples);
 
