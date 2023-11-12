@@ -122,16 +122,12 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
 
     for(j=0; j < sep-comment; j++) {
         if(comment[j] < 0x20 || comment[j] > 0x7D) {
-            oi_warn(_("WARNING: Invalid comment fieldname in "
+            oi_warn(_("WARNING: Invalid comment tag in "
                    "comment %d (stream %d): \"%s\"\n"),
                    i, stream->num, comment);
-            broken = 1;
-            break;
+            return;
         }
     }
-
-    if(broken)
-        return;
 
     val = (unsigned char *)comment;
 
@@ -286,15 +282,15 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
          }
          len>>=2;
          data_sz=3*len;
-         if(data_sz > 0) {
+         if(data_sz > 2) {
              if(comment[comment_length - 1] == '=') {
                  data_sz--;
-             }
-             if(comment[comment_length - 2] == '=') {
-                 data_sz--;
+                 if(comment[comment_length - 2] == '=') {
+                     data_sz--;
+                 }
              }
          }
-         data=(unsigned char *)malloc(data_sz*sizeof(*data));
+         data=data_sz>0?(unsigned char *)malloc(data_sz*sizeof(*data)):NULL;
          for (j = 0; j < len; j++) {
              ogg_uint32_t value;
              int          k;
