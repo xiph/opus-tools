@@ -101,10 +101,15 @@ Sizes greater than 20\ ms are only interesting at fairly low bitrates.
 Set expected packet loss in percent (default: 0).
 .TP
 .B --downmix-mono
-Downmix to mono.
+Downmix stereo, surround, ambisonics, or discrete audio channels to mono.
+Audio that is already mono is unchanged.
+Ambisonic downmixes include a downmix of any non-diegetic channels.
+Independent discrete channels are downmixed by weighting each channel equally.
 .TP
 .B --downmix-stereo
-Downmix multichannel speaker configurations to stereo.
+Downmix surround or ambisonics to stereo.  Mono and stereo audio is unchanged.
+Ambisonic downmixes include any non-diegetic channels.
+Independent discrete channels are downmixed to mono.
 .TP
 .B --no-phase-inv
 Disable use of phase inversion for intensity stereo.
@@ -312,13 +317,16 @@ Ignore the data length in Wave headers.
 The length will always be ignored when it is implausible (very small or very
 large), but some stdin usage may still need this option to avoid truncation.
 .TP
-.B --channels <ambix, discrete>
+.BR --channels " " ambix | discrete
 Override the format of the input channels.
-The "ambix" option indicates that the input is ambisonics using ACN channel
+.IP
+"ambix" indicates that the input is ambisonics using ACN channel
 ordering with SN3D normalization. All channels in a full ambisonics order must
 be included. A pair of non-diegetic stereo channels can be optionally placed
-after the ambisonics channels. The option "discrete" forces uncoupled
-channels.
+after the ambisonics channels.
+.IP
+"discrete" indicates that the input channels are independent discrete channels
+with no assigned meaning or speaker position.
 .SS "Diagnostic options"
 .TP
 .BI --serial " N"

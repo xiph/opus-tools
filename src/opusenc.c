@@ -176,7 +176,7 @@ static void usage(void)
   printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
   printf(" --raw-endianness n 1 for big endian, 0 for little (default: 0)\n");
   printf(" --ignorelength     Ignore the data length in Wave headers\n");
-  printf(" --channels         Override the format of the input channels (ambix, discrete)\n");
+  printf(" --channels fmt     Override the format of the input channels (ambix, discrete)\n");
   printf("\nDiagnostic options:\n");
   printf(" --serial n         Force use of a specific stream serial number\n");
   printf(" --save-range file  Save check values for every frame to a file\n");
@@ -360,9 +360,30 @@ static void validate_ambisonics_channel_count(int num_channels)
   if(nondiegetic_chs!=0&&nondiegetic_chs!=2) fatal("Error: invalid number of ambisonics channels.\n");
 }
 
+static const char *channels_format_name(int channels_format, int channels)
+{
+  static const char *format_name[8] =
+  {
+    "mono", "stereo", "linear surround", "quadraphonic",
+    "5.0 surround", "5.1 surround", "6.1 surround", "7.1 surround"
+  };
+
+  if (channels_format == CHANNELS_FORMAT_DEFAULT) {
+    if (channels >= 1 && channels <= 8) {
+      return format_name[channels-1];
+    }
+  } else if (channels_format == CHANNELS_FORMAT_AMBIX) {
+    return "ambix";
+  }
+  return "discrete";
+}
+
 int main(int argc, char **argv)
 {
-  static const input_format raw_format = {NULL, 0, raw_open, wav_close, "raw",N_("RAW file reader")};
+  static const input_format raw_format =
+  {
+    NULL, 0, raw_open, wav_close, "Raw", N_("Raw file reader")
+  };
   struct option long_options[] =
   {
     {"quiet", no_argument, NULL, 0},
@@ -452,6 +473,8 @@ int main(int argc, char **argv)
   int                serialno;
   opus_int32         lookahead=0;
   int                mapping_family;
+  int                orig_channels;
+  int                orig_channels_format;
 #ifdef WIN_UNICODE
   int argc_utf8;
   char **argv_utf8;
@@ -877,25 +900,19 @@ int main(int argc, char **argv)
       "Channel count must be in the range 1 to 255.\n", inopt.channels);
   }
 
-  if (downmix>0&&inopt.channels_format==CHANNELS_FORMAT_AMBIX) {
-    /*Ambisonics channels should be downmixed to mono or stereo, and then
-      encoded using channel mapping family 0.*/
-    fatal("Error: downmixing is currently unimplemented for ambisonics input.\n");
-  }
-
-  if (downmix>0&&inopt.channels_format==CHANNELS_FORMAT_DISCRETE) {
-    /*Downmix of uncoupled channels not specified.*/
-    fatal("Error: downmixing is currently unimplemented for independent input.\n");
-  }
-
   if (inopt.channels_format==CHANNELS_FORMAT_DEFAULT) {
     if (downmix==0&&inopt.channels>2&&bitrate>0&&bitrate<(16000*inopt.channels)) {
       if (!quiet) fprintf(stderr,"Notice: Surround bitrate less than 16 kbit/s per channel, downmixing.\n");
       downmix=inopt.channels>8?1:2;
     }
+  } else if (inopt.channels_format==CHANNELS_FORMAT_AMBIX) {
+    validate_ambisonics_channel_count(inopt.channels);
   }
 
-  if (downmix>0&&downmix<inopt.channels) downmix=setup_downmix(&inopt,downmix);
+  orig_channels = inopt.channels;
+  orig_channels_format = inopt.channels_format;
+
+  if (downmix>0) downmix=setup_downmix(&inopt, downmix);
   else downmix=0;
 
   rate=inopt.rate;
@@ -906,7 +923,6 @@ int main(int argc, char **argv)
       ((double)inopt.total_samples_per_channel * (48000./(double)rate));
 
   if (inopt.channels_format==CHANNELS_FORMAT_AMBIX) {
-    validate_ambisonics_channel_count(chan);
     /*Use channel mapping 3 for orders {1, 2, 3} with 4 to 18 channels
       (including the non-diegetic stereo track). For other orders with no
       demixing matrices currently available, use channel mapping 2.*/
@@ -1051,32 +1067,35 @@ int main(int argc, char **argv)
 
   if (!quiet) {
     int opus_app;
-    fprintf(stderr,"Encoding using %s",opus_version);
+    fprintf(stderr, "Encoding using %s", opus_version);
     ret = ope_encoder_ctl(enc, OPUS_GET_APPLICATION(&opus_app));
     if (ret != OPE_OK) fprintf(stderr, "\n");
-    else if (opus_app==OPUS_APPLICATION_VOIP) fprintf(stderr," (VoIP)\n");
-    else if (opus_app==OPUS_APPLICATION_AUDIO) fprintf(stderr," (audio)\n");
-    else if (opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY) fprintf(stderr," (low-delay)\n");
-    else fprintf(stderr," (unknown application)\n");
-    fprintf(stderr,"-----------------------------------------------------\n");
-    fprintf(stderr,"   Input: %0.6g kHz, %d channel%s\n",
-            rate/1000.,chan,chan<2?"":"s");
-    fprintf(stderr,"  Output: %d channel%s (",chan,chan<2?"":"s");
-    if (data.nb_coupled>0) fprintf(stderr,"%d coupled",data.nb_coupled*2);
+    else if (opus_app==OPUS_APPLICATION_VOIP) fprintf(stderr, " (VoIP)\n");
+    else if (opus_app==OPUS_APPLICATION_AUDIO) fprintf(stderr, " (audio)\n");
+    else if (opus_app==OPUS_APPLICATION_RESTRICTED_LOWDELAY) fprintf(stderr, " (low-delay)\n");
+    else fprintf(stderr, " (unknown application)\n");
+    fprintf(stderr, "-----------------------------------------------------\n");
+    fprintf(stderr, "   Input: %s, %0.6g kHz, %d channel%s, %s\n",
+            in_format->format, rate/1000.,
+            orig_channels, orig_channels==1?"":"s",
+            channels_format_name(orig_channels_format, orig_channels));
+    fprintf(stderr, "  Output: Opus, %d channel%s (", chan, chan==1?"":"s");
+    if (data.nb_coupled>0) fprintf(stderr, "%d coupled", data.nb_coupled*2);
     if (data.nb_streams-data.nb_coupled>0) fprintf(stderr,
-       "%s%d uncoupled",data.nb_coupled>0?", ":"",
+       "%s%d uncoupled", data.nb_coupled>0?", ":"",
        data.nb_streams-data.nb_coupled);
-    fprintf(stderr,")\n          %0.2gms packets, %0.6g kbit/s%s\n",
+    fprintf(stderr, "), %s\n          %0.2gms packets, %0.6g kbit/s%s\n",
+       channels_format_name(inopt.channels_format, chan),
        frame_size/(48000/1000.), bitrate/1000.,
        with_hard_cbr?" CBR":with_cvbr?" CVBR":" VBR");
-    fprintf(stderr," Preskip: %d\n",lookahead);
+    fprintf(stderr, " Preskip: %d\n", lookahead);
     if (data.frange!=NULL) {
       fprintf(stderr, "          Writing final range file %s\n", range_file);
     }
-    fprintf(stderr,"\n");
+    fprintf(stderr, "\n");
   }
 
-  if (strcmp(outFile,"-")==0) {
+  if (strcmp(outFile, "-")==0) {
 #if defined WIN32 || defined _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
 #endif

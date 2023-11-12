@@ -112,10 +112,10 @@
 
 /* Define the supported formats here */
 input_format formats[] = {
-    {wav_id, 12, wav_open, wav_close, "wav", N_("WAV file reader")},
-    {aiff_id, 12, aiff_open, wav_close, "aiff", N_("AIFF/AIFC file reader")},
-    {flac_id,     0x10000, flac_open, flac_close, "flac", N_("FLAC file reader")},
-    {oggflac_id, 33, flac_open, flac_close, "ogg", N_("Ogg FLAC file reader")},
+    {wav_id, 12, wav_open, wav_close, "WAV", N_("WAV file reader")},
+    {aiff_id, 12, aiff_open, wav_close, "AIFF", N_("AIFF/AIFC file reader")},
+    {flac_id,     0x10000, flac_open, flac_close, "FLAC", N_("FLAC file reader")},
+    {oggflac_id, 33, flac_open, flac_close, "Ogg FLAC", N_("Ogg FLAC file reader")},
     {NULL, 0, NULL, NULL, NULL, NULL}
 };
 
@@ -923,25 +923,24 @@ static long read_downmix(void *data, float *buffer, int samples)
     long in_samples = d->real_reader(d->real_readdata, d->bufs, samples);
     int i,j,k,in_ch,out_ch;
 
-    in_ch=d->in_channels;
-    out_ch=d->out_channels;
+    in_ch = d->in_channels;
+    out_ch = d->out_channels;
 
-    for (i=0;i<in_samples;i++) {
-      for (j=0;j<out_ch;j++) {
-        float *samp;
-        samp=&buffer[i*out_ch+j];
-        *samp=0;
-        for (k=0;k<in_ch;k++) {
-          *samp+=d->bufs[i*in_ch+k]*d->matrix[in_ch*j+k];
+    for (i=0; i<in_samples; ++i) {
+        for (j=0; j<out_ch; ++j) {
+            float *samp = &buffer[i*out_ch+j];
+            *samp = 0;
+            for (k=0; k<in_ch; ++k) {
+                *samp += d->bufs[i*in_ch+k] * d->matrix[in_ch*j+k];
+            }
         }
-      }
     }
     return in_samples;
 }
 
 int setup_downmix(oe_enc_opt *opt, int out_channels)
 {
-    static const float stupid_matrix[7][8][2] = {
+    static const float surround_downmix_matrix[7][8][2] = {
       /*2*/  {{1,0},{0,1}},
       /*3*/  {{1,0},{0.7071f,0.7071f},{0,1}},
       /*4*/  {{1,0},{0,1},{0.866f,0.5f},{0.5f,0.866f}},
@@ -950,17 +949,30 @@ int setup_downmix(oe_enc_opt *opt, int out_channels)
       /*7*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.6123f,0.6123f},{0.7071f,0.7071f}},
       /*8*/  {{1,0},{0.7071f,0.7071f},{0,1},{0.866f,0.5f},{0.5f,0.866f},{0.866f,0.5f},{0.5f,0.866f},{0.7071f,0.7071f}},
     };
-    float sum;
     downmix *d;
-    int i,j;
+    int i, j;
 
-    if (opt->channels<=out_channels || out_channels>2 || opt->channels<=0 || out_channels<=0) {
-        fprintf(stderr, _("Downmix must actually downmix and only knows mono/stereo out.\n"));
-        return 0;
+    if ((opt->channels_format == CHANNELS_FORMAT_DEFAULT && opt->channels <= 8)
+     || (opt->channels_format == CHANNELS_FORMAT_AMBIX)) {
+        if (out_channels != 1 && out_channels != 2) {
+            fprintf(stderr, _("Downmix must be to mono or stereo.\n"));
+            out_channels = 2;
+        }
+    } else if (out_channels != 1) {
+        fprintf(stderr, _("Discrete channels can only be downmixed to mono.\n"));
+        out_channels = 1;
     }
 
-    if (out_channels==2 && opt->channels>8) {
-        fprintf(stderr, _("Downmix only knows how to mix >8ch to mono.\n"));
+    if (opt->channels_format == CHANNELS_FORMAT_DEFAULT) {
+        if (opt->channels <= out_channels) {
+            /* nothing to do */
+            return 0;
+        }
+    }
+
+    if (opt->channels <= 1) {
+        /* metadata-only change */
+        opt->channels_format = CHANNELS_FORMAT_DEFAULT;
         return 0;
     }
 
@@ -969,27 +981,58 @@ int setup_downmix(oe_enc_opt *opt, int out_channels)
     d->matrix = malloc(sizeof(float)*opt->channels*out_channels);
     d->real_reader = opt->read_samples;
     d->real_readdata = opt->readdata;
-    d->in_channels=opt->channels;
-    d->out_channels=out_channels;
+    d->in_channels = opt->channels;
+    d->out_channels = out_channels;
 
-    if (out_channels==1&&d->in_channels>8) {
-      for (i=0;i<d->in_channels;i++)d->matrix[i]=1.0f/d->in_channels;
-    } else if (out_channels==2) {
-      for (j=0;j<d->out_channels;j++)
-        for (i=0;i<d->in_channels;i++)d->matrix[d->in_channels*j+i]=
-          stupid_matrix[opt->channels-2][i][j];
+    if (opt->channels_format == CHANNELS_FORMAT_DEFAULT && d->in_channels <= 8) {
+        /* surround downmix */
+        float sum;
+        if (out_channels == 2) {
+            for (j = 0; j < out_channels; ++j)
+                for (i = 0; i < d->in_channels; ++i)
+                    d->matrix[d->in_channels*j+i] =
+                        surround_downmix_matrix[d->in_channels-2][i][j];
+        } else {
+            for (i = 0; i < d->in_channels; ++i)
+                d->matrix[i] =
+                    (surround_downmix_matrix[d->in_channels-2][i][0]) +
+                    (surround_downmix_matrix[d->in_channels-2][i][1]);
+        }
+        sum = 0;
+        for (i = 0; i < d->in_channels*out_channels; ++i)
+            sum += d->matrix[i];
+        sum = (float)out_channels / sum;
+        for (i = 0; i < d->in_channels*out_channels; ++i)
+            d->matrix[i] *= sum;
+    } else if (opt->channels_format == CHANNELS_FORMAT_AMBIX) {
+        /* downmix according to RFC 8486 section 4 */
+        int order_plus_one = sqrt(d->in_channels);
+        int nondiegetic_channels =
+            d->in_channels - order_plus_one * order_plus_one == 2 ? 2 : 0;
+        int use_y = out_channels == 2 && d->in_channels >= 4;
+        for (i = 1; i < d->in_channels*out_channels; ++i)
+            d->matrix[i] = 0.0f;
+        d->matrix[0] = 1.0f / (1 + use_y + nondiegetic_channels);
+        if (out_channels == 2) {
+            d->matrix[d->in_channels] = d->matrix[0];
+            if (use_y) {
+                d->matrix[1] = d->matrix[0];
+                d->matrix[d->in_channels+1] = -d->matrix[0];
+            }
+        }
+        if (nondiegetic_channels == 2) {
+            d->matrix[d->in_channels-2] =
+                d->matrix[out_channels*d->in_channels-1] =
+                    d->matrix[0] * out_channels;
+        }
     } else {
-      for (i=0;i<d->in_channels;i++)d->matrix[i]=
-        (stupid_matrix[opt->channels-2][i][0])+
-        (stupid_matrix[opt->channels-2][i][1]);
+        for (i = 0; i < d->in_channels; ++i)
+            d->matrix[i] = 1.0f / d->in_channels;
     }
-    sum=0;
-    for (i=0;i<d->in_channels*d->out_channels;i++)sum+=d->matrix[i];
-    sum=(float)out_channels/sum;
-    for (i=0;i<d->in_channels*d->out_channels;i++)d->matrix[i]*=sum;
+
     opt->read_samples = read_downmix;
     opt->readdata = d;
-
+    opt->channels_format = CHANNELS_FORMAT_DEFAULT;
     opt->channels = out_channels;
     return out_channels;
 }
