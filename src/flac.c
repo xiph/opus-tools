@@ -377,6 +377,7 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
      FLAC__METADATA_TYPE_PICTURE);
   flac->inopt=opt;
   flac->channels=0;
+  rewind(in);
   flac->f=in;
   flac->oldbuf=malloc(buflen*sizeof(*flac->oldbuf));
   memcpy(flac->oldbuf,oldbuf,buflen*sizeof(*flac->oldbuf));
