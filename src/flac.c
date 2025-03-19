@@ -80,7 +80,7 @@ static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder,
   flacfile *flac;
   (void)decoder;
   flac=(flacfile *)client_data;
-  return feof(flac->f)?true:false;
+  return flac->bufpos>=flac->buflen&&feof(flac->f)?true:false;
 }
 
 /*Callback to process a metadata packet.*/
@@ -292,6 +292,7 @@ int flac_id(unsigned char *buf,int len)
   if(len<4)return 0;
   /*Normal FLAC.*/
   if(!memcmp(buf,"fLaC",4))return 1;
+  if(len<14)return 0;
   if(!memcmp(buf,"ID3",3)){
     int i;
     int id3_len = 0;
