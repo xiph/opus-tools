@@ -331,6 +331,9 @@ AS_IF([test "$enable_stack_protector" = "yes"],
     ])
  ])
 
+AS_IF([test x$ac_cv_c_compiler_gnu = xyes],
+    [AX_ADD_FORTIFY_SOURCE]
+)
 
 AC_ARG_ENABLE([pie],
     [AS_HELP_STRING([--disable-pie],[Disable PIE/RELRO hardening])],,
