@@ -719,7 +719,7 @@ long wav_read(void *in, float *buffer, int samples)
     int sampbyte = f->samplesize / 8;
     int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
         ? (int)(f->totalsamples - f->samplesread) : samples;
-    signed char *buf = alloca(realsamples*sampbyte*f->channels);
+    unsigned char *buf = alloca(realsamples*sampbyte*f->channels);
     int i,j;
     int *ch_permute = f->channel_permute;
 
@@ -730,24 +730,19 @@ long wav_read(void *in, float *buffer, int samples)
     {
         if (f->unsigned8bit)
         {
-            unsigned char *bufu = (unsigned char *)buf;
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j]=((int)(bufu[i*f->channels + ch_permute[j]])-128)/128.0f;
-                }
-            }
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((int)buf[i*f->channels + ch_permute[j]] - 128)
+                        / 128.0f;
         }
         else
         {
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j]=buf[i*f->channels + ch_permute[j]]/128.0f;
-                }
-            }
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((signed char)buf[i*f->channels + ch_permute[j]])
+                        / 128.0f;
         }
     }
     else if (f->samplesize==16)
@@ -755,56 +750,49 @@ long wav_read(void *in, float *buffer, int samples)
         if (!f->bigendian)
         {
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j] = ((buf[i*2*f->channels + 2*ch_permute[j] + 1]<<8) |
-                                    (buf[i*2*f->channels + 2*ch_permute[j]] & 0xff))/32768.0f;
-                }
-            }
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((((buf[2*(i*f->channels + ch_permute[j]) + 1] << 8)
+                         | (buf[2*(i*f->channels + ch_permute[j])    ]))
+                          ^ 0x8000) - 0x8000) / 32768.0f;
         }
         else
         {
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j]=((buf[i*2*f->channels + 2*ch_permute[j]]<<8) |
-                                  (buf[i*2*f->channels + 2*ch_permute[j] + 1] & 0xff))/32768.0f;
-                }
-            }
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((((buf[2*(i*f->channels + ch_permute[j])    ] << 8)
+                         | (buf[2*(i*f->channels + ch_permute[j]) + 1]))
+                          ^ 0x8000) - 0x8000) / 32768.0f;
         }
     }
     else if (f->samplesize==24)
     {
-        if (!f->bigendian) {
+        if (!f->bigendian)
+        {
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j] = ((buf[i*3*f->channels + 3*ch_permute[j] + 2] << 16) |
-                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 1] << 8) |
-                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j]] & 0xff))
-                        / 8388608.0f;
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((((buf[3*(i*f->channels + ch_permute[j]) + 2] << 16)
+                         | (buf[3*(i*f->channels + ch_permute[j]) + 1] <<  8)
+                         | (buf[3*(i*f->channels + ch_permute[j])    ]))
+                          ^ 0x800000) - 0x800000) / 8388608.0f;
 
-                }
-            }
         }
-        else {
+        else
+        {
             for (i = 0; i < realsamples; i++)
-            {
-                for (j=0; j < f->channels; j++)
-                {
-                    buffer[i*f->channels+j] = ((buf[i*3*f->channels + 3*ch_permute[j]] << 16) |
-                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 1] << 8) |
-                      (((unsigned char *)buf)[i*3*f->channels + 3*ch_permute[j] + 2] & 0xff))
-                        / 8388608.0f;
+                for (j = 0; j < f->channels; j++)
+                    buffer[i*f->channels+j] =
+                        ((((buf[3*(i*f->channels + ch_permute[j])    ] << 16)
+                         | (buf[3*(i*f->channels + ch_permute[j]) + 1] <<  8)
+                         | (buf[3*(i*f->channels + ch_permute[j]) + 2]))
+                          ^ 0x800000) - 0x800000) / 8388608.0f;
 
-                }
-            }
         }
     }
-    else {
+    else
+    {
         fprintf(stderr, _("Internal error: attempt to read unsupported "
                           "bitdepth %d\n"), f->samplesize);
         return 0;
