@@ -609,6 +609,7 @@ int main(int argc, char **argv)
           inopt.rawmode=1;
           inopt.rawmode_f=1;
           inopt.samplesize=32;
+          save_cmd=0;
         } else if (strcmp(optname, "downmix-mono")==0) {
           downmix=1;
         } else if (strcmp(optname, "downmix-stereo")==0) {
@@ -667,8 +668,10 @@ int main(int argc, char **argv)
               "--channels only supports 'ambix' or 'discrete'\n",
               optarg);
           }
+          save_cmd=0;
         } else if (strcmp(optname, "serial")==0) {
           serialno=atoi(optarg);
+          save_cmd=0;
         } else if (strcmp(optname, "set-ctl-int")==0) {
           int target,request;
           char *spos,*tpos;
@@ -801,11 +804,14 @@ int main(int argc, char **argv)
           if (picture_type>=1&&picture_type<=2) seen_file_icons|=picture_type;
         } else if (strcmp(optname, "padding")==0) {
           comment_padding=atoi(optarg);
+          save_cmd=0;
         } else if (strcmp(optname, "discard-comments")==0) {
           inopt.copy_comments=0;
           inopt.copy_pictures=0;
+          save_cmd=0;
         } else if (strcmp(optname, "discard-pictures")==0) {
           inopt.copy_pictures=0;
+          save_cmd=0;
         }
         /*Options whose arguments would leak file paths or just end up as
            metadata, or that relate only to input file handling or console
