@@ -138,11 +138,15 @@ static void usage(void)
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
   printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
+  printf(" --bandwidth <bw>   Set audio bandwidth (NB, MB, WB, SWB, FB)\n");
+  printf(" --application <app> Set audio application (voip, audio, lowdelay)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
   printf(" --music            Tune low bitrates for music (override automatic detection)\n");
   printf(" --speech           Tune low bitrates for speech (override automatic detection)\n");
+  printf(" --dtx              Enable DTX mode (default disabled)\n");
+  printf(" --inbandfec        Enable enable SILK inband FEC (default disabled)\n");
   printf(" --comp n           Set encoding complexity (0-10, default: 10 (slowest))\n");
   printf(" --framesize n      Set maximum frame size in milliseconds\n");
   printf("                      (2.5, 5, 10, 20, 40, 60, default: 20)\n");
@@ -391,11 +395,15 @@ int main(int argc, char **argv)
   {
     {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
+    {"bandwidth", required_argument, NULL, 0},
+    {"application", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
     {"vbr",no_argument,NULL, 0},
     {"cvbr",no_argument,NULL, 0},
     {"music", no_argument, NULL, 0},
     {"speech", no_argument, NULL, 0},
+    {"dtx",no_argument,NULL, 0},
+    {"inbandfec",no_argument,NULL, 0},
     {"comp", required_argument, NULL, 0},
     {"complexity", required_argument, NULL, 0},
     {"framesize", required_argument, NULL, 0},
@@ -457,12 +465,16 @@ int main(int argc, char **argv)
   /*Settings*/
   int                quiet=0;
   opus_int32         bitrate=-1;
+  int                bandwidth=OPUS_AUTO;
+  int                application=OPUS_AUTO;
   opus_int32         rate=48000;
   opus_int32         frame_size=960;
   opus_int32         opus_frame_param = OPUS_FRAMESIZE_20_MS;
   int                chan=2;
   int                with_hard_cbr=0;
   int                with_cvbr=0;
+  int                with_dtx=0;
+  int                with_inbandfec=0;
   int                signal_type=OPUS_AUTO;
   int                expect_loss=0;
   int                complexity=10;
@@ -561,6 +573,32 @@ int main(int argc, char **argv)
           save_cmd=0;
         } else if (strcmp(optname, "bitrate")==0) {
           bitrate=(opus_int32)(atof(optarg)*1000.);
+        } else if (strcmp(optname, "bandwidth")==0) {
+          if (strcmp(optarg, "NB")==0) {
+            bandwidth = OPUS_BANDWIDTH_NARROWBAND;
+          } else if (strcmp(optarg, "MB")==0) {
+            bandwidth = OPUS_BANDWIDTH_MEDIUMBAND;
+          } else if (strcmp(optarg, "WB")==0) {
+            bandwidth = OPUS_BANDWIDTH_WIDEBAND;
+          } else if (strcmp(optarg, "SWB")==0) {
+            bandwidth = OPUS_BANDWIDTH_SUPERWIDEBAND;
+          } else if (strcmp(optarg, "FB")==0) {
+            bandwidth = OPUS_BANDWIDTH_FULLBAND;
+          } else {
+            fatal("Unknown bandwidth %s. Supported are NB, MB, WB, SWB, FB.\n",
+                  optarg);
+          }
+        } else if (strcmp(optname, "application")==0) {
+          if (strcmp(optarg, "voip")==0) {
+            application = OPUS_APPLICATION_VOIP;
+          } else if (strcmp(optarg, "audio")==0) {
+            application = OPUS_APPLICATION_AUDIO;
+          } else if (strcmp(optarg, "lowdelay")==0) {
+            application = OPUS_APPLICATION_RESTRICTED_LOWDELAY;
+          } else {
+            fatal("Unknown application %s. Supported are voip, audio, lowdelay.\n",
+                  optarg);
+          }
         } else if (strcmp(optname, "hard-cbr")==0) {
           with_hard_cbr=1;
           with_cvbr=0;
@@ -570,6 +608,10 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "vbr")==0) {
           with_cvbr=0;
           with_hard_cbr=0;
+        } else if (strcmp(optname, "dtx")==0) {
+          with_dtx=1;
+        } else if (strcmp(optname, "inbandfec")==0) {
+          with_inbandfec=1;
         } else if (strcmp(optname, "help")==0) {
           usage();
           exit(0);
@@ -999,6 +1041,21 @@ int main(int argc, char **argv)
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_BITRATE %d failed: %s\n", bitrate, ope_strerror(ret));
   }
+
+  if (bandwidth!=OPUS_AUTO) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_BANDWIDTH(bandwidth));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_BANDWIDTH %d failed: %s\n", bandwidth, ope_strerror(ret));
+    }
+  }
+
+  if (application!=OPUS_AUTO) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_APPLICATION(application));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_APPLICATION %d failed: %s\n", application, ope_strerror(ret));
+    }
+  }
+
   ret = ope_encoder_ctl(enc, OPUS_SET_VBR(!with_hard_cbr));
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_VBR %d failed: %s\n", !with_hard_cbr, ope_strerror(ret));
@@ -1013,6 +1070,20 @@ int main(int argc, char **argv)
   ret = ope_encoder_ctl(enc, OPUS_SET_SIGNAL(signal_type));
   if (ret != OPE_OK) {
     fatal("Error: OPUS_SET_SIGNAL failed: %s\n", ope_strerror(ret));
+  }
+  if (with_dtx) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_DTX(with_dtx));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_DTX %d failed: %s\n",
+        with_dtx, ope_strerror(ret));
+    }
+  }
+  if (with_inbandfec) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_INBAND_FEC(with_inbandfec));
+    if (ret != OPE_OK) {
+      fatal("Error: OPUS_SET_INBAND_FEC %d failed: %s\n",
+        with_inbandfec, ope_strerror(ret));
+    }
   }
   ret = ope_encoder_ctl(enc, OPUS_SET_COMPLEXITY(complexity));
   if (ret != OPE_OK) {
