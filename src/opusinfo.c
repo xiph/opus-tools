@@ -106,7 +106,7 @@ void oi_error(char *format, ...)
 void check_xiph_comment(stream_processor *stream, int i, const char *comment,
     int comment_length)
 {
-    char *sep = strchr(comment, '=');
+    const char *sep = strchr(comment, '=');
     int j;
     int broken = 0;
     unsigned char *val;
