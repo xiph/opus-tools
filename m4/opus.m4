@@ -10,10 +10,10 @@ AC_DEFUN([XIPH_PATH_OPUS],
 [dnl
 dnl Get the cflags and libraries
 dnl
-AC_ARG_WITH(opus,AC_HELP_STRING([--with-opus=PFX],[Prefix where opus is installed (optional)]), opus_prefix="$withval", opus_prefix="")
-AC_ARG_WITH(opus-libraries,AC_HELP_STRING([--with-opus-libraries=DIR],[Directory where the opus library is installed (optional)]), opus_libraries="$withval", opus_libraries="")
-AC_ARG_WITH(opus-includes,AC_HELP_STRING([--with-opus-includes=DIR],[Directory where the opus header files are installed (optional)]), opus_includes="$withval", opus_includes="")
-AC_ARG_ENABLE(opustest,AC_HELP_STRING([--disable-opustest],[Do not try to compile and run a test opus program]),, enable_opustest=yes)
+AC_ARG_WITH(opus,AS_HELP_STRING([--with-opus=PFX],[Prefix where opus is installed (optional)]), opus_prefix="$withval", opus_prefix="")
+AC_ARG_WITH(opus-libraries,AS_HELP_STRING([--with-opus-libraries=DIR],[Directory where the opus library is installed (optional)]), opus_libraries="$withval", opus_libraries="")
+AC_ARG_WITH(opus-includes,AS_HELP_STRING([--with-opus-includes=DIR],[Directory where the opus header files are installed (optional)]), opus_includes="$withval", opus_includes="")
+AC_ARG_ENABLE(opustest,AS_HELP_STRING([--disable-opustest],[Do not try to compile and run a test opus program]),, enable_opustest=yes)
 
   if test "x$opus_libraries" != "x" ; then
     OPUS_LIBS="-L$opus_libraries"
@@ -57,7 +57,7 @@ dnl
 dnl Now check if the installed Opus is sufficiently new.
 dnl
       rm -f conf.opustest
-      AC_TRY_RUN([
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +69,7 @@ int main ()
   return 0;
 }
 
-],, no_opus=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],[],[no_opus=yes],[echo $ac_n "cross compiling; assumed OK... $ac_c"])
        CFLAGS="$ac_save_CFLAGS"
        LIBS="$ac_save_LIBS"
   fi
@@ -88,10 +88,10 @@ int main ()
        echo "*** Could not run Opus test program, checking why..."
        CFLAGS="$CFLAGS $OPUS_CFLAGS"
        LIBS="$LIBS $OPUS_LIBS"
-       AC_TRY_LINK([
+       AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdio.h>
 #include <opus.h>
-],     [ return 0; ],
+]], [[ return 0; ]])],
        [ echo "*** The test program compiled, but did not run. This usually means"
        echo "*** that the run-time linker is not finding Opus or finding the wrong"
        echo "*** version of Opus. If it is not finding Opus, you'll need to set your"

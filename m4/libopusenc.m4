@@ -10,10 +10,10 @@ AC_DEFUN([XIPH_PATH_LIBOPUSENC],
 [dnl
 dnl Get the cflags and libraries
 dnl
-AC_ARG_WITH(libopusenc,AC_HELP_STRING([--with-libopusenc=PFX],[Prefix where libopusenc is installed (optional)]), libopusenc_prefix="$withval", libopusenc_prefix="")
-AC_ARG_WITH(libopusenc-libraries,AC_HELP_STRING([--with-libopusenc-libraries=DIR],[Directory where libopusenc library is installed (optional)]), libopusenc_libraries="$withval", libopusenc_libraries="")
-AC_ARG_WITH(libopusenc-includes,AC_HELP_STRING([--with-libopusenc-includes=DIR],[Directory where libopusenc header files are installed (optional)]), libopusenc_includes="$withval", libopusenc_includes="")
-AC_ARG_ENABLE(libopusenctest,AC_HELP_STRING([--disable-libopusenctest],[Do not try to compile and run a test libopusenc program]),, enable_libopusenctest=yes)
+AC_ARG_WITH(libopusenc,AS_HELP_STRING([--with-libopusenc=PFX],[Prefix where libopusenc is installed (optional)]), libopusenc_prefix="$withval", libopusenc_prefix="")
+AC_ARG_WITH(libopusenc-libraries,AS_HELP_STRING([--with-libopusenc-libraries=DIR],[Directory where libopusenc library is installed (optional)]), libopusenc_libraries="$withval", libopusenc_libraries="")
+AC_ARG_WITH(libopusenc-includes,AS_HELP_STRING([--with-libopusenc-includes=DIR],[Directory where libopusenc header files are installed (optional)]), libopusenc_includes="$withval", libopusenc_includes="")
+AC_ARG_ENABLE(libopusenctest,AS_HELP_STRING([--disable-libopusenctest],[Do not try to compile and run a test libopusenc program]),, enable_libopusenctest=yes)
 
   if test "x$libopusenc_libraries" != "x" ; then
     LIBOPUSENC_LIBS="-L$libopusenc_libraries"
@@ -57,7 +57,7 @@ dnl
 dnl Now check if the installed libopusenc is sufficiently new.
 dnl
       rm -f conf.libopusenctest
-      AC_TRY_RUN([
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +69,7 @@ int main ()
   return 0;
 }
 
-],, no_libopusenc=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],[],[no_libopusenc=yes],[echo $ac_n "cross compiling; assumed OK... $ac_c"])
        CFLAGS="$ac_save_CFLAGS"
        LIBS="$ac_save_LIBS"
   fi
@@ -88,10 +88,10 @@ int main ()
        echo "*** Could not run libopusenc test program, checking why..."
        CFLAGS="$CFLAGS $LIBOPUSENC_CFLAGS"
        LIBS="$LIBS $LIBOPUSENC_LIBS"
-       AC_TRY_LINK([
+       AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdio.h>
 #include <opusenc.h>
-],     [ return 0; ],
+]], [[ return 0; ]])],
        [ echo "*** The test program compiled, but did not run. This usually means"
        echo "*** that the run-time linker is not finding libopusenc or finding the wrong"
        echo "*** version of libopusenc. If it is not finding libopusenc, you'll need to set your"

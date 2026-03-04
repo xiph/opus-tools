@@ -11,10 +11,10 @@ AC_DEFUN([XIPH_PATH_OPUSFILE],
 [dnl
 dnl Get the cflags and libraries
 dnl
-AC_ARG_WITH(opusfile,AC_HELP_STRING([--with-opusfile=PFX],[Prefix where opusfile is installed (optional)]), opusfile_prefix="$withval", opusfile_prefix="")
-AC_ARG_WITH(opusfile-libraries,AC_HELP_STRING([--with-opusfile-libraries=DIR],[Directory where the opusfile library is installed (optional)]), opusfile_libraries="$withval", opusfile_libraries="")
-AC_ARG_WITH(opusfile-includes,AC_HELP_STRING([--with-opusfile-includes=DIR],[Directory where the opusfile header files are installed (optional)]), opusfile_includes="$withval", opusfile_includes="")
-AC_ARG_ENABLE(opusfiletest,AC_HELP_STRING([--disable-opusfiletest],[Do not try to compile and run a test opusfile program]),, enable_opusfiletest=yes)
+AC_ARG_WITH(opusfile,AS_HELP_STRING([--with-opusfile=PFX],[Prefix where opusfile is installed (optional)]), opusfile_prefix="$withval", opusfile_prefix="")
+AC_ARG_WITH(opusfile-libraries,AS_HELP_STRING([--with-opusfile-libraries=DIR],[Directory where the opusfile library is installed (optional)]), opusfile_libraries="$withval", opusfile_libraries="")
+AC_ARG_WITH(opusfile-includes,AS_HELP_STRING([--with-opusfile-includes=DIR],[Directory where the opusfile header files are installed (optional)]), opusfile_includes="$withval", opusfile_includes="")
+AC_ARG_ENABLE(opusfiletest,AS_HELP_STRING([--disable-opusfiletest],[Do not try to compile and run a test opusfile program]),, enable_opusfiletest=yes)
 
   if test "x$opusfile_libraries" != "x" ; then
     OPUSFILE_LIBS="-L$opusfile_libraries"
@@ -58,7 +58,7 @@ dnl
 dnl Now check if the installed libopusfile is sufficiently new.
 dnl
       rm -f conf.opusfiletest
-      AC_TRY_RUN([
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +70,7 @@ int main ()
   return 0;
 }
 
-],, no_opusfile=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],[],[no_opusfile=yes],[echo $ac_n "cross compiling; assumed OK... $ac_c"])
        CFLAGS="$ac_save_CFLAGS"
        LIBS="$ac_save_LIBS"
   fi
@@ -89,10 +89,10 @@ int main ()
        echo "*** Could not run libopusfile test program, checking why..."
        CFLAGS="$CFLAGS $OPUSFILE_CFLAGS"
        LIBS="$LIBS $OPUSFILE_LIBS"
-       AC_TRY_LINK([
+       AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdio.h>
 #include <opusfile.h>
-],     [ return 0; ],
+]], [[ return 0; ]])],
        [ echo "*** The test program compiled, but did not run. This usually means"
        echo "*** that the run-time linker is not finding libopusfile or finding the wrong"
        echo "*** version of libopusfile. If it is not finding libopusfile, you'll need to set"
