@@ -33,49 +33,6 @@ AC_C_INLINE
 
 LT_INIT
 
-#Use a hacked up version of autoconf's AC_C_RESTRICT because it's not
-#strong enough a test to detect old buggy versions of GCC (e.g. 2.95.3)
-#Note: Both this and the test for variable-size arrays below are also
-#      done by AC_PROG_CC_C99, but not thoroughly enough apparently.
-AC_CACHE_CHECK([for C/C++ restrict keyword], ac_cv_c_restrict,
-  [ac_cv_c_restrict=no
-   # The order here caters to the fact that C++ does not require restrict.
-   for ac_kw in __restrict __restrict__ _Restrict restrict; do
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-      [[typedef int * int_ptr;
-        int foo (int_ptr $ac_kw ip, int * $ac_kw baz[]) {
-        return ip[0];
-       }]],
-      [[int s[1];
-        int * $ac_kw t = s;
-        t[0] = 0;
-        return foo(t, (void *)0)]])],
-      [ac_cv_c_restrict=$ac_kw])
-     test "$ac_cv_c_restrict" != no && break
-   done
-  ])
-
-AH_VERBATIM([restrict],
-[/* Define to the equivalent of the C99 'restrict' keyword, or to
-   nothing if this is not supported.  Do not define if restrict is
-   supported directly.  */
-#undef restrict
-/* Work around a bug in Sun C++: it does not support _Restrict or
-   __restrict__, even though the corresponding Sun C compiler ends up with
-   "#define restrict _Restrict" or "#define restrict __restrict__" in the
-   previous line.  Perhaps some future version of Sun C++ will work with
-   restrict; if so, hopefully it defines __RESTRICT like Sun C does.  */
-#if defined __SUNPRO_CC && !defined __RESTRICT
-# define _Restrict
-# define __restrict__
-#endif])
-
-case $ac_cv_c_restrict in
-   restrict) ;;
-   no) AC_DEFINE([restrict], []) ;;
-   *)  AC_DEFINE_UNQUOTED([restrict], [$ac_cv_c_restrict]) ;;
-esac
-
 AC_MSG_CHECKING(for C99 variable-size arrays)
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],
                    [[static int x; char a[++x]; a[sizeof a - 1] = 0; int N; return a[0];]])],
@@ -85,14 +42,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],
       has_var_arrays=no
     ])
 AC_MSG_RESULT([$has_var_arrays])
-
-AC_ARG_ENABLE([assertions],
-    [AS_HELP_STRING([--enable-assertions],[enable additional software error checking])],,
-    [enable_assertions=no])
-
-AS_IF([test "$enable_assertions" = "yes"], [
-  AC_DEFINE([ENABLE_ASSERTIONS], [1], [Assertions])
-])
 
 if test "$CFLAGS" = "-g -O2"; then
     saved_CFLAGS="$CFLAGS"
@@ -387,7 +336,6 @@ AC_MSG_NOTICE([
 
     General configuration:
 
-      Assertion checking: ............ ${enable_assertions}
       FLAC input: .................... ${with_flac}
 
 ------------------------------------------------------------------------
