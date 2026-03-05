@@ -579,9 +579,10 @@ struct decode_cb_ctx {
    float loss_percent;
 };
 
-static int decode_cb(decode_cb_ctx *ctx, OpusMSDecoder *decoder, void *pcm,
+static int decode_cb(void *user_data, OpusMSDecoder *decoder, void *pcm,
  const ogg_packet *op, int nsamples, int nchannels, int format, int li)
 {
+   decode_cb_ctx *ctx = (decode_cb_ctx *)user_data;
    int lost;
    int ret;
    (void)nchannels;
