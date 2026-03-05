@@ -1159,9 +1159,11 @@ int main(int argc, char **argv)
         }
         last_spin_len=(int)strlen(sbuf);
         snprintf(sbuf+last_spin_len,54-last_spin_len,
-          "%02d:%02d:%02d.%02d %4.3gx realtime, %5.4g kbit/s",
-          (int)(coded_seconds/3600),(int)(coded_seconds/60)%60,
-          (int)(coded_seconds)%60,(int)(coded_seconds*100)%100,
+          "%02" I64FORMAT ":%02d:%02d.%02d %4.3gx realtime, %5.4g kbit/s",
+          (opus_int64)(coded_seconds/3600),
+          (int)((opus_int64)(coded_seconds/60)%60),
+          (int)((opus_int64)(coded_seconds)%60),
+          (int)((opus_int64)(coded_seconds*100)%100),
           coded_seconds/(wall_time>0?wall_time:1e-6),
           estbitrate/1000.);
         fprintf(stderr,"%s",sbuf);
