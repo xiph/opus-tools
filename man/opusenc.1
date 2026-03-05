@@ -50,6 +50,12 @@ In CVBR and Hard-CBR mode it specifies the specific output bitrate.
 The default for input with a sample rate of 44.1 kHz or higher is
 64 kbit/s per mono stream and 96 kbit/s per coupled pair.
 .TP
+.BI --bandwidth " N"
+Set audio bandwidth (NB, MB, WB, SWB, FB, default: auto).
+.TP
+.BI --application " N"
+Set audio application (voip, audio, lowdelay, default: auto).
+.TP
 .B --vbr
 Use variable bitrate encoding (default).
 In VBR mode the bitrate may go up and down freely depending on the content
@@ -110,6 +116,12 @@ Independent discrete channels are downmixed by weighting each channel equally.
 Downmix surround or ambisonics to stereo.  Mono and stereo audio is unchanged.
 Ambisonic downmixes include any non-diegetic channels.
 Independent discrete channels are downmixed to mono.
+.TP
+.B --dtx
+Enable SILK DTX.
+.TP
+.B --inbandfec
+Enable in-band FEC.
 .TP
 .B --no-phase-inv
 Disable use of phase inversion for intensity stereo.
