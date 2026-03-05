@@ -42,6 +42,10 @@
 #include <string.h>
 #include <ctype.h> /*tolower()*/
 
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+
 #include <opus.h>
 #include <opusfile.h>
 
