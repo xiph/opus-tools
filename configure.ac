@@ -212,8 +212,10 @@ AS_IF([test "$with_flac" = "yes"],
 dnl opusrtp socket and pcap support
 saved_LIBS="$LIBS"
 AC_SEARCH_LIBS([setsockopt], [bsd socket inet])
-AC_SEARCH_LIBS([pcap_open_live], [pcap wpcap], [
-  AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
+AC_CHECK_HEADER([pcap.h], [
+  AC_SEARCH_LIBS([pcap_open_live], [pcap wpcap], [
+    AC_DEFINE([HAVE_PCAP], 1, [Define if building with libpcap support])
+  ])
 ])
 AC_MSG_CHECKING([socket support])
 AC_LINK_IFELSE([
