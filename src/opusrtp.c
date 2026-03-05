@@ -61,6 +61,12 @@
 #include <opus.h>
 #include <ogg/ogg.h>
 
+#ifdef _MSC_VER
+# if (_MSC_VER < 1900)
+#  define snprintf _snprintf
+# endif
+#endif
+
 #define DYNAMIC_PAYLOAD_TYPE_MIN 96
 
 /* state struct for passing around our handles */
