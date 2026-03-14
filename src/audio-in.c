@@ -112,11 +112,11 @@
 
 /* Define the supported formats here */
 input_format formats[] = {
-    {wav_id, 12, wav_open, wav_close, "WAV", N_("WAV file reader")},
-    {aiff_id, 12, aiff_open, wav_close, "AIFF", N_("AIFF/AIFC file reader")},
-    {flac_id,     0x10000, flac_open, flac_close, "FLAC", N_("FLAC file reader")},
-    {oggflac_id, 33, flac_open, flac_close, "Ogg FLAC", N_("Ogg FLAC file reader")},
-    {NULL, 0, NULL, NULL, NULL, NULL}
+    {wav_id, 12, wav_open, wav_close, "WAV"},
+    {aiff_id, 12, aiff_open, wav_close, "AIFF"},
+    {flac_id, 0x10000, flac_open, flac_close, "FLAC"},
+    {oggflac_id, 33, flac_open, flac_close, "Ogg FLAC"},
+    {NULL, 0, NULL, NULL, NULL}
 };
 
 input_format *open_audio_file(FILE *in, oe_enc_opt *opt)

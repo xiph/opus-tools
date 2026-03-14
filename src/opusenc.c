@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 {
   static const input_format raw_format =
   {
-    NULL, 0, raw_open, wav_close, "Raw", N_("Raw file reader")
+    NULL, 0, raw_open, wav_close, "Raw"
   };
   struct option long_options[] =
   {
