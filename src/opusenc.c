@@ -364,7 +364,7 @@ static void validate_ambisonics_channel_count(int num_channels)
   int order_plus_one;
   int nondiegetic_chs;
   if(num_channels<1||num_channels>227) fatal("Error: the number of channels must not be <1 or >227.\n");
-  order_plus_one=sqrt(num_channels);
+  order_plus_one=(int)sqrt(num_channels);
   nondiegetic_chs=num_channels-order_plus_one*order_plus_one;
   if(nondiegetic_chs!=0&&nondiegetic_chs!=2) fatal("Error: invalid number of ambisonics channels.\n");
 }
@@ -455,7 +455,7 @@ int main(int argc, char **argv)
   FILE               *fin;
   char               ENCODER_string[1024];
   /*Counters*/
-  opus_int32         nb_samples;
+  int                nb_samples;
   time_t             start_time;
   time_t             stop_time;
   time_t             last_spin=0;
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
   int                quiet=0;
   opus_int32         bitrate=-1;
   opus_int32         rate=48000;
-  opus_int32         frame_size=960;
+  int                frame_size=960;
   opus_int32         opus_frame_param = OPUS_FRAMESIZE_20_MS;
   int                chan=2;
   int                with_hard_cbr=0;
@@ -476,10 +476,10 @@ int main(int argc, char **argv)
   int                no_phase_inv=0;
   int                *opt_ctls_ctlval;
   int                opt_ctls=0;
-  int                max_ogg_delay=48000; /*48kHz samples*/
+  opus_int32         max_ogg_delay=48000; /*48kHz samples*/
   int                seen_file_icons=0;
   int                comment_padding=512;
-  int                serialno;
+  opus_int32         serialno;
   opus_int32         lookahead=0;
   int                mapping_family;
   int                orig_channels;
@@ -675,7 +675,7 @@ int main(int argc, char **argv)
               "Value is in milliseconds and must be in the range 0 to 1000.\n",
               optarg);
           }
-          max_ogg_delay=(int)floor(val*48.);
+          max_ogg_delay=(opus_int32)floor(val*48.);
         } else if (strcmp(optname, "channels")==0) {
           if (strcmp(optarg, "ambix")==0) {
             inopt.channels_format=CHANNELS_FORMAT_AMBIX;

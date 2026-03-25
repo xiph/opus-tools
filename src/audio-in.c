@@ -123,8 +123,8 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
 {
     int j=0;
     unsigned char *buf=NULL;
-    int buf_size=0, buf_filled=0;
-    int size;
+    size_t buf_size=0, buf_filled=0;
+    size_t size;
 
     while (formats[j].id_func)
     {
@@ -137,7 +137,7 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
 
         if (size > buf_filled)
         {
-            buf_filled += (int)fread(buf+buf_filled, 1, buf_size-buf_filled, in);
+            buf_filled += fread(buf+buf_filled, 1, buf_size-buf_filled, in);
             /* We still check a truncated read aginast the id_func
              * in order to support very small FLAC files but still be able to
              * read past an ID3 header. */
@@ -296,7 +296,7 @@ static double read_IEEE80(unsigned char *buf)
 }
 
 /* AIFF/AIFC support adapted from the old OggSQUISH application */
-int aiff_id(unsigned char *buf, int len)
+int aiff_id(unsigned char *buf, size_t len)
 {
     if (len<12) return 0; /* Truncated file, probably */
 
@@ -322,7 +322,7 @@ static int aiff_permute_matrix[6][6] =
     {0,1,2,3,4,5},  /* 5.1 surround (WARN)*/
 };
 
-int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
+int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
 {
     int aifc; /* AIFC or AIFF? */
     unsigned int len;
@@ -463,7 +463,7 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
     }
 }
 
-int wav_id(unsigned char *buf, int len)
+int wav_id(unsigned char *buf, size_t len)
 {
     if (len<12) return 0; /* Something screwed up */
 
@@ -478,7 +478,7 @@ int wav_id(unsigned char *buf, int len)
     return 1;
 }
 
-int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
+int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, size_t buflen)
 {
     unsigned char buf[40];
     unsigned int len;
@@ -713,13 +713,13 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, int buflen)
     }
 }
 
-long wav_read(void *in, float *buffer, int samples)
+int wav_read(void *in, float *buffer, int samples)
 {
     wavfile *f = (wavfile *)in;
     int sampbyte = f->samplesize / 8;
     int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
         ? (int)(f->totalsamples - f->samplesread) : samples;
-    unsigned char *buf = alloca(realsamples*sampbyte*f->channels);
+    unsigned char *buf = alloca((size_t)realsamples*sampbyte*f->channels);
     int i,j;
     int *ch_permute = f->channel_permute;
 
@@ -801,12 +801,12 @@ long wav_read(void *in, float *buffer, int samples)
     return realsamples;
 }
 
-long wav_ieee_read(void *in, float *buffer, int samples)
+int wav_ieee_read(void *in, float *buffer, int samples)
 {
     wavfile *f = (wavfile *)in;
     int realsamples = f->totalsamples > 0 && samples > (f->totalsamples - f->samplesread)
         ? (int)(f->totalsamples - f->samplesread) : samples;
-    float *buf = alloca(realsamples*4*f->channels); /* de-interleave buffer */
+    float *buf = alloca((size_t)realsamples*4*f->channels); /* de-interleave buffer */
     int i,j;
 
     realsamples = (int)fread(buf, 4*f->channels, realsamples, f->f);
@@ -836,7 +836,7 @@ void wav_close(void *info)
     free(f);
 }
 
-int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen)
+int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
 {
     wavfile *wav = malloc(sizeof(wavfile));
     int i;
@@ -870,10 +870,10 @@ typedef struct {
     float scale_factor;
 } scaler;
 
-static long read_scaler(void *data, float *buffer, int samples)
+static int read_scaler(void *data, float *buffer, int samples)
 {
     scaler *d = data;
-    long in_samples = d->real_reader(d->real_readdata, buffer, samples);
+    int in_samples = d->real_reader(d->real_readdata, buffer, samples);
     int i;
 
     for (i=0; i < d->channels*in_samples; i++) {
@@ -905,10 +905,10 @@ typedef struct {
     int out_channels;
 } downmix;
 
-static long read_downmix(void *data, float *buffer, int samples)
+static int read_downmix(void *data, float *buffer, int samples)
 {
     downmix *d = data;
-    long in_samples = d->real_reader(d->real_readdata, d->bufs, samples);
+    int in_samples = d->real_reader(d->real_readdata, d->bufs, samples);
     int i,j,k,in_ch,out_ch;
 
     in_ch = d->in_channels;

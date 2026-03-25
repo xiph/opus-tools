@@ -37,6 +37,8 @@
 
 #if defined(HAVE_LIBFLAC)
 
+static const int flac_no_permute_matrix[8] = {0,1,2,3,4,5,6,7};
+
 /*Callback to read more data for the FLAC decoder.*/
 static FLAC__StreamDecoderReadStatus read_callback(
    const FLAC__StreamDecoder *decoder,FLAC__byte buffer[],size_t *bytes,
@@ -46,8 +48,8 @@ static FLAC__StreamDecoderReadStatus read_callback(
   (void)decoder;
   flac=(flacfile *)client_data;
   if(*bytes>0){
-    int bufpos;
-    int buflen;
+    size_t bufpos;
+    size_t buflen;
     bufpos=flac->bufpos;
     buflen=flac->buflen;
     if(bufpos<buflen){
@@ -56,7 +58,7 @@ static FLAC__StreamDecoderReadStatus read_callback(
         some more.*/
       bytes_to_copy=buflen-bufpos;
       bytes_to_copy=*bytes<bytes_to_copy?*bytes:bytes_to_copy;
-      memcpy(buffer,flac->oldbuf+flac->bufpos,bytes_to_copy);
+      memcpy(buffer,flac->oldbuf+bufpos,bytes_to_copy);
       flac->bufpos+=bytes_to_copy;
       *bytes=bytes_to_copy;
     }else{
@@ -286,7 +288,7 @@ static void error_callback(const FLAC__StreamDecoder *decoder,
   (void)client_data;
 }
 
-int flac_id(unsigned char *buf,int len)
+int flac_id(unsigned char *buf,size_t len)
 {
   /*Something screwed up.*/
   if(len<4)return 0;
@@ -295,7 +297,7 @@ int flac_id(unsigned char *buf,int len)
   if(len<14)return 0;
   if(!memcmp(buf,"ID3",3)){
     int i;
-    int id3_len = 0;
+    size_t id3_len = 0;
     for(i=0;i<4;i++) {
       if(buf[6+i]&0x80)return 0;
       id3_len<<=7;
@@ -310,7 +312,7 @@ int flac_id(unsigned char *buf,int len)
   return 0;
 }
 
-int oggflac_id(unsigned char *buf,int len)
+int oggflac_id(unsigned char *buf,size_t len)
 {
   /*Something screwed up.*/
   if(len<33)return 0;
@@ -323,12 +325,12 @@ int oggflac_id(unsigned char *buf,int len)
 }
 
 /*Read more data for the encoder.*/
-static long flac_read(void *client_data,float *buffer,int samples)
+static int flac_read(void *client_data,float *buffer,int samples)
 {
   flacfile *flac;
   int channels;
   float *block_buf;
-  long ret;
+  int ret;
   flac=(flacfile *)client_data;
   channels=flac->channels;
   block_buf=flac->block_buf;
@@ -338,7 +340,7 @@ static long flac_read(void *client_data,float *buffer,int samples)
   while(samples>0){
     opus_int32 block_buf_pos;
     opus_int32 block_buf_len;
-    size_t samples_to_copy;
+    int samples_to_copy;
     block_buf_pos=flac->block_buf_pos;
     block_buf_len=flac->block_buf_len;
     if(block_buf_pos>=block_buf_len){
@@ -352,18 +354,18 @@ static long flac_read(void *client_data,float *buffer,int samples)
       if(block_buf_pos>=block_buf_len)return ret;
     }
     block_buf_len-=block_buf_pos;
-    samples_to_copy=samples<block_buf_len?samples:block_buf_len;
+    samples_to_copy=samples<block_buf_len?samples:(int)block_buf_len;
     memcpy(buffer,block_buf+block_buf_pos*channels,
-       samples_to_copy*channels*sizeof(*buffer));
+       sizeof(*buffer)*samples_to_copy*channels);
     flac->block_buf_pos+=samples_to_copy;
     ret+=samples_to_copy;
-    buffer+=samples_to_copy*channels;
+    buffer+=(size_t)samples_to_copy*channels;
     samples-=samples_to_copy;
   }
   return ret;
 }
 
-int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
+int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,size_t buflen)
 {
   flacfile *flac;
   /*Ok. At this point, we know we have a FLAC or an OggFLAC file.
@@ -427,21 +429,21 @@ void flac_close(void *client_data)
 
 /*FLAC support is disabled.*/
 
-int flac_id(unsigned char *buf,int len)
+int flac_id(unsigned char *buf,size_t len)
 {
   (void)buf;
   (void)len;
   return 0;
 }
 
-int oggflac_id(unsigned char *buf,int len)
+int oggflac_id(unsigned char *buf,size_t len)
 {
   (void)buf;
   (void)len;
   return 0;
 }
 
-int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen)
+int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,size_t buflen)
 {
   (void)in;
   (void)opt;

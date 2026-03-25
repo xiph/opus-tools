@@ -37,8 +37,8 @@ struct flacfile {
   FILE *f;
   const int *channel_permute;
   unsigned char *oldbuf;
-  int bufpos;
-  int buflen;
+  size_t bufpos;
+  size_t buflen;
   float *block_buf;
   opus_int32 block_buf_pos;
   opus_int32 block_buf_len;
@@ -47,9 +47,7 @@ struct flacfile {
 
 #endif
 
-int flac_id(unsigned char *buf,int len);
-int oggflac_id(unsigned char *buf,int len);
-int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,int buflen);
+int flac_id(unsigned char *buf,size_t len);
+int oggflac_id(unsigned char *buf,size_t len);
+int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,size_t buflen);
 void flac_close(void *client_data);
-
-static const int flac_no_permute_matrix[8] = {0,1,2,3,4,5,6,7};

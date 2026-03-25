@@ -20,7 +20,7 @@
 #define CHANNELS_FORMAT_AMBIX    1
 #define CHANNELS_FORMAT_DISCRETE 2
 
-typedef long (*audio_read_func)(void *src, float *buffer, int samples);
+typedef int (*audio_read_func)(void *src, float *buffer, int samples);
 
 typedef struct
 {
@@ -48,11 +48,11 @@ void clear_downmix(oe_enc_opt *opt);
 
 typedef struct
 {
-    int (*id_func)(unsigned char *buf, int len); /* Returns true if can load file */
-    int id_data_len; /* Amount of data needed to id whether this can load the file */
-    int (*open_func)(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen);
+    int (*id_func)(unsigned char *buf, size_t len); /* Returns true if can load file */
+    size_t id_data_len; /* Amount of data needed to id whether this can load the file */
+    int (*open_func)(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen);
     void (*close_func)(void *);
-    char *format;
+    const char *format;
 } input_format;
 
 typedef struct {
@@ -89,13 +89,13 @@ typedef wavfile aifffile; /* They're the same */
 
 input_format *open_audio_file(FILE *in, oe_enc_opt *opt);
 
-int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen);
-int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen);
-int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, int buflen);
-int wav_id(unsigned char *buf, int len);
-int aiff_id(unsigned char *buf, int len);
+int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen);
+int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen);
+int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen);
+int wav_id(unsigned char *buf, size_t len);
+int aiff_id(unsigned char *buf, size_t len);
 void wav_close(void *);
 void raw_close(void *);
 
-long wav_read(void *, float *buffer, int samples);
-long wav_ieee_read(void *, float *buffer, int samples);
+int wav_read(void *, float *buffer, int samples);
+int wav_ieee_read(void *, float *buffer, int samples);

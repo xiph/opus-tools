@@ -88,7 +88,7 @@ static int packet_get_nb_frames(const unsigned char packet[], ogg_int32_t len)
 void info_opus_process(stream_processor *stream, ogg_page *page )
 {
     ogg_packet packet;
-    ogg_int64_t page_samples=0;
+    ogg_int32_t page_samples=0;
     misc_opus_info *inf = stream->data;
     int header=0, packets=0;
     int res;
