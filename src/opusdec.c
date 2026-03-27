@@ -267,9 +267,25 @@ static void print_comments(const OpusTags *_tags)
    }
 }
 
+typedef struct output_ctx output_ctx;
+struct output_ctx {
+   FILE *fout;
+   SpeexResamplerState *resampler;
+   shapestate shapemem;
+   opus_int64 link_read;
+   opus_int64 link_out;
+   opus_int64 audio_size;
+   int rate;
+   int channels;
+   int file_output;
+   int fp;
+   int dither;
+   float clipmem[OPUS_CHANNEL_COUNT_MAX];
+};
+
 /* Returns 1 on success, 0 on error with message displayed on stderr. */
-static int out_file_open(const char *outFile, int *wav_format, int rate,
-    int mapping_family, int *channels, int fp, FILE **fout)
+static int out_file_open(const char *outFile, int *wav_format,
+    int mapping_family, output_ctx *ctx)
 {
    /* Open output file or audio playback device. */
    if (!outFile)
@@ -287,26 +303,26 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
       sio_initpar(&par);
       par.sig = 1;
       par.bits = 16;
-      par.rate = rate;
-      par.pchan = *channels;
+      par.rate = ctx->rate;
+      par.pchan = ctx->channels;
 
       if (!sio_setpar(hdl, &par) || !sio_getpar(hdl, &par) ||
-        par.sig != 1 || par.bits != 16 || par.rate != rate) {
+        par.sig != 1 || par.bits != 16 || par.rate != ctx->rate) {
          fprintf(stderr, "could not set sndio parameters\n");
          return 0;
       }
       /*We allow the channel count to be forced to stereo, but not anything
         else.*/
-      if (*channels!=par.pchan && par.pchan!=2) {
+      if (ctx->channels != par.pchan && par.pchan != 2) {
          fprintf(stderr, "could not set sndio channel count\n");
          return 0;
       }
-      *channels = par.pchan;
+      ctx->channels = par.pchan;
       if (!sio_start(hdl)) {
           fprintf(stderr, "could not start sndio\n");
           return 0;
       }
-      *fout=NULL;
+      ctx->fout = NULL;
 #elif defined HAVE_SYS_SOUNDCARD_H || defined HAVE_MACHINE_SOUNDCARD_H || defined HAVE_SOUNDCARD_H
       int audio_fd, format, stereo;
       audio_fd=open("/dev/dsp", O_WRONLY);
@@ -324,7 +340,7 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
          return 0;
       }
 
-      if (*channels > 2)
+      if (ctx->channels > 2)
       {
         /* There doesn't seem to be a way to get or set the channel
          * matrix with the sys/soundcard api, so we can't support
@@ -332,10 +348,10 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
          */
         fprintf(stderr, "Cannot configure multichannel playback."
                         " Falling back to stereo.\n");
-        *channels=2;
+        ctx->channels = 2;
       }
       stereo=0;
-      if (*channels==2)
+      if (ctx->channels == 2)
          stereo=1;
       if (ioctl(audio_fd, SNDCTL_DSP_STEREO, &stereo)==-1)
       {
@@ -345,19 +361,19 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
       }
       if (stereo!=0)
       {
-         if (*channels==1)
+         if (ctx->channels == 1)
             fprintf(stderr, "Cannot set mono mode, will decode in stereo\n");
-         *channels=2;
+         ctx->channels = 2;
       }
 
-      if (ioctl(audio_fd, SNDCTL_DSP_SPEED, &rate)==-1)
+      if (ioctl(audio_fd, SNDCTL_DSP_SPEED, &ctx->rate) == -1)
       {
          perror("SNDCTL_DSP_SPEED");
          close(audio_fd);
          return 0;
       }
-      *fout = fdopen(audio_fd, "w");
-      if (!*fout)
+      ctx->fout = fdopen(audio_fd, "w");
+      if (!ctx->fout)
       {
         perror("Cannot open output");
         close(audio_fd);
@@ -380,8 +396,8 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
 # endif
       info.play.encoding = AUDIO_ENCODING_SLINEAR;
       info.play.precision = 16;
-      info.play.input_sample_rate = rate;
-      info.play.channels = *channels;
+      info.play.input_sample_rate = ctx->rate;
+      info.play.channels = ctx->channels;
 
       if (ioctl(audio_fd, AUDIO_SETINFO, &info) < 0)
       {
@@ -389,8 +405,8 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
          close(audio_fd);
          return 0;
       }
-      *fout = fdopen(audio_fd, "w");
-      if (!*fout)
+      ctx->fout = fdopen(audio_fd, "w");
+      if (!ctx->fout)
       {
         perror("Cannot open output");
         close(audio_fd);
@@ -398,13 +414,13 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
       }
 #elif defined WIN32 || defined _WIN32
       {
-         unsigned int opus_channels = *channels;
-         if (Set_WIN_Params(INVALID_FILEDESC, rate, SAMPLE_SIZE, opus_channels))
+         unsigned int opus_channels = ctx->channels;
+         if (Set_WIN_Params(INVALID_FILEDESC, ctx->rate, SAMPLE_SIZE, opus_channels))
          {
             fprintf(stderr, "Can't access %s\n", "WAVE OUT");
             return 0;
          }
-         *fout=NULL;
+         ctx->fout = NULL;
       }
 #else
       fprintf(stderr, "No soundcard support\n");
@@ -416,12 +432,12 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
 #if defined WIN32 || defined _WIN32
          _setmode(_fileno(stdout), _O_BINARY);
 #endif
-         *fout=stdout;
+         ctx->fout = stdout;
       }
       else
       {
-         *fout = fopen_utf8(outFile, "wb");
-         if (!*fout)
+         ctx->fout = fopen_utf8(outFile, "wb");
+         if (!ctx->fout)
          {
             perror(outFile);
             return 0;
@@ -429,17 +445,106 @@ static int out_file_open(const char *outFile, int *wav_format, int rate,
       }
       if (*wav_format)
       {
-         *wav_format = write_wav_header(*fout, rate, mapping_family, *channels, fp);
+         *wav_format = write_wav_header(ctx->fout, ctx->rate, mapping_family,
+            ctx->channels, ctx->fp);
          if (*wav_format < 0)
          {
             fprintf(stderr, "Error writing WAV header.\n");
-            fclose(*fout);
-            *fout = NULL;
+            fclose(ctx->fout);
+            ctx->fout = NULL;
             return 0;
          }
       }
    }
    return 1;
+}
+
+int audio_write(output_ctx *ctx, float *pcm, int nb_samples)
+{
+   short *out = alloca(sizeof(short)*MAX_FRAME_SIZE*ctx->channels);
+   float *buf = alloca(sizeof(float)*MAX_FRAME_SIZE*ctx->channels);
+   opus_int64 maxout = ((ctx->link_read/48000)*ctx->rate
+    + (ctx->link_read%48000)*ctx->rate/48000) - ctx->link_out;
+
+   while (nb_samples>0 && maxout>0) {
+     float *output;
+     unsigned out_len;
+     const char *outdata;
+     size_t sampsize;
+     size_t written;
+     int i;
+
+     if (ctx->resampler) {
+       unsigned in_len = nb_samples;
+       output = buf;
+       out_len = 1024<maxout?1024:(unsigned)maxout;
+       speex_resampler_process_interleaved_float(ctx->resampler,
+        pcm, &in_len, buf, &out_len);
+       pcm += ctx->channels*in_len;
+       nb_samples -= in_len;
+     } else {
+       output=pcm;
+       out_len=nb_samples<maxout?(unsigned)nb_samples:(unsigned)maxout;
+       nb_samples=0;
+     }
+     ctx->link_out += out_len;
+     maxout -= out_len;
+
+     if (!ctx->fp)
+     {
+        /*Convert to short and save to output file*/
+#if defined(HAVE_SOFT_CLIP)
+        opus_pcm_soft_clip(output, out_len, ctx->channels, ctx->clipmem);
+#endif
+        if (ctx->dither) {
+          shape_dither_toshort(&ctx->shapemem, out, output, out_len, ctx->channels);
+        } else {
+          for (i=0;i<(int)out_len*ctx->channels;i++)
+            out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
+        }
+        if ((le_short(1)!=(1)) && ctx->file_output) {
+          for (i=0;i<(int)out_len*ctx->channels;i++)
+            out[i]=le_short(out[i]);
+        }
+     }
+     else if (le_short(1)!=(1)) {
+       /* ensure the floats are little endian */
+       for (i=0;i<(int)out_len*ctx->channels;i++)
+         put_le_float(buf+i, output[i]);
+       output = buf;
+     }
+
+     outdata = ctx->fp ? (const char *)output : (const char *)out;
+     sampsize = (ctx->fp ? sizeof(float) : sizeof(short)) * ctx->channels;
+#if defined WIN32 || defined _WIN32
+     if (!ctx->file_output) {
+       int ret = WIN_Play_Samples(outdata, sampsize * out_len);
+       written = ret > 0 ? ret / sampsize : 0;
+     } else
+#elif defined HAVE_LIBSNDIO
+     if (!ctx->file_output) {
+       written = sio_write(hdl, outdata, sampsize * out_len) / sampsize;
+     } else
+#endif
+       written = fwrite(outdata, sampsize, out_len, ctx->fout);
+     ctx->audio_size += written * sampsize;
+     if (written != out_len) return -1;
+   }
+   return 0;
+}
+
+static int drain_resampler(output_ctx *ctx)
+{
+   float *zeros = (float *)calloc(100 * ctx->channels, sizeof(float));
+   int drain = speex_resampler_get_input_latency(ctx->resampler);
+   int out_err;
+   do {
+      int nb_samples = MINI(drain, 100);
+      out_err = audio_write(ctx, zeros, nb_samples);
+      drain -= nb_samples;
+   } while (drain > 0 && !out_err);
+   free(zeros);
+   return out_err;
 }
 
 void usage(void)
@@ -495,88 +600,6 @@ void version_short(void)
    version();
 }
 
-opus_int64 audio_write(float *pcm, int channels, int frame_size, FILE *fout,
- SpeexResamplerState *resampler, float *clipmem, shapestate *shapemem,
- int file, int rate, opus_int64 link_read, opus_int64 link_out, int fp)
-{
-   opus_int64 sampout=0;
-   opus_int64 maxout;
-   int ret;
-   int i;
-   unsigned out_len;
-   short *out;
-   float *buf;
-   float *output;
-   out=alloca(sizeof(short)*MAX_FRAME_SIZE*channels);
-   buf=alloca(sizeof(float)*MAX_FRAME_SIZE*channels);
-   maxout=((link_read/48000)*rate + (link_read%48000)*rate/48000) - link_out;
-   maxout=maxout<0?0:maxout;
-   do {
-     if (resampler) {
-       unsigned in_len;
-       output=buf;
-       in_len = frame_size;
-       out_len = 1024<maxout?1024:(unsigned)maxout;
-       speex_resampler_process_interleaved_float(resampler,
-        pcm, &in_len, buf, &out_len);
-       pcm += channels*(in_len);
-       frame_size -= in_len;
-     } else {
-       output=pcm;
-       out_len=frame_size<maxout?(unsigned)frame_size:(unsigned)maxout;
-       frame_size=0;
-     }
-
-     if (!file||!fp)
-     {
-        /*Convert to short and save to output file*/
-#if defined(HAVE_SOFT_CLIP)
-        opus_pcm_soft_clip(output,out_len,channels,clipmem);
-#else
-        (void)clipmem;
-#endif
-        if (shapemem) {
-          shape_dither_toshort(shapemem,out,output,out_len,channels);
-        } else {
-          for (i=0;i<(int)out_len*channels;i++)
-            out[i]=(short)float2int(fmaxf(-32768,fminf(output[i]*32768.f,32767)));
-        }
-        if ((le_short(1)!=(1))&&file) {
-          for (i=0;i<(int)out_len*channels;i++)
-            out[i]=le_short(out[i]);
-        }
-     }
-     else if (le_short(1)!=(1)) {
-       /* ensure the floats are little endian */
-       for (i=0;i<(int)out_len*channels;i++)
-         put_le_float(buf+i, output[i]);
-       output = buf;
-     }
-
-     if (maxout>0)
-     {
-#if defined WIN32 || defined _WIN32
-       if (!file) {
-         ret=WIN_Play_Samples(out, sizeof(short) * channels * out_len);
-         if (ret>0) ret/=sizeof(short)*channels;
-         else fprintf(stderr, "Error playing audio.\n");
-       } else
-#elif defined HAVE_LIBSNDIO
-       if (!file) {
-         ret=sio_write(hdl, out, sizeof(short) * channels * out_len);
-         if (ret>0) ret/=sizeof(short)*channels;
-         else fprintf(stderr, "Error playing audio.\n");
-       } else
-#endif
-         ret=fwrite(fp?(char *)output:(char *)out,
-          (fp?sizeof(float):sizeof(short))*channels, out_len, fout);
-       sampout+=ret;
-       maxout-=ret;
-     }
-   } while (frame_size>0 && maxout>0);
-   return sampout;
-}
-
 typedef struct decode_cb_ctx decode_cb_ctx;
 struct decode_cb_ctx {
    FILE *frange;
@@ -591,8 +614,8 @@ static int decode_cb(void *user_data, OpusMSDecoder *decoder, void *pcm,
    int ret;
    (void)nchannels;
    (void)li;
-   lost = ctx->loss_percent>0
-    && 100*(float)rand()/(float)RAND_MAX<ctx->loss_percent;
+   lost = ctx->loss_percent > 0
+    && 100*(float)rand()/(float)RAND_MAX < ctx->loss_percent;
    switch (format)
    {
       case OP_DEC_FORMAT_SHORT:
@@ -629,7 +652,7 @@ static int decode_cb(void *user_data, OpusMSDecoder *decoder, void *pcm,
    if (ret >= 0)
    {
       ret=ret==nsamples?0:OPUS_INTERNAL_ERROR;
-      if (ret==0 && ctx->frange!=NULL)
+      if (ret == 0 && ctx->frange != NULL)
       {
          OpusDecoder *od;
          opus_uint32 rngs[256];
@@ -652,50 +675,26 @@ static int decode_cb(void *user_data, OpusMSDecoder *decoder, void *pcm,
    return ret;
 }
 
-static void drain_resampler(FILE *fout, int file_output,
- SpeexResamplerState *resampler, int channels, int rate,
- opus_int64 link_read, opus_int64 link_out, float *clipmem,
- shapestate *shapemem, opus_int64 *audio_size, int fp)
-{
-   float *zeros;
-   int drain;
-   zeros=(float *)calloc(100*channels,sizeof(float));
-   drain=speex_resampler_get_input_latency(resampler);
-   do
-   {
-      opus_int64 outsamp;
-      int tmp=MINI(drain, 100);
-      outsamp=audio_write(zeros, channels, tmp, fout, resampler, clipmem,
-       shapemem, file_output, rate, link_read, link_out, fp);
-      link_out+=outsamp;
-      (*audio_size)+=(fp?sizeof(float):sizeof(short))*outsamp*channels;
-      drain-=tmp;
-   } while (drain>0);
-   free(zeros);
-}
-
 int main(int argc, char **argv)
 {
    unsigned char channel_map[OPUS_CHANNEL_COUNT_MAX];
-   float clipmem[8]={0};
    int c;
    int option_index = 0;
    int exit_code = 0;
    const char *inFile, *outFile, *rangeFile=NULL;
-   FILE *fout=NULL, *frange=NULL;
+   FILE *frange = NULL;
    float *output;
    float *permuted_output;
    OggOpusFile *st=NULL;
    const OpusHead *head;
    decode_cb_ctx cb_ctx;
-   int file_output;
+   output_ctx out_ctx = { 0 };
+   int out_err = 0;
    int old_li=-1;
    int li;
    int quiet = 0;
    int forcewav = 0;
    ogg_int64_t nb_read_total=0;
-   ogg_int64_t link_read=0;
-   ogg_int64_t link_out=0;
    struct option long_options[] =
    {
       {"help", no_argument, NULL, 0},
@@ -712,20 +711,13 @@ int main(int argc, char **argv)
       {"save-range", required_argument, NULL, 0},
       {0, 0, 0, 0}
    };
-   opus_int64 audio_size=0;
    opus_int64 last_coded_seconds=-1;
    float loss_percent=-1;
    float manual_gain=0;
    int force_rate=0;
    int force_stereo=0;
-   int requested_channels=-1;
    int channels=-1;
-   int rate=0;
    int wav_format=0;
-   int dither=1;
-   int fp=0;
-   shapestate shapemem;
-   SpeexResamplerState *resampler=NULL;
    size_t last_spin=0;
 #ifdef WIN_UNICODE
    int argc_utf8;
@@ -744,6 +736,8 @@ int main(int argc, char **argv)
    init_console_utf8();
    init_commandline_arguments_utf8(&argc_utf8, &argv_utf8);
 #endif
+
+   out_ctx.dither = 1;
 
    /*Process options*/
    while (1)
@@ -773,16 +767,16 @@ int main(int argc, char **argv)
             goto done;
          } else if (strcmp(long_options[option_index].name,"no-dither")==0)
          {
-            dither=0;
+            out_ctx.dither = 0;
          } else if (strcmp(long_options[option_index].name,"float")==0)
          {
-            fp=1;
+            out_ctx.fp = 1;
          } else if (strcmp(long_options[option_index].name,"force-wav")==0)
          {
             forcewav=1;
          } else if (strcmp(long_options[option_index].name,"rate")==0)
          {
-            rate=atoi(optarg);
+            out_ctx.rate = atoi(optarg);
          } else if (strcmp(long_options[option_index].name,"force-stereo")==0)
          {
             force_stereo=1;
@@ -818,8 +812,8 @@ int main(int argc, char **argv)
    inFile=argv_utf8[optind];
 
    /*Output to a file or playback?*/
-   file_output=argc_utf8-optind==2;
-   if (file_output) {
+   out_ctx.file_output = argc_utf8-optind==2;
+   if (out_ctx.file_output) {
      /*If we're outputting to a file, should we apply a wav header?*/
      outFile=argv_utf8[optind+1];
      if (forcewav) wav_format = 1;
@@ -840,12 +834,12 @@ int main(int argc, char **argv)
        of output files and preserving length, which aren't
        relevant for playback. Many audio devices sound
        better at 48kHz and not resampling also saves CPU.*/
-     if (rate==0) rate=48000;
+     if (out_ctx.rate == 0) out_ctx.rate = 48000;
      /*Playback is 16-bit only.*/
-     fp=0;
+     out_ctx.fp = 0;
    }
    /*If the output is floating point, don't dither.*/
-   if (fp) dither=0;
+   if (out_ctx.fp) out_ctx.dither = 0;
 
    /*Open input file*/
    if (strcmp(inFile, "-")==0)
@@ -887,7 +881,7 @@ int main(int argc, char **argv)
       /*If we have a seekable file, we can make some intelligent decisions
         about how to decode.*/
       nlinks = op_link_count(st);
-      if (rate==0)
+      if (out_ctx.rate == 0)
       {
          opus_uint32 initial_rate;
          initial_rate=head->input_sample_rate;
@@ -909,7 +903,7 @@ int main(int argc, char **argv)
                fprintf(stderr,
                 "Warning: Chained stream with multiple input sample rates: "
                 "forcing decode to 48 kHz.\n");
-               rate=48000;
+               out_ctx.rate = 48000;
                break;
             }
          }
@@ -933,24 +927,24 @@ int main(int argc, char **argv)
       }
    }
 
-   if (rate==0)
+   if (out_ctx.rate == 0)
    {
-      rate=head->input_sample_rate;
+      out_ctx.rate = head->input_sample_rate;
       /*If the rate is unspecified, we decode to 48000.*/
-      if (rate==0)
+      if (out_ctx.rate == 0)
       {
-         rate=48000;
+         out_ctx.rate = 48000;
       }
    } else {
       /*Remember that we forced the rate, so we don't complain if it changes in
         an unseekable chained stream.*/
       force_rate=1;
    }
-   if (rate<8000||rate>192000)
+   if (out_ctx.rate < 8000 || out_ctx.rate > 192000)
    {
       fprintf(stderr,
-       "Warning: Crazy input_rate %d, decoding to 48000 instead.\n", rate);
-      rate=48000;
+       "Warning: Crazy input_rate %d, decoding to 48000 instead.\n", out_ctx.rate);
+      out_ctx.rate = 48000;
       force_rate=1;
    }
 
@@ -967,26 +961,38 @@ int main(int argc, char **argv)
       }
    }
 
-   requested_channels=force_stereo?2:head->channel_count;
+   channels = force_stereo ? 2 : head->channel_count;
+   if (channels < 1 || channels > OPUS_CHANNEL_COUNT_MAX)
+   {
+      fprintf(stderr,
+        "Warning: Unsupported channel count %d; downmixing to stereo.\n",
+        channels);
+      out_ctx.channels = 2;
+   }
+   else
+      out_ctx.channels = channels;
+
    /*TODO: For seekable sources, write the output length in the WAV header.*/
-   channels=requested_channels;
-   if (!out_file_open(outFile, &wav_format, rate, head->mapping_family,
-        &channels, fp, &fout))
+   if (!out_file_open(outFile, &wav_format, head->mapping_family, &out_ctx))
    {
       exit_code=1;
       goto done;
    }
-   if (channels!=requested_channels) force_stereo=1;
+   if (channels != out_ctx.channels)
+   {
+      channels = out_ctx.channels;
+      force_stereo = 1;
+   }
 
    /*Setup the memory for the dithered output*/
-   shapemem.a_buf=calloc(channels,sizeof(float)*4);
-   shapemem.b_buf=calloc(channels,sizeof(float)*4);
-   shapemem.mute=960;
-   shapemem.fs=rate;
+   out_ctx.shapemem.a_buf = calloc(channels,sizeof(float)*4);
+   out_ctx.shapemem.b_buf = calloc(channels,sizeof(float)*4);
+   out_ctx.shapemem.mute = 960;
+   out_ctx.shapemem.fs = out_ctx.rate;
 
    output=malloc(sizeof(float)*MAX_FRAME_SIZE*channels);
    permuted_output=NULL;
-   if (!shapemem.a_buf || !shapemem.b_buf || !output)
+   if (!out_ctx.shapemem.a_buf || !out_ctx.shapemem.b_buf || !output)
    {
       fprintf(stderr, "Memory allocation failure.\n");
       exit_code=1;
@@ -1020,9 +1026,8 @@ int main(int argc, char **argv)
    }
 
    /*Main decoding loop*/
-   while (1)
+   do
    {
-      opus_int64 outsamp;
       int nb_read;
       int i;
       if (force_stereo)
@@ -1058,20 +1063,19 @@ int main(int argc, char **argv)
       {
          /*Drain and reset the resampler to be sure we get an accurate number
            of output samples.*/
-         if (resampler!=NULL)
+         if (out_ctx.resampler != NULL)
          {
-            drain_resampler(fout, file_output, resampler, channels, rate,
-             link_read, link_out, clipmem, dither?&shapemem:NULL, &audio_size,
-             fp);
+            out_err = drain_resampler(&out_ctx);
             /*Neither speex_resampler_reset_mem() nor
               speex_resampler_skip_zeros() clear the number of fractional
               samples properly, so we just destroy it. It will get re-created
               below.*/
-            speex_resampler_destroy(resampler);
-            resampler=NULL;
+            speex_resampler_destroy(out_ctx.resampler);
+            out_ctx.resampler = NULL;
+            if (out_err) break;
          }
          /*We've encountered a new link.*/
-         link_read=link_out=0;
+         out_ctx.link_read = out_ctx.link_out = 0;
          head=op_head(st, li);
          if (!force_stereo && channels!=head->channel_count)
          {
@@ -1086,13 +1090,13 @@ int main(int argc, char **argv)
             break;
          }
          if (!force_rate
-          && (opus_uint32)rate!=
+          && (opus_uint32)out_ctx.rate !=
           (head->input_sample_rate==0?48000:head->input_sample_rate))
          {
             fprintf(stderr,
              "Warning: input sampling rate changed in a chained stream: "
              "resampling remaining links to %d. Use --rate to override.\n",
-             rate);
+             out_ctx.rate);
          }
          if (!quiet)
          {
@@ -1101,7 +1105,7 @@ int main(int argc, char **argv)
                /*Clear the progress indicator from the previous link.*/
                fprintf(stderr, "\r");
             }
-            fprintf(stderr, "Decoding to %d Hz (%d %s)", rate,
+            fprintf(stderr, "Decoding to %d Hz (%d %s)", out_ctx.rate,
               channels, channels>1?"channels":"channel");
             if (head->version!=1)
             {
@@ -1119,8 +1123,8 @@ int main(int argc, char **argv)
             print_comments(op_tags(st, li));
          }
       }
-      nb_read_total+=nb_read;
-      link_read+=nb_read;
+      nb_read_total += nb_read;
+      out_ctx.link_read += nb_read;
       if (!quiet)
       {
          /*Display a progress spinner while decoding.*/
@@ -1156,48 +1160,58 @@ int main(int argc, char **argv)
         as described in the OggOpus spec.  But for commandline tools
         like opusdec it can be desirable to exactly preserve the original
         sampling rate and duration, so we have a resampler here.*/
-      if (rate!=48000 && resampler==NULL)
+      if (out_ctx.rate != 48000 && out_ctx.resampler == NULL)
       {
          int err;
-         resampler = speex_resampler_init(channels, 48000, rate, 5, &err);
+         out_ctx.resampler = speex_resampler_init(channels, 48000, out_ctx.rate, 5, &err);
          if (err!=0)
          {
-            fprintf(stderr, "resampler error: %s\n",
+            fprintf(stderr, "Failed to initialize resampler: %s\n",
              speex_resampler_strerror(err));
+            exit_code=1;
+            break;
          }
-         speex_resampler_skip_zeros(resampler);
+         speex_resampler_skip_zeros(out_ctx.resampler);
       }
-      outsamp=audio_write(permuted_output?permuted_output:output, channels,
-       nb_read, fout, resampler, clipmem, dither?&shapemem:0, file_output,
-       rate, link_read, link_out, fp);
-      link_out+=outsamp;
-      audio_size+=(fp?sizeof(float):sizeof(short))*outsamp*channels;
+      out_err = audio_write(&out_ctx, permuted_output?permuted_output:output, nb_read);
+   } while (!out_err);
+
+   if (out_ctx.resampler != NULL)
+   {
+      if (!out_err) out_err = drain_resampler(&out_ctx);
+      speex_resampler_destroy(out_ctx.resampler);
    }
 
-   if (resampler!=NULL)
+   if (out_ctx.fout && (fflush(out_ctx.fout) || ferror(out_ctx.fout)))
    {
-      drain_resampler(fout, file_output, resampler, channels, rate,
-       link_read, link_out, clipmem, dither?&shapemem:NULL, &audio_size, fp);
-      speex_resampler_destroy(resampler);
+      out_err = -1;
+      clearerr(out_ctx.fout);
+   }
+   if (out_err && out_ctx.file_output)
+   {
+      fprintf(stderr, "Write error; output file is incomplete.\n");
+      if (exit_code == 0) exit_code = 1;
    }
 
    /*If we were writing wav, go set the duration.*/
-   if (fout && wav_format>0 && update_wav_header(fout, wav_format, audio_size)<0)
+   if (out_ctx.fout && wav_format > 0)
    {
-      fprintf(stderr, "Warning: Cannot update audio size in output file;"
-         " size will be incorrect.\n");
+      if (update_wav_header(out_ctx.fout, wav_format, out_ctx.audio_size) < 0
+          || fflush(out_ctx.fout) || ferror(out_ctx.fout))
+         fprintf(stderr, "Warning: Cannot update audio size in output file;"
+            " size will be incorrect.\n");
    }
 
 cleanup:
 #if defined WIN32 || defined _WIN32
-   if (!file_output)
+   if (!out_ctx.file_output)
       WIN_Audio_close();
 #endif
-   if (shapemem.a_buf) free(shapemem.a_buf);
-   if (shapemem.b_buf) free(shapemem.b_buf);
+   if (out_ctx.shapemem.a_buf) free(out_ctx.shapemem.a_buf);
+   if (out_ctx.shapemem.b_buf) free(out_ctx.shapemem.b_buf);
    if (output) free(output);
    if (permuted_output) free(permuted_output);
-   if (fout) fclose(fout);
+   if (out_ctx.fout) fclose(out_ctx.fout);
 
 done:
    if (frange) fclose(frange);
