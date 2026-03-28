@@ -1030,36 +1030,29 @@ int main(int argc, char **argv)
    {
       int nb_read;
       int i;
+
       if (force_stereo)
       {
-         nb_read=op_read_float_stereo(st,
-          output, MAX_FRAME_SIZE*channels);
+         nb_read = op_read_float_stereo(st, output, MAX_FRAME_SIZE*channels);
          li = op_current_link(st);
       } else {
-         nb_read=op_read_float(st,
-          output, MAX_FRAME_SIZE*channels, &li);
+         nb_read = op_read_float(st, output, MAX_FRAME_SIZE*channels, &li);
       }
-      if (nb_read<0) {
-         if (nb_read==OP_HOLE) {
-            /*TODO: At...?*/
-            fprintf(stderr, "Warning: Hole in data.\n");
-            continue;
-         } else {
-            fprintf(stderr, "Decoding error.\n");
-            exit_code=1;
-            break;
-         }
-      }
-      if (nb_read==0)
-      {
-         if (!quiet)
-         {
-            fprintf(stderr, "\rDecoding complete.        \n");
-            fflush(stderr);
-         }
+      if (nb_read < 0) {
+         opus_int64 coded_seconds = nb_read_total/48000;
+         fprintf(stderr, "%s%s at %02" I64FORMAT ":%02d:%02d.%03d\n",
+           last_coded_seconds >= 0 ? "\r" : "",
+           nb_read == OP_HOLE ? "Warning: Hole in data" :
+           nb_read == OP_EREAD ? "Read error" : "Decoding error",
+           coded_seconds/3600, (int)((coded_seconds/60)%60),
+           (int)(coded_seconds%60), (int)(nb_read_total%48000)/48);
+         if (nb_read == OP_HOLE) continue;
+         exit_code = 1;
          break;
       }
-      if (li!=old_li)
+      if (nb_read == 0) break;
+
+      if (li != old_li)
       {
          /*Drain and reset the resampler to be sure we get an accurate number
            of output samples.*/
@@ -1074,10 +1067,12 @@ int main(int argc, char **argv)
             out_ctx.resampler = NULL;
             if (out_err) break;
          }
+
          /*We've encountered a new link.*/
+         if (last_coded_seconds >= 0) fprintf(stderr, "\r");
          out_ctx.link_read = out_ctx.link_out = 0;
-         head=op_head(st, li);
-         if (!force_stereo && channels!=head->channel_count)
+         head = op_head(st, li);
+         if (!force_stereo && channels != head->channel_count)
          {
             /*In theory if the first link was stereo, we could downmix the
               remaining links, but we've already decoded the first packet, and
@@ -1086,12 +1081,12 @@ int main(int argc, char **argv)
             fprintf(stderr,
              "Error: channel count changed in a chained stream: "
              "aborting.\n");
-            exit_code=1;
+            exit_code = 1;
             break;
          }
          if (!force_rate
           && (opus_uint32)out_ctx.rate !=
-          (head->input_sample_rate==0?48000:head->input_sample_rate))
+          (head->input_sample_rate == 0 ? 48000 : head->input_sample_rate))
          {
             fprintf(stderr,
              "Warning: input sampling rate changed in a chained stream: "
@@ -1100,11 +1095,6 @@ int main(int argc, char **argv)
          }
          if (!quiet)
          {
-            if (old_li >= 0)
-            {
-               /*Clear the progress indicator from the previous link.*/
-               fprintf(stderr, "\r");
-            }
             fprintf(stderr, "Decoding to %d Hz (%d %s)", out_ctx.rate,
               channels, channels>1?"channels":"channel");
             if (head->version!=1)
@@ -1122,13 +1112,32 @@ int main(int argc, char **argv)
             }
             print_comments(op_tags(st, li));
          }
+         /*Normal players should just play at 48000 or their maximum rate,
+           as described in the OggOpus spec.  But for commandline tools
+           like opusdec it can be desirable to exactly preserve the original
+           sampling rate and duration, so we have a resampler here.*/
+         if (out_ctx.rate != 48000)
+         {
+            int err;
+            out_ctx.resampler = speex_resampler_init(channels, 48000,
+              out_ctx.rate, 5, &err);
+            if (err != 0)
+            {
+               fprintf(stderr, "Failed to initialize resampler: %s\n",
+                 speex_resampler_strerror(err));
+               exit_code = 1;
+               break;
+            }
+            speex_resampler_skip_zeros(out_ctx.resampler);
+         }
       }
+
       nb_read_total += nb_read;
       out_ctx.link_read += nb_read;
       if (!quiet)
       {
          /*Display a progress spinner while decoding.*/
-         static const char spinner[]="|/-\\";
+         static const char spinner[] = "|/-\\";
          opus_int64 coded_seconds = nb_read_total/48000;
          if (coded_seconds > last_coded_seconds || li != old_li)
          {
@@ -1137,41 +1146,24 @@ int main(int argc, char **argv)
                last_spin++;
                last_coded_seconds = coded_seconds;
             }
-            fprintf(stderr,"\r[%c] %02" I64FORMAT ":%02d:%02d",
-             spinner[last_spin&3], coded_seconds/3600,
-             (int)((coded_seconds/60)%60), (int)(coded_seconds%60));
+            fprintf(stderr, "\r[%c] %02" I64FORMAT ":%02d:%02d",
+              spinner[last_spin&3], coded_seconds/3600,
+              (int)((coded_seconds/60)%60), (int)(coded_seconds%60));
             fflush(stderr);
          }
       }
-      old_li=li;
-      if (permuted_output!=NULL)
+      old_li = li;
+      if (permuted_output != NULL)
       {
          int ci;
-         for(i=0;i<nb_read;i++)
+         for (i = 0; i < nb_read; i++)
          {
-            for(ci=0;ci<channels;ci++)
+            for (ci = 0; ci < channels; ci++)
             {
-               permuted_output[i*channels+ci]=
-                output[i*channels+channel_map[ci]];
+               permuted_output[i*channels+ci] =
+                 output[i*channels+channel_map[ci]];
             }
          }
-      }
-      /*Normal players should just play at 48000 or their maximum rate,
-        as described in the OggOpus spec.  But for commandline tools
-        like opusdec it can be desirable to exactly preserve the original
-        sampling rate and duration, so we have a resampler here.*/
-      if (out_ctx.rate != 48000 && out_ctx.resampler == NULL)
-      {
-         int err;
-         out_ctx.resampler = speex_resampler_init(channels, 48000, out_ctx.rate, 5, &err);
-         if (err!=0)
-         {
-            fprintf(stderr, "Failed to initialize resampler: %s\n",
-             speex_resampler_strerror(err));
-            exit_code=1;
-            break;
-         }
-         speex_resampler_skip_zeros(out_ctx.resampler);
       }
       out_err = audio_write(&out_ctx, permuted_output?permuted_output:output, nb_read);
    } while (!out_err);
@@ -1181,7 +1173,6 @@ int main(int argc, char **argv)
       if (!out_err) out_err = drain_resampler(&out_ctx);
       speex_resampler_destroy(out_ctx.resampler);
    }
-
    if (out_ctx.fout && (fflush(out_ctx.fout) || ferror(out_ctx.fout)))
    {
       out_err = -1;
@@ -1189,8 +1180,15 @@ int main(int argc, char **argv)
    }
    if (out_err && out_ctx.file_output)
    {
-      fprintf(stderr, "Write error; output file is incomplete.\n");
-      if (exit_code == 0) exit_code = 1;
+      fprintf(stderr, "%sWrite error; output file is incomplete.\n",
+        exit_code == 0 && !quiet ? "\r" : "");
+      exit_code = 1;
+   }
+   else if (exit_code == 0 && !quiet)
+   {
+      /* pad with spaces to ensure that progress indicator is overwritten */
+      fprintf(stderr, "\r%-26s\n",
+        out_err ? "Playback aborted." : "Decoding complete.");
    }
 
    /*If we were writing wav, go set the duration.*/
