@@ -40,10 +40,17 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <time.h>
 #include <ctype.h> /*tolower()*/
 
 #ifdef HAVE_INTTYPES_H
 # include <inttypes.h>
+#endif
+
+#ifdef _MSC_VER
+# if (_MSC_VER < 1900)
+#  define snprintf _snprintf
+# endif
 #endif
 
 #include <opus.h>
@@ -694,7 +701,8 @@ int main(int argc, char **argv)
    int li;
    int quiet = 0;
    int forcewav = 0;
-   ogg_int64_t nb_read_total=0;
+   ogg_int64_t nb_read_total = 0;
+   ogg_int64_t pcm_total = -1;
    struct option long_options[] =
    {
       {"help", no_argument, NULL, 0},
@@ -718,7 +726,7 @@ int main(int argc, char **argv)
    int force_stereo=0;
    int channels=-1;
    int wav_format=0;
-   size_t last_spin=0;
+   int last_spin_len = 0;
 #ifdef WIN_UNICODE
    int argc_utf8;
    char **argv_utf8;
@@ -880,6 +888,7 @@ int main(int argc, char **argv)
       int nlinks;
       /*If we have a seekable file, we can make some intelligent decisions
         about how to decode.*/
+      pcm_total = op_pcm_total(st, -1);
       nlinks = op_link_count(st);
       if (out_ctx.rate == 0)
       {
@@ -1041,11 +1050,12 @@ int main(int argc, char **argv)
       if (nb_read < 0) {
          opus_int64 coded_seconds = nb_read_total/48000;
          fprintf(stderr, "%s%s at %02" I64FORMAT ":%02d:%02d.%03d\n",
-           last_coded_seconds >= 0 ? "\r" : "",
+           last_spin_len ? "\r" : "",
            nb_read == OP_HOLE ? "Warning: Hole in data" :
            nb_read == OP_EREAD ? "Read error" : "Decoding error",
            coded_seconds/3600, (int)((coded_seconds/60)%60),
            (int)(coded_seconds%60), (int)(nb_read_total%48000)/48);
+         last_spin_len = 0;
          if (nb_read == OP_HOLE) continue;
          exit_code = 1;
          break;
@@ -1069,7 +1079,7 @@ int main(int argc, char **argv)
          }
 
          /*We've encountered a new link.*/
-         if (last_coded_seconds >= 0) fprintf(stderr, "\r");
+         if (last_spin_len) fprintf(stderr, "\r");
          out_ctx.link_read = out_ctx.link_out = 0;
          head = op_head(st, li);
          if (!force_stereo && channels != head->channel_count)
@@ -1138,16 +1148,28 @@ int main(int argc, char **argv)
       {
          /*Display a progress spinner while decoding.*/
          static const char spinner[] = "|/-\\";
+         char percentbuf[6];
          opus_int64 coded_seconds = nb_read_total/48000;
          if (coded_seconds > last_coded_seconds || li != old_li)
          {
-            if (coded_seconds > last_coded_seconds)
+            time_t spin_time = time(NULL);
+            last_coded_seconds = coded_seconds;
+            if (pcm_total <= 0)
             {
-               last_spin++;
-               last_coded_seconds = coded_seconds;
+                percentbuf[0] = '\0';
             }
-            fprintf(stderr, "\r[%c] %02" I64FORMAT ":%02d:%02d",
-              spinner[last_spin&3], coded_seconds/3600,
+            else if (nb_read_total <= pcm_total)
+            {
+               snprintf(percentbuf, sizeof(percentbuf), " %3d%%",
+                 (int)floor(nb_read_total/(double)pcm_total*100.));
+            }
+            else
+            {
+               strcpy(percentbuf, "     ");
+            }
+            last_spin_len = fprintf(stderr,
+              "\r[%c]%s %02" I64FORMAT ":%02d:%02d",
+              spinner[spin_time&3], percentbuf, coded_seconds/3600,
               (int)((coded_seconds/60)%60), (int)(coded_seconds%60));
             fflush(stderr);
          }
@@ -1181,13 +1203,13 @@ int main(int argc, char **argv)
    if (out_err && out_ctx.file_output)
    {
       fprintf(stderr, "%sWrite error; output file is incomplete.\n",
-        exit_code == 0 && !quiet ? "\r" : "");
+        exit_code == 0 && last_spin_len ? "\r" : "");
       exit_code = 1;
    }
    else if (exit_code == 0 && !quiet)
    {
       /* pad with spaces to ensure that progress indicator is overwritten */
-      fprintf(stderr, "\r%-26s\n",
+      fprintf(stderr, "\r%*s\n", last_spin_len > 0 ? -last_spin_len : 0,
         out_err ? "Playback aborted." : "Decoding complete.");
    }
 
