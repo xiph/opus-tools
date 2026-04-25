@@ -128,7 +128,6 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                         inf->doneheaders, stream->num);
                 continue;
             } else if (inf->doneheaders==1) {
-                char *tmp;
                 char *c=(char *)packet.packet;
                 int length, len, i, nb_fields;
 
@@ -144,10 +143,7 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                     oi_warn(_("Invalid/corrupted comments in stream %d\n"),stream->num);
                     continue;
                 }
-                tmp=calloc(len+1,1);
-                memcpy(tmp,c,len);
-                oi_info(_("Encoded with %s\n"),tmp);
-                free(tmp);
+                oi_info(_("Encoded with %.*s\n"),len,c);
                 c+=len;
                 /*The -16 check above makes sure we can read this.*/
                 nb_fields=readle32(c, 0);
@@ -173,6 +169,8 @@ void info_opus_process(stream_processor *stream, ogg_page *page )
                     }
                     /*check_xiph_comment expects a null terminated comment*/
                     comment=malloc((len+1)*sizeof(char));
+                    if (!comment)
+                        oi_fatal(_("FATAL: Unable to allocate memory for comment\n"));
                     memcpy(comment,c,len);
                     comment[len]=0;
                     check_xiph_comment(stream, i, comment, len);
@@ -332,6 +330,8 @@ void info_opus_start(stream_processor *stream)
     stream->process_end = info_opus_end;
 
     stream->data = calloc(1, sizeof(misc_opus_info));
+    if (!stream->data)
+        oi_fatal(_("FATAL: Unable to allocate memory for stream data\n"));
 
     oinfo = stream->data;
     oinfo->firstgranule=-1;

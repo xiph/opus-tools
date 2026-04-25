@@ -16,6 +16,24 @@
 # define N_(X) (X)
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__cplusplus)
+# define ATTR_NORETURN _Noreturn
+#elif defined(__GNUC__) && defined(__GNUC_MINOR__) \
+       && __GNUC__ + (__GNUC_MINOR__ >= 8) > 2  /* GCC 2.8+ */
+# define ATTR_NORETURN __attribute__((noreturn))
+#else
+# define ATTR_NORETURN
+#endif
+
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) \
+     && __GNUC__ + (__GNUC_MINOR__ >= 3) > 3  /* GCC 3.3+ */
+# define ATTR_FORMAT_PRINTF __attribute__((__format__(printf, 1, 2)))
+#else
+# define ATTR_FORMAT_PRINTF
+#endif
+
+ATTR_NORETURN void fatal(const char *format, ...) ATTR_FORMAT_PRINTF;
+
 #define CHANNELS_FORMAT_DEFAULT  0
 #define CHANNELS_FORMAT_AMBIX    1
 #define CHANNELS_FORMAT_DISCRETE 2

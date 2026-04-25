@@ -53,17 +53,6 @@ static int flawed;
 #define CONSTRAINT_PAGE_AFTER_EOS   1
 #define CONSTRAINT_MUXING_VIOLATED  2
 
-static stream_set *create_stream_set(void)
-{
-    stream_set *set = calloc(1, sizeof(stream_set));
-
-    set->streams = calloc(5, sizeof(stream_processor));
-    set->allocated = 5;
-    set->used = 0;
-
-    return set;
-}
-
 void oi_info(char *format, ...)
 {
     va_list ap;
@@ -98,6 +87,16 @@ void oi_error(char *format, ...)
     va_start(ap, format);
     vfprintf(stdout, format, ap);
     va_end(ap);
+}
+
+void oi_fatal(char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    vfprintf(stdout, format, ap);
+    va_end(ap);
+    exit(1);
 }
 
 #define READ_U32_BE(buf) \
@@ -228,6 +227,8 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              static char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                                   '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
              int k, c1 = 0, c2 = 0;
+             if (!simple || !seq)
+                 oi_fatal(_("FATAL: Unable to allocate memory for comment\n"));
              for (k = 0; k < comment_length; k++) {
                seq[c1++] = hex[((unsigned char)comment[k]) >> 4];
                seq[c1++] = hex[((unsigned char)comment[k]) & 0xf];
@@ -291,6 +292,8 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
              }
          }
          data=data_sz>0?(unsigned char *)malloc(data_sz*sizeof(*data)):NULL;
+         if (data_sz > 0 && !data)
+             oi_fatal(_("FATAL: Unable to allocate memory for picture\n"));
          for (j = 0; j < len; j++) {
              ogg_uint32_t value;
              int          k;
@@ -605,6 +608,22 @@ void check_xiph_comment(stream_processor *stream, int i, const char *comment,
      }
 }
 
+static stream_set *create_stream_set(void)
+{
+    stream_set *set = calloc(1, sizeof(stream_set));
+    if (!set)
+        oi_fatal(_("FATAL: Unable to allocate memory for stream set\n"));
+
+    set->streams = calloc(5, sizeof(stream_processor));
+    if (!set->streams)
+        oi_fatal(_("FATAL: Unable to allocate memory for stream processor\n"));
+
+    set->allocated = 5;
+    set->used = 0;
+
+    return set;
+}
+
 static void process_null(stream_processor *stream, ogg_page *page)
 {
     /* This is for invalid streams. */
@@ -717,6 +736,8 @@ static stream_processor *find_stream_processor(stream_set *set, ogg_page *page)
         set->allocated += 5;
         set->streams = realloc(set->streams, sizeof(stream_processor)*
                 set->allocated);
+        if (!set->streams)
+            oi_fatal(_("FATAL: Unable to allocate memory for streams\n"));
         stream = &set->streams[set->used];
     }
     set->used++;
@@ -828,7 +849,7 @@ static void process_file(char *filename)
     FILE *file = fopen_utf8(filename, "rb");
     ogg_sync_state ogsync;
     ogg_page page;
-    stream_set *processors = create_stream_set();
+    stream_set *processors;
     int gotpage = 0;
     ogg_int64_t written = 0;
 
@@ -842,14 +863,10 @@ static void process_file(char *filename)
 
     ogg_sync_init(&ogsync);
 
+    processors = create_stream_set();
     while(get_next_page(file, &ogsync, &page, &written)) {
         stream_processor *p = find_stream_processor(processors, &page);
         gotpage = 1;
-
-        if(!p) {
-            oi_error(_("Could not find a processor for stream, bailing\n"));
-            return;
-        }
 
         if(p->isillegal && !p->shownillegal) {
             char *constraint;

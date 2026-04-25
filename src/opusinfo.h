@@ -50,13 +50,24 @@ typedef struct {
     int in_headers;
 } stream_set;
 
-#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)
-# define OI_FORMAT_PRINTF __attribute__((__format__(printf, 1, 2)))
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__cplusplus)
+# define ATTR_NORETURN _Noreturn
+#elif defined(__GNUC__) && defined(__GNUC_MINOR__) \
+       && __GNUC__ + (__GNUC_MINOR__ >= 8) > 2  /* GCC 2.8+ */
+# define ATTR_NORETURN __attribute__((noreturn))
 #else
-# define OI_FORMAT_PRINTF
+# define ATTR_NORETURN
 #endif
 
-void oi_info(char *format, ...) OI_FORMAT_PRINTF;
-void oi_warn(char *format, ...) OI_FORMAT_PRINTF;
-void oi_error(char *format, ...) OI_FORMAT_PRINTF;
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) \
+     && __GNUC__ + (__GNUC_MINOR__ >= 3) > 3  /* GCC 3.3+ */
+# define ATTR_FORMAT_PRINTF __attribute__((__format__(printf, 1, 2)))
+#else
+# define ATTR_FORMAT_PRINTF
+#endif
+
+void oi_info(char *format, ...) ATTR_FORMAT_PRINTF;
+void oi_warn(char *format, ...) ATTR_FORMAT_PRINTF;
+void oi_error(char *format, ...) ATTR_FORMAT_PRINTF;
+ATTR_NORETURN void oi_fatal(char *format, ...) ATTR_FORMAT_PRINTF;
 void check_xiph_comment(stream_processor *stream, int i, const char *comment, int comment_length);

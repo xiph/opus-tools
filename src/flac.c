@@ -104,6 +104,8 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
          metadata->data.stream_info.total_samples;
       flac->block_buf=malloc(
          flac->max_blocksize*flac->channels*sizeof(*flac->block_buf));
+      if (!flac->block_buf)
+        fatal(_("ERROR: Unable to allocate memory for FLAC block buffer\n"));
       flac->block_buf_pos=0;
       flac->block_buf_len=0;
       break;
@@ -371,6 +373,8 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,size_t buflen)
   /*Ok. At this point, we know we have a FLAC or an OggFLAC file.
     Set up the FLAC decoder.*/
   flac=malloc(sizeof(*flac));
+  if (!flac)
+    fatal(_("ERROR: Unable to allocate memory\n"));
   flac->decoder=FLAC__stream_decoder_new();
   FLAC__stream_decoder_set_md5_checking(flac->decoder,false);
   /*We get STREAMINFO packets by default, but not VORBIS_COMMENT or PICTURE.*/
@@ -382,6 +386,8 @@ int flac_open(FILE *in,oe_enc_opt *opt,unsigned char *oldbuf,size_t buflen)
   flac->channels=0;
   flac->f=in;
   flac->oldbuf=malloc(buflen*sizeof(*flac->oldbuf));
+  if (!flac->oldbuf)
+    fatal(_("ERROR: Unable to allocate memory for FLAC buffer\n"));
   memcpy(flac->oldbuf,oldbuf,buflen*sizeof(*flac->oldbuf));
   flac->bufpos=0;
   flac->buflen=buflen;

@@ -132,6 +132,8 @@ input_format *open_audio_file(FILE *in, oe_enc_opt *opt)
         if (size >= buf_size)
         {
             buf = realloc(buf, size);
+            if (!buf)
+                fatal(_("ERROR: Unable to allocate memory for probe buffer\n"));
             buf_size = size;
         }
 
@@ -427,6 +429,8 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
         opt->total_samples_per_channel = format.totalframes;
 
         aiff = malloc(sizeof(aifffile));
+        if (!aiff)
+            fatal(_("ERROR: Unable to allocate memory\n"));
         aiff->f = in;
         aiff->samplesread = 0;
         aiff->channels = format.channels;
@@ -443,6 +447,8 @@ int aiff_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
         opt->readdata = (void *)aiff;
 
         aiff->channel_permute = malloc(aiff->channels * sizeof(int));
+        if (!aiff->channel_permute)
+            fatal(_("ERROR: Unable to allocate memory\n"));
         if (opt->channels_format == CHANNELS_FORMAT_DEFAULT && aiff->channels <= 6)
             /* Where we know the mappings, use them. */
             memcpy(aiff->channel_permute, aiff_permute_matrix[aiff->channels-1],
@@ -649,6 +655,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, size_t buflen)
         opt->total_samples_per_channel = 0;
 
         wav = malloc(sizeof(wavfile));
+        if (!wav)
+            fatal(_("ERROR: Unable to allocate memory\n"));
         wav->f = in;
         wav->samplesread = 0;
         wav->bigendian = 0;
@@ -694,6 +702,8 @@ int wav_open(FILE *in, oe_enc_opt *opt, unsigned char *oldbuf, size_t buflen)
         opt->readdata = (void *)wav;
 
         wav->channel_permute = malloc(wav->channels * sizeof(int));
+        if (!wav->channel_permute)
+            fatal(_("ERROR: Unable to allocate memory\n"));
         if (opt->channels_format == CHANNELS_FORMAT_DEFAULT && wav->channels <= 8)
             /* Where we know the mappings, use them. */
             memcpy(wav->channel_permute, wav_permute_matrix[wav->channels-1],
@@ -843,6 +853,9 @@ int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
     (void)buf;/*unused*/
     (void)buflen;/*unused*/
 
+    if (!wav)
+        fatal(_("ERROR: Unable to allocate memory\n"));
+
     wav->f =             in;
     wav->samplesread =   0;
     wav->bigendian =     opt->endianness;
@@ -851,6 +864,8 @@ int raw_open(FILE *in, oe_enc_opt *opt, unsigned char *buf, size_t buflen)
     wav->samplesize =    opt->samplesize;
     wav->totalsamples =  0;
     wav->channel_permute = malloc(wav->channels * sizeof(int));
+    if (!wav->channel_permute)
+        fatal(_("ERROR: Unable to allocate memory\n"));
     for (i=0; i < wav->channels; i++)
       wav->channel_permute[i] = i;
 
@@ -886,6 +901,8 @@ static int read_scaler(void *data, float *buffer, int samples)
 void setup_scaler(oe_enc_opt *opt, float scale)
 {
     scaler *d = calloc(1, sizeof(scaler));
+    if (!d)
+        fatal(_("ERROR: Unable to allocate memory\n"));
 
     d->real_reader = opt->read_samples;
     d->real_readdata = opt->readdata;
@@ -965,8 +982,12 @@ int setup_downmix(oe_enc_opt *opt, int out_channels)
     }
 
     d = calloc(1, sizeof(downmix));
+    if (!d)
+        fatal(_("ERROR: Unable to allocate memory for downmix\n"));
     d->bufs = malloc(sizeof(float)*opt->channels*4096);
     d->matrix = malloc(sizeof(float)*opt->channels*out_channels);
+    if (!d->bufs || !d->matrix)
+        fatal(_("ERROR: Unable to allocate memory for downmix\n"));
     d->real_reader = opt->read_samples;
     d->real_readdata = opt->readdata;
     d->in_channels = opt->channels;

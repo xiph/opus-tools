@@ -89,15 +89,7 @@
 #define IMIN(a,b) ((a) < (b) ? (a) : (b))   /**< Minimum int value.   */
 #define IMAX(a,b) ((a) > (b) ? (a) : (b))   /**< Maximum int value.   */
 
-#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)
-# define FORMAT_PRINTF __attribute__((__format__(printf, 1, 2)))
-#else
-# define FORMAT_PRINTF
-#endif
-
-static void fatal(const char *format, ...) FORMAT_PRINTF;
-
-static void fatal(const char *format, ...)
+void fatal(const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -810,6 +802,9 @@ int main(int argc, char **argv)
           if (description_end-description != 0) {
             size_t len = description_end-description;
             description_copy = malloc(len+1);
+            if (!description_copy) {
+              fatal("Error: failed to allocate memory for picture description\n");
+            }
             memcpy(description_copy, description, len);
             description_copy[len]=0;
           }
