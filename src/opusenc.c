@@ -134,7 +134,7 @@ static void usage(void) {
   printf(" -h, --help         Show this help\n");
   printf(" -V, --version      Show version information\n");
   printf(" --help-picture     Show help on attaching album art\n");
-  printf(" --force            overwrite existing output file\n");
+  printf(" --force            Overwrite file if output file already exist\n");
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
   printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
