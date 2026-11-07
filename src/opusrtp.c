@@ -507,25 +507,21 @@ int parse_rtp_header(const unsigned char *packet, int size, rtp_header *rtp)
   rtp->pad = (packet[0] >> 5) & 1;
   rtp->ext = (packet[0] >> 4) & 1;
   rtp->cc = packet[0] & 7;
-  rtp->header_size = 12 + 4 * rtp->cc;
-  if (rtp->ext == 1) {
-    uint16_t ext_length;
-    rtp->header_size += 4;
-    ext_length = rbe16(packet + rtp->header_size - 2);
-    rtp->header_size += ext_length * 4;
-  }
-  rtp->payload_size = size - rtp->header_size;
-
   rtp->mark = (packet[1] >> 7) & 1;
   rtp->type = (packet[1]) & 127;
   rtp->seq  = rbe16(packet + 2);
   rtp->time = rbe32(packet + 4);
   rtp->ssrc = rbe32(packet + 8);
   rtp->csrc = NULL;
+  rtp->header_size = 12 + 4 * rtp->cc + 4 * rtp->ext;
+  if (rtp->ext && size >= rtp->header_size) {
+    rtp->header_size += 4 * rbe16(packet + rtp->header_size - 2);
+  }
   if (size < rtp->header_size) {
     fprintf(stderr, "Packet too short for RTP header\n");
     return -1;
   }
+  rtp->payload_size = size - rtp->header_size;
 
   return 0;
 }
