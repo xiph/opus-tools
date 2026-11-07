@@ -118,7 +118,7 @@ static void usage(void)
   printf("The input format can be Wave, AIFF, FLAC, Ogg/FLAC, or raw PCM.\n");
 #else
   printf("The input format can be Wave, AIFF, or raw PCM.\n");
-#endif
+#endif		
   printf("\ninput_file can be:\n");
   printf("  filename.wav      file\n");
   printf("  -                 stdin\n");
@@ -128,6 +128,7 @@ static void usage(void)
   printf("\nGeneral options:\n");
   printf(" -h, --help         Show this help\n");
   printf(" -V, --version      Show version information\n");
+  printf(" -f, --force        Force overwritng of output file\n");
   printf(" --help-picture     Show help on attaching album art\n");
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
@@ -387,6 +388,7 @@ int main(int argc, char **argv)
   };
   struct option long_options[] =
   {
+    {"force", no_argument, NULL, 0},
     {"quiet", no_argument, NULL, 0},
     {"bitrate", required_argument, NULL, 0},
     {"hard-cbr",no_argument,NULL, 0},
@@ -453,6 +455,7 @@ int main(int argc, char **argv)
   time_t             last_spin=0;
   int                last_spin_len=0;
   /*Settings*/
+  int		     force=0;
   int                quiet=0;
   opus_int32         bitrate=-1;
   opus_int32         rate=48000;
@@ -546,7 +549,7 @@ int main(int argc, char **argv)
     int option_index;
     const char *optname;
 
-    c=getopt_long(argc_utf8, argv_utf8, "hV", long_options, &option_index);
+    c=getopt_long(argc_utf8, argv_utf8, "hVf", long_options, &option_index);
     if (c==-1)
        break;
 
@@ -554,7 +557,9 @@ int main(int argc, char **argv)
       case 0:
         optname = long_options[option_index].name;
         save_cmd = 1;
-        if (strcmp(optname, "quiet")==0) {
+	if (strcmp(optname, "force")==0) {
+	  force=1;
+	} else if (strcmp(optname, "quiet")==0) {
           quiet=1;
           save_cmd=0;
         } else if (strcmp(optname, "bitrate")==0) {
@@ -849,6 +854,9 @@ int main(int argc, char **argv)
           }
         }
         break;
+      case 'f':
+	force=1;
+	break;
       case 'h':
         usage();
         exit(0);
@@ -878,6 +886,13 @@ int main(int argc, char **argv)
   inFile=argv_utf8[optind];
   outFile=argv_utf8[optind+1];
 
+  data.fout = fopen_utf8(outFile, "r");
+  
+  if (data.fout && !force) {
+    fatal("Error: Output file already exist use -f or --force to overwrite\n");
+  } else if (data.fout) {
+    fclose(data.fout);
+  }
   if (cline_size > 0) {
     ret = ope_comments_add(inopt.comments, "ENCODER_OPTIONS", ENCODER_string);
     if (ret != OPE_OK) {
