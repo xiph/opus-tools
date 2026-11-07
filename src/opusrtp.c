@@ -1094,6 +1094,7 @@ int sniff(const char *input_file, const char *device, const char *output_file,
   pcap_t *pcap;
   char errbuf[PCAP_ERRBUF_SIZE];
   ogg_packet *op;
+  int ret;
 
   /* set up */
   if (input_file) {
@@ -1164,7 +1165,10 @@ int sniff(const char *input_file, const char *device, const char *output_file,
 
   /* start capture loop */
   /* if reading from an input file, continue until EOF */
-  pcap_loop(pcap, input_file ? 0 : 300, write_packet, (u_char *)params);
+  ret = pcap_loop(pcap, input_file ? 0 : 300, write_packet, (u_char *)params);
+  if (ret == -1) {
+    pcap_perror(pcap, "Packet processing failed");
+  }
 
   /* write outstanding data */
   if (params->out) {
@@ -1181,7 +1185,7 @@ int sniff(const char *input_file, const char *device, const char *output_file,
   ogg_stream_destroy(params->stream);
   free(params);
   pcap_close(pcap);
-  return 0;
+  return ret == -1 ? 1 : 0;
 }
 #endif /* HAVE_PCAP */
 
