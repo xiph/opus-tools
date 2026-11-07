@@ -120,16 +120,16 @@ static void usage(void)
   printf("The input format can be Wave, AIFF, or raw PCM.\n");
 #endif
   printf("\ninput_file can be:\n");
-  printf("  filename.wav      file\n");
-  printf("  -                 stdin\n");
+  printf("  filename.wav       file\n");
+  printf("  -                  stdin\n");
   printf("\noutput_file can be:\n");
-  printf("  filename.opus     compressed file\n");
-  printf("  -                 stdout\n");
+  printf("  filename.opus      compressed file\n");
+  printf("  -                  stdout\n");
   printf("\nGeneral options:\n");
-  printf(" -h, --help         Show this help\n");
-  printf(" -V, --version      Show version information\n");
-  printf(" --help-picture     Show help on attaching album art\n");
-  printf(" --quiet            Enable quiet mode\n");
+  printf(" -h, --help          Show this help\n");
+  printf(" -V, --version       Show version information\n");
+  printf(" --help-picture      Show help on attaching album art\n");
+  printf(" --quiet             Enable quiet mode\n");
   printf("\nEncoding options:\n");
   printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
@@ -148,39 +148,41 @@ static void usage(void)
   printf(" --downmix-mono     Downmix to mono\n");
   printf(" --downmix-stereo   Downmix to stereo (if >2 channels)\n");
 #ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
-  printf(" --no-phase-inv     Disable use of phase inversion for intensity stereo\n");
+  printf(" --no-phase-inv      Disable use of phase inversion for intensity stereo\n");
 #endif
-  printf(" --max-delay n      Set maximum container delay in milliseconds\n");
-  printf("                      (0-1000, default: 1000)\n");
+  printf(" --max-delay n       Set maximum container delay in milliseconds\n");
+  printf("                       (0-1000, default: 1000)\n");
   printf("\nMetadata options:\n");
-  printf(" --title title      Set track title\n");
-  printf(" --artist artist    Set artist or author, may be used multiple times\n");
-  printf(" --album album      Set album or collection\n");
-  printf(" --genre genre      Set genre, may be used multiple times\n");
-  printf(" --date YYYY-MM-DD  Set date of track (YYYY, YYYY-MM, or YYYY-MM-DD)\n");
-  printf(" --tracknumber n    Set track number\n");
-  printf(" --comment tag=val  Add the given string as an extra comment\n");
-  printf("                      This may be used multiple times\n");
-  printf(" --picture file     Attach album art (see --help-picture)\n");
-  printf("                      This may be used multiple times\n");
-  printf(" --padding n        Reserve n extra bytes for metadata (default: 512)\n");
-  printf(" --discard-comments Don't keep metadata when transcoding\n");
-  printf(" --discard-pictures Don't keep pictures when transcoding\n");
+  printf(" --title title       Set track title\n");
+  printf(" --artist artist     Set artist or author, may be used multiple times\n");
+  printf(" --album album       Set album or collection\n");
+  printf(" --genre genre       Set genre, may be used multiple times\n");
+  printf(" --date YYYY-MM-DD   Set date of track (YYYY, YYYY-MM, or YYYY-MM-DD)\n");
+  printf(" --tracknumber n     Set track number\n");
+  printf(" --comment tag=val   Add the given string as an extra comment\n");
+  printf("                       This may be used multiple times\n");
+  printf(" --picture file      Attach album art (see --help-picture)\n");
+  printf("                       This may be used multiple times\n");
+  printf(" --padding n         Reserve n extra bytes for metadata (default: 512)\n");
+  printf(" --discard-comments  Don't keep metadata when transcoding\n");
+  printf(" --discard-pictures  Don't keep pictures when transcoding\n");
+  printf(" --replaygain-mode n Choose behavior of ReplayGain conversion\n");
+  printf("                       (0: ignore, 1: convert to R128, 2: copy, 3: track gain in header)\n");
   printf("\nInput options:\n");
-  printf(" --raw              Interpret input as raw PCM data without headers\n");
-  printf(" --raw-float        Interpret input as raw float data without headers\n");
-  printf(" --raw-bits n       Set bits/sample for raw input (default: 16; 32 for float)\n");
-  printf(" --raw-rate n       Set sampling rate for raw input (default: 48000)\n");
-  printf(" --raw-chan n       Set number of channels for raw input (default: 2)\n");
-  printf(" --raw-endianness n 1 for big endian, 0 for little (default: 0)\n");
-  printf(" --ignorelength     Ignore the data length in Wave headers\n");
-  printf(" --channels fmt     Override the format of the input channels (ambix, discrete)\n");
+  printf(" --raw               Interpret input as raw PCM data without headers\n");
+  printf(" --raw-float         Interpret input as raw float data without headers\n");
+  printf(" --raw-bits n        Set bits/sample for raw input (default: 16; 32 for float)\n");
+  printf(" --raw-rate n        Set sampling rate for raw input (default: 48000)\n");
+  printf(" --raw-chan n        Set number of channels for raw input (default: 2)\n");
+  printf(" --raw-endianness n  1 for big endian, 0 for little (default: 0)\n");
+  printf(" --ignorelength      Ignore the data length in Wave headers\n");
+  printf(" --channels fmt      Override the format of the input channels (ambix, discrete)\n");
   printf("\nDiagnostic options:\n");
-  printf(" --serial n         Force use of a specific stream serial number\n");
-  printf(" --save-range file  Save check values for every frame to a file\n");
-  printf(" --set-ctl-int x=y  Pass the encoder control x with value y (advanced)\n");
-  printf("                      Preface with s: to direct the ctl to multistream s\n");
-  printf("                      This may be used multiple times\n");
+  printf(" --serial n          Force use of a specific stream serial number\n");
+  printf(" --save-range file   Save check values for every frame to a file\n");
+  printf(" --set-ctl-int x=y   Pass the encoder control x with value y (advanced)\n");
+  printf("                       Preface with s: to direct the ctl to multistream s\n");
+  printf("                       This may be used multiple times\n");
 }
 
 static void help_picture(void)
@@ -379,6 +381,35 @@ static const char *channels_format_name(int channels_format, int channels)
   return "discrete";
 }
 
+// [jdsc] might break in edge cases, but should work well
+char *ope_gen_outfile(char *inFile)
+{
+  char *start, *end, *outfilename;
+
+  start=strrchr(inFile, '/');
+
+  #if defined WIN32 || defined _WIN32 || defined __MINGW32__
+  {
+    char *backslash;
+    backslash=strrchr(inFile, '\\');
+    if(backslash!=NULL&&(start==NULL||backslash>start))
+      start=backslash;
+  }
+  #endif
+  
+  start=(start==NULL)?inFile:start+1;
+  
+  end=strrchr(start, '.');
+  end=(end==NULL||end==start)?start+strlen(inFile):end;
+    
+  outfilename=malloc(end-start+6);
+  strncpy(outfilename,start,end-start);
+  outfilename[end-start]='\0';
+  strcat(outfilename,".opus");
+  printf("Output file: %s\n", outfilename);
+  return outfilename;
+}
+
 int main(int argc, char **argv)
 {
   static const input_format raw_format =
@@ -429,6 +460,7 @@ int main(int argc, char **argv)
     {"padding", required_argument, NULL, 0},
     {"discard-comments", no_argument, NULL, 0},
     {"discard-pictures", no_argument, NULL, 0},
+    {"replaygain-mode", required_argument, NULL, 0},
     {0, 0, 0, 0}
   };
   int i, ret;
@@ -508,6 +540,7 @@ int main(int argc, char **argv)
   inopt.ignorelength=0;
   inopt.copy_comments=1;
   inopt.copy_pictures=1;
+  inopt.copy_rgain=RG_CONVERT_TO_R128;
 
   start_time = time(NULL);
   srand((((unsigned)getpid()&65535)<<15)^(unsigned)start_time);
@@ -825,6 +858,15 @@ int main(int argc, char **argv)
         } else if (strcmp(optname, "discard-pictures")==0) {
           inopt.copy_pictures=0;
           save_cmd=0;
+        } else if (strcmp(optname, "replaygain-mode")==0) {
+          int val = atoi(optarg);
+          if (val < 0 || val > 3) {
+            fatal("Invalid replaygain-mode: %s\n"
+              "Mode must correspond to modes 0-3.\n",
+              optarg);
+          }
+          inopt.copy_rgain = val;
+          save_cmd=0;
         }
         /*Options whose arguments would leak file paths or just end up as
            metadata, or that relate only to input file handling or console
@@ -871,12 +913,23 @@ int main(int argc, char **argv)
     fatal("Invalid bit-depth:\n"
       "--raw-bits must be 32 for float sample format\n");
   }
-  if (argc_utf8-optind!=2) {
+
+  int argcnt = argc_utf8 - optind;
+  if (argcnt < 1) {
+    usage();
+    exit(1);
+  } 
+  inFile=argv_utf8[optind]; 
+  if(argcnt > 1) {
+    outFile=argv_utf8[optind+1];
+  }
+  else if(inFile) {
+    outFile=ope_gen_outfile(inFile);
+  }
+  else {
     usage();
     exit(1);
   }
-  inFile=argv_utf8[optind];
-  outFile=argv_utf8[optind+1];
 
   if (cline_size > 0) {
     ret = ope_comments_add(inopt.comments, "ENCODER_OPTIONS", ENCODER_string);

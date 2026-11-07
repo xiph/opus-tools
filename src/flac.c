@@ -136,45 +136,47 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           char *end;
           entry=(char *)comments[i].entry;
           if(!entry)continue;
-          /*Check for ReplayGain tags.
+          /*Check for ReplayGain tags if using any of the R128 conversion modes.
             Parse the ones we have R128 equivalents for, and skip the others.*/
-          if(tagcompare(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
-            /*Reference loundness may be in dB SPL (positive) or
-              LUFS (negative).  The 89 dB SPL reference is considered
-              to be the same loudness as -18 LUFS.*/
-            gain=strtod(entry+30,&end);
-            if(end<=entry+30){
-              fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+          if(inopt->copy_rgain != RG_COPY){
+            if(tagcompare(entry,"REPLAYGAIN_REFERENCE_LOUDNESS=",30)==0){
+              /*Reference loundness may be in dB SPL (positive) or
+                LUFS (negative).  The 89 dB SPL reference is considered
+                to be the same loudness as -18 LUFS.*/
+              gain=strtod(entry+30,&end);
+              if(end<=entry+30){
+                fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+              }
+              else if (gain<0) reference_loudness=gain;
+              else reference_loudness=gain-89-18;
+              continue;
             }
-            else if (gain<0) reference_loudness=gain;
-            else reference_loudness=gain-89-18;
-            continue;
-          }
-          if(tagcompare(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
-            gain=strtod(entry+22,&end);
-            if(end<=entry+22){
-              fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+            if(tagcompare(entry,"REPLAYGAIN_ALBUM_GAIN=",22)==0){
+              gain=strtod(entry+22,&end);
+              if(end<=entry+22){
+                fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+              }
+              else{
+                album_gain=gain;
+                saw_album_gain=1;
+              }
+              continue;
             }
-            else{
-              album_gain=gain;
-              saw_album_gain=1;
+            if(tagcompare(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
+              gain=strtod(entry+22,&end);
+              if(end<entry+22){
+                fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+              }
+              else{
+                track_gain=gain;
+                saw_track_gain=1;
+              }
+              continue;
             }
-            continue;
-          }
-          if(tagcompare(entry,"REPLAYGAIN_TRACK_GAIN=",22)==0){
-            gain=strtod(entry+22,&end);
-            if(end<entry+22){
-              fprintf(stderr,_("WARNING: Invalid ReplayGain tag: %s\n"),entry);
+            if(tagcompare(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
+               ||tagcompare(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
+              continue;
             }
-            else{
-              track_gain=gain;
-              saw_track_gain=1;
-            }
-            continue;
-          }
-          if(tagcompare(entry,"REPLAYGAIN_ALBUM_PEAK=",22)==0
-             ||tagcompare(entry,"REPLAYGAIN_TRACK_PEAK=",22)==0){
-            continue;
           }
           if(!strchr(entry,'=')){
             fprintf(stderr,_("WARNING: Invalid comment: %s\n"),entry);
@@ -185,20 +187,56 @@ static void metadata_callback(const FLAC__StreamDecoder *decoder,
           ope_comments_add_string(inopt->comments,entry);
         }
         setlocale(LC_NUMERIC,saved_locale);
-        /*Set the header gain to the album gain after converting to the R128
-          reference level (-23 LUFS).*/
-        if(saw_album_gain){
-          gain=256*(album_gain+(-23-reference_loudness))+0.5;
-          inopt->gain=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
-        }
-        /*If there was a track gain, then add an equivalent R128 tag for that.*/
-        if(saw_track_gain){
-          char track_gain_buf[7];
-          int track_gain_val;
-          gain=256*(track_gain-album_gain)+0.5;
-          track_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
-          sprintf(track_gain_buf,"%i",track_gain_val);
-          ope_comments_add(inopt->comments, "R128_TRACK_GAIN",track_gain_buf);
+        
+        double loudness_correction = -23-reference_loudness;
+        
+        switch(inopt->copy_rgain){
+          case RG_CONVERT_TO_R128:
+            /*If there was a track gain, then add an equivalent R128 tag for that.*/
+            if(saw_track_gain){
+              char track_gain_buf[7];
+              int track_gain_val;
+              gain=256*(track_gain+loudness_correction);
+              track_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+              sprintf(track_gain_buf,"%i",track_gain_val);
+              ope_comments_add(inopt->comments, "R128_TRACK_GAIN",track_gain_buf);
+            }
+            /*Now do the album gain too.*/
+            if(saw_album_gain){
+              char album_gain_buf[7];
+              int album_gain_val;
+              gain=256*(album_gain+loudness_correction);
+              album_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+              sprintf(album_gain_buf,"%i",album_gain_val);
+              ope_comments_add(inopt->comments, "R128_ALBUM_GAIN",album_gain_buf);
+            }
+            break;
+          case RG_COPY_TO_OUTPUT_GAIN:
+            /*Here we want the more common tag in the header.*/
+            
+            /*Since it is a lot more likely for a player to try to correct
+              the R128_GAIN_* value instead of OpusHead gain, and since the
+              header gain does not have a set target like R128 does in the
+              Opus standard, we use ReplayGain directly in the header and
+              adjust with R128_GAIN tags. This hack works perfectly in AIMP
+              and Auxio.*/
+            if(saw_track_gain){
+              gain=inopt->gain+(256*track_gain);
+              inopt->gain=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+              char gain_buf[7];
+              sprintf(gain_buf,"%i",(int)floor(256*loudness_correction));
+              ope_comments_add(inopt->comments, "R128_TRACK_GAIN",gain_buf);
+            }
+            /*Those who care can use the album gain tag.*/
+            if(saw_album_gain){
+              char album_gain_buf[7];
+              int album_gain_val;
+              gain=256*((album_gain-track_gain)+loudness_correction);
+              album_gain_val=gain<-32768?-32768:gain<32767?(int)floor(gain):32767;
+              sprintf(album_gain_buf,"%i",album_gain_val);
+              ope_comments_add(inopt->comments, "R128_ALBUM_GAIN",album_gain_buf);
+            }
+            break;
         }
       }
       break;

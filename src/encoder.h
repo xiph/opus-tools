@@ -38,6 +38,11 @@ ATTR_NORETURN void fatal(const char *format, ...) ATTR_FORMAT_PRINTF;
 #define CHANNELS_FORMAT_AMBIX    1
 #define CHANNELS_FORMAT_DISCRETE 2
 
+#define RG_DONT_COPY           0
+#define RG_CONVERT_TO_R128     1
+#define RG_COPY                2
+#define RG_COPY_TO_OUTPUT_GAIN 3
+
 typedef int (*audio_read_func)(void *src, float *buffer, int samples);
 
 typedef struct
@@ -57,6 +62,7 @@ typedef struct
     OggOpusComments *comments;
     int copy_comments;
     int copy_pictures;
+    int copy_rgain;
 } oe_enc_opt;
 
 void setup_scaler(oe_enc_opt *opt, float scale);
