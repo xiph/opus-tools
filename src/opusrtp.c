@@ -506,9 +506,9 @@ int parse_rtp_header(const unsigned char *packet, int size, rtp_header *rtp)
   rtp->version = (packet[0] >> 6) & 3;
   rtp->pad = (packet[0] >> 5) & 1;
   rtp->ext = (packet[0] >> 4) & 1;
-  rtp->cc = packet[0] & 7;
+  rtp->cc = packet[0] & 15;
   rtp->mark = (packet[1] >> 7) & 1;
-  rtp->type = (packet[1]) & 127;
+  rtp->type = packet[1] & 127;
   rtp->seq  = rbe16(packet + 2);
   rtp->time = rbe32(packet + 4);
   rtp->ssrc = rbe32(packet + 8);
@@ -544,7 +544,7 @@ int serialize_rtp_header(unsigned char *packet, int size, rtp_header *rtp)
   packet[0] = ((rtp->version & 3) << 6) |
               ((rtp->pad & 1) << 5) |
               ((rtp->ext & 1) << 4) |
-              ((rtp->cc & 7));
+              ((rtp->cc & 15));
   packet[1] = ((rtp->mark & 1) << 7) |
               ((rtp->type & 127));
   be16(packet+2, rtp->seq);
